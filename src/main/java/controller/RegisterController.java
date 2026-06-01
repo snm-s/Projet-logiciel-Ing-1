@@ -3,6 +3,10 @@ package controller;
 import javafx.stage.Stage;
 import view.RegisterView;
 import app.Main;
+import model.agent.Agent;
+import model.agent.Citizen;
+import model.agent.PMRAgent;
+import model.agent.RescueTeam;
 import model.auth.User;
 import model.auth.UserService;
 
@@ -38,7 +42,8 @@ public class RegisterController {
             String address, String city, String country,
             String houseType, int floor, double lat, double lng,
             String role, int householdSize, boolean hasPets, 
-            String medicalNeeds, String emergencyContact
+            String medicalNeeds, String emergencyContact,
+            boolean isPmr
     ) {
         // 1. Sécurité : Vérifier si l'utilisateur existe déjà
         if (UserService.findByEmail(email) != null) {
@@ -46,42 +51,55 @@ public class RegisterController {
             return false;
         }
 
-        // 2. Création de l'objet User via les setters privés
-        User newUser = new User();
-        newUser.setFirstName(firstName);
-        newUser.setLastName(lastName);
-        newUser.setBirthDate(birthDate);
-        newUser.setEmail(email);
-        newUser.setPhone(phone);
-        
-        // Note : Idéalement à hacher plus tard (ex: BCrypt), stocké brut pour le moment selon ton besoin
-        newUser.setPasswordHash(password); 
+        // 2. Création de l'objet via polymorphisme
+        Agent newAgent;
 
-        newUser.setAddress(address);
-        newUser.setCity(city);
-        newUser.setCountry(country);
-        
-        newUser.setHouseType(houseType);
-        newUser.setFloor(floor);
-        
-        newUser.setGpsLat(lat);
-        newUser.setGpsLng(lng);
-        
-        newUser.setRole(role);
-        newUser.setEmergencyContact(emergencyContact);
-        
-        // Attributs spécifiques au Citizen
-        newUser.setHouseholdSize(householdSize);
-        newUser.setHasPets(hasPets);
-        newUser.setMedicalNeeds(medicalNeeds);
-        
-        // Statut de mobilité par défaut basé sur l'âge ou les besoins médicaux (ajustable)
-        newUser.setMobilityStatus("normal"); 
+        if ("rescueAgent".equalsIgnoreCase(role)) {
+            newAgent = new RescueTeam(0, firstName + " " + lastName, null);
+        } 
+        else if ("citizen".equalsIgnoreCase(role)) {
+            if (isPmr) {
+                newAgent = new PMRAgent(0, firstName + " " + lastName, null);
+            } else {
+                Citizen citizen = new Citizen(0, firstName + " " + lastName, null);
+                // Calcul automatique de l'âge et du statut via la méthode de la classe Citizen
+                citizen.calculateMobilityStatus(birthDate);
+                newAgent = citizen;
+            }
+        } else {
+            System.out.println("[RegisterController] Erreur : Rôle inconnu.");
+            return false;
+        }
 
-        // 3. Écriture physique dans le fichier JSON
+        // 3. Remplissage des données communes à tous les agents
+        // (Note : Ces setters doivent exister dans la classe parente Agent)
+        newAgent.setFirstName(firstName);
+        newAgent.setLastName(lastName);
+        newAgent.setBirthDate(birthDate);
+        newAgent.setEmail(email);
+        newAgent.setPhone(phone);
+        newAgent.setPasswordHash(password);
+        newAgent.setAddress(address);
+        newAgent.setCity(city);
+        newAgent.setCountry(country);
+        newAgent.setHouseType(houseType);
+        newAgent.setFloor(floor);
+        newAgent.setGpsLat(lat);
+        newAgent.setGpsLng(lng);
+        newAgent.setEmergencyContact(emergencyContact);
+
+        // 4. Remplissage des données spécifiques aux citoyens
+        if (newAgent instanceof Citizen) {
+            Citizen cit = (Citizen) newAgent;
+            cit.setHouseholdSize(householdSize);
+            cit.setHasPets(hasPets);
+            cit.setMedicalNeeds(medicalNeeds);
+        }
+
+        // 5. Écriture physique dans le fichier JSON
         try {
-            UserService.addUser(newUser);
-            System.out.println("[RegisterController] Succès : Utilisateur enregistré dans le JSON.");
+            UserService.addAgent(newAgent);
+            System.out.println("[RegisterController] Succès : Agent " + role + " enregistré.");
             return true;
         } catch (Exception e) {
             System.out.println("[RegisterController] Erreur critique lors de l'écriture JSON.");
