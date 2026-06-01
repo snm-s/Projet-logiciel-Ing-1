@@ -3,6 +3,13 @@ package model.agent;
 import model.enums.AgentState;
 import model.graph.Node;
 
+
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
+@JsonSubTypes({
+    @JsonSubTypes.Type(value = Citizen.class, name = "citizen"),
+    @JsonSubTypes.Type(value = PMRAgent.class, name = "pmr"),
+    @JsonSubTypes.Type(value = RescueTeam.class, name = "rescueAgent")
+})
 public abstract class Agent {
     private int id;
     private String name;
