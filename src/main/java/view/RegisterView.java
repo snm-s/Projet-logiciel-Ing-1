@@ -1,7 +1,5 @@
 package view;
 
-import app.Main;
-
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -9,488 +7,505 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-
-import org.json.JSONObject;
+import javafx.scene.text.Text;
+import app.Main;
+import controller.RegisterController;
 
 public class RegisterView extends StackPane {
 
+    private ScrollPane scrollPane = new ScrollPane();
+    private VBox root = new VBox(20);
+    private RegisterController controller; 
+    private Button backButton; 
+
+    // Identity
+    private TextField firstName = new TextField();
+    private TextField lastName = new TextField();
+    private DatePicker birthDate = new DatePicker();
+
+    // Contact
+    private TextField email = new TextField();
+    private TextField phone = new TextField();
+
+    // Password
+    private PasswordField password = new PasswordField();
+    private PasswordField confirmPassword = new PasswordField();
+
+    private Label ruleLength = new Label("• At least 8 characters");
+    private Label ruleUpper = new Label("• At least 1 uppercase letter");
+    private Label ruleDigit = new Label("• At least 1 number");
+
+    // Address
+    private TextField address = new TextField();
+    private TextField city = new TextField();
+    private TextField country = new TextField();
+
+    // House
+    private ComboBox<String> houseType = new ComboBox<>();
+    private TextField floor = new TextField();
+
+    // GPS
+    private Label gpsLabel = new Label("GPS not set");
+    private Button gpsButton = new Button("Detect GPS");
+
+    // Role
+    private ComboBox<String> role = new ComboBox<>();
+
+    // Citizen section
+    private VBox citizenBox = new VBox(15);
+    private TextField householdSize = new TextField();
+    private CheckBox pets = new CheckBox("Has pets");
+    private TextArea medicalNeeds = new TextArea();
+    private TextField emergencyContact = new TextField();
+
+    // Register
+    private Button registerBtn = new Button("Register");
+
     public RegisterView() {
-        buildUI();
+        this.setPrefSize(1100, 700);
+
+        // ==========================================
+        // 1. FOND DE PAGE SÉCURISÉ
+        // ==========================================
+        Region backgroundFiller = new Region();
+        try {
+            String imagePath = "/images/P32695412D5775606G-4208711993.jpeg";
+            var resource = getClass().getResource(imagePath);
+            if (resource != null) {
+                String imageUrl = resource.toExternalForm();
+                backgroundFiller.setStyle(
+                    "-fx-background-image: url('" + imageUrl + "');" +
+                    "-fx-background-repeat: no-repeat;" +
+                    "-fx-background-size: cover;" +
+                    "-fx-background-position: center right;"
+                );
+            } else {
+                backgroundFiller.setStyle("-fx-background-color: #0b1a30;");
+            }
+        } catch (Exception e) {
+            backgroundFiller.setStyle("-fx-background-color: #0b1a30;");
+        }
+
+        // ==========================================
+        // 2. CALQUE DE DÉGRADÉ BLEU NUIT (OVERLAY)
+        // ==========================================
+        Region gradientOverlay = new Region();
+        gradientOverlay.setStyle(
+            "-fx-background-color: linear-gradient(to right, " +
+            "#0b1a30 0%, " +
+            "#0b1a30 40%, " +
+            "rgba(11, 26, 48, 0.9) 60%, " +
+            "rgba(11, 26, 48, 0.3) 85%, " +
+            "rgba(11, 26, 48, 0.1) 100%);"
+        );
+
+        // ==========================================
+        // 3. INITIALISATION ET STYLE DU BOUTON RETOUR
+        // ==========================================
+        backButton = new Button("←");
+        backButton.setStyle(
+            "-fx-background-color: transparent;" +
+            "-fx-text-fill: #a0b2ce;" +
+            "-fx-font-size: 28px;" +
+            "-fx-padding: 0 0 10 0;" +
+            "-fx-cursor: hand;"
+        );
+        backButton.setOnMouseEntered(e -> backButton.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 28px; -fx-padding: 0 0 10 0; -fx-cursor: hand;"));
+        backButton.setOnMouseExited(e -> backButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #a0b2ce; -fx-font-size: 28px; -fx-padding: 0 0 10 0;"));
+
+        // ==========================================
+        // 4. MISE EN FORME DU SCROLLPANE ET DU FORMULAIRE
+        // ==========================================
+        scrollPane.setContent(root);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent; -fx-viewport-transparent: true;");
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+
+        root.setAlignment(Pos.CENTER_LEFT);
+        root.setPadding(new Insets(30, 80, 50, 80)); 
+        root.setMaxWidth(550); 
+        
+        StackPane.setAlignment(scrollPane, Pos.CENTER_LEFT);
+
+        build();
+        setupRoleVisibility();
+
+        this.getChildren().addAll(backgroundFiller, gradientOverlay, scrollPane);
     }
 
-    private void buildUI() {
+    private void build() {
+        root.getChildren().add(backButton);
 
-        setStyle("-fx-background-color: linear-gradient(to bottom, #F7FBFF, #DCEEFF);");
+        Text titleText = new Text("Create Account");
+        titleText.setFont(Font.font("System", FontWeight.BOLD, 28));
+        titleText.setFill(Color.WHITE);
 
-        ScrollPane scrollPane = new ScrollPane();
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+        Text subtitleText = new Text("Join the flood emergency and simulation system");
+        subtitleText.setFont(Font.font("System", FontWeight.LIGHT, 12));
+        subtitleText.setFill(Color.web("#a0b2ce"));
+        
+        VBox headerBox = new VBox(5, titleText, subtitleText);
+        headerBox.setPadding(new Insets(0, 0, 10, 0));
+        root.getChildren().add(headerBox);
 
-        VBox card = new VBox(11);
-        card.setAlignment(Pos.TOP_CENTER);
-        card.setPadding(new Insets(20));
-        card.setMaxWidth(380);
+        // --- IDENTITY ---
+        root.getChildren().add(createSectionLabel("Identity"));
+        firstName.setPromptText("First name"); applyTextFieldStyle(firstName);
+        lastName.setPromptText("Last name"); applyTextFieldStyle(lastName);
+        birthDate.setPromptText("Birth date"); 
+        birthDate.setMaxWidth(Double.MAX_VALUE);
+        birthDate.getEditor().setStyle("-fx-text-fill: white; -fx-background-color: transparent;");
+        birthDate.setStyle("-fx-background-color: rgba(255, 255, 255, 0.05); -fx-border-color: rgba(255, 255, 255, 0.25); -fx-border-radius: 6; -fx-background-radius: 6; -fx-height: 45;");
 
-        card.setStyle(
-                "-fx-background-color: white;" +
-                "-fx-background-radius: 18;" +
-                "-fx-border-radius: 18;" +
-                "-fx-border-color: #BFD4EA;" +
-                "-fx-border-width: 1.5;" +
-                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 18, 0, 0, 5);"
+        root.getChildren().addAll(firstName, lastName, birthDate);
+
+        // --- CONTACT ---
+        root.getChildren().add(createSectionLabel("Contact"));
+        email.setPromptText("Email"); applyTextFieldStyle(email);
+        phone.setPromptText("Phone number"); applyTextFieldStyle(phone);
+        root.getChildren().addAll(email, phone);
+
+        // --- PASSWORD ---
+        root.getChildren().add(createSectionLabel("Password"));
+        
+        password.setPrefHeight(42);
+        password.setFont(Font.font("System", 13));
+        password.setPromptText("Password");
+        
+        confirmPassword.setPrefHeight(42);
+        confirmPassword.setFont(Font.font("System", 13));
+        confirmPassword.setPromptText("Confirm password");
+        
+        // Initialisation à l'état neutre (évite d'avoir du rouge dès le début)
+        applyPasswordColorStyle(password, "", false);
+        applyPasswordColorStyle(confirmPassword, "", false);
+        
+        // Règles indicatives en rouge par défaut
+        applyRuleLabelErrorStyle(ruleLength);
+        applyRuleLabelErrorStyle(ruleUpper);
+        applyRuleLabelErrorStyle(ruleDigit);
+        
+        VBox rulesBox = new VBox(4, ruleLength, ruleUpper, ruleDigit);
+        rulesBox.setPadding(new Insets(0, 0, 0, 5));
+        root.getChildren().addAll(password, confirmPassword, rulesBox);
+
+        // --- ADDRESS ---
+        root.getChildren().add(createSectionLabel("Address"));
+        address.setPromptText("Address"); applyTextFieldStyle(address);
+        city.setPromptText("City"); applyTextFieldStyle(city);
+        country.setPromptText("Country"); applyTextFieldStyle(country);
+        root.getChildren().addAll(address, city, country);
+
+        // --- HOUSING ---
+        root.getChildren().add(createSectionLabel("Housing"));
+        houseType.getItems().addAll("Apartment", "House");
+        houseType.setPromptText("Select House Type");
+        applyComboBoxStyle(houseType);
+        floor.setPromptText("Floor"); applyTextFieldStyle(floor);
+        root.getChildren().addAll(houseType, floor);
+
+        // --- LOCATION ---
+        root.getChildren().add(createSectionLabel("Location"));
+        gpsButton.setMaxWidth(Double.MAX_VALUE);
+        gpsButton.setPrefHeight(40);
+        gpsButton.setStyle("-fx-background-color: transparent; -fx-border-color: #0b5cbf; -fx-border-radius: 6; -fx-text-fill: #0b5cbf; -fx-font-weight: bold; -fx-cursor: hand;");
+        gpsButton.setOnMouseEntered(e -> gpsButton.setStyle("-fx-background-color: rgba(11, 92, 191, 0.1); -fx-border-color: #0b5cbf; -fx-border-radius: 6; -fx-text-fill: #0b5cbf; -fx-cursor: hand;"));
+        gpsButton.setOnMouseExited(e -> gpsButton.setStyle("-fx-background-color: transparent; -fx-border-color: #0b5cbf; -fx-border-radius: 6; -fx-text-fill: #0b5cbf;"));
+        
+        gpsLabel.setFont(Font.font("System", 13));
+        gpsLabel.setTextFill(Color.web("#a0b2ce"));
+        
+        gpsButton.setOnAction(e -> gpsLabel.setText("📍 Lat: 48.85 | Lng: 2.35"));
+        root.getChildren().addAll(gpsButton, gpsLabel);
+
+        // --- ROLE ---
+        root.getChildren().add(createSectionLabel("Role"));
+        role.getItems().addAll("citizen", "rescue", "admin");
+        role.setPromptText("Select your role");
+        applyComboBoxStyle(role);
+        root.getChildren().add(role);
+
+        // --- CITIZEN BOX SECTION ---
+        householdSize.setPromptText("Household size"); applyTextFieldStyle(householdSize);
+        medicalNeeds.setPromptText("Medical needs");
+        medicalNeeds.setPrefHeight(80);
+        medicalNeeds.setStyle(
+            "-fx-control-inner-background: rgba(255, 255, 255, 0.05);" +
+            "-fx-text-fill: white;" +
+            "-fx-prompt-text-fill: #a0b2ce;" +
+            "-fx-background-color: transparent;" +
+            "-fx-border-color: rgba(255, 255, 255, 0.25);" +
+            "-fx-border-radius: 6;"
+        );
+        emergencyContact.setPromptText("Emergency contact"); applyTextFieldStyle(emergencyContact);
+        pets.setFont(Font.font("System", 13));
+        pets.setTextFill(Color.WHITE);
+
+        citizenBox.getChildren().clear(); 
+        citizenBox.getChildren().addAll(
+                createSectionLabel("Citizen Information"),
+                householdSize,
+                pets,
+                medicalNeeds,
+                createSectionLabel("Emergency Contact"),
+                emergencyContact
         );
 
-        Button backButton = new Button("←");
-        backButton.setStyle(
-                "-fx-background-color: transparent;" +
-                "-fx-font-size: 20px;" +
-                "-fx-text-fill: #1565C0;" +
-                "-fx-cursor: hand;"
-        );
-        backButton.setOnAction(e -> Main.showWelcomeView());
-
-        HBox topBar = new HBox(backButton);
-        topBar.setAlignment(Pos.CENTER_LEFT);
-
-        Label title = new Label("Create an account");
-        title.setFont(Font.font("Arial", FontWeight.BOLD, 22));
-        title.setTextFill(Color.web("#0A3D91"));
-
-        Label subtitle = new Label("Fill in your emergency profile");
-        subtitle.setFont(Font.font("Arial", 12));
-        subtitle.setTextFill(Color.web("#6B7A90"));
-
-        TextField fullNameField = createInput("• Full name");
-        TextField emailField = createInput("• Email");
-        TextField phoneField = createInput("• Phone number");
-        limitToDigits(phoneField, 10);
-
-        PasswordField passwordField = createPasswordInput("• Password");
-        PasswordField confirmPasswordField = createPasswordInput("• Confirm password");
-
-        TextField addressField = createInput("• Address");
-        TextField cityField = createInput("• City");
-        TextField countryField = createInput("• Country");
-
-        ComboBox<String> housingTypeBox = createComboBox("• Housing type");
-        housingTypeBox.getItems().addAll("House", "Apartment");
-
-        TextField floorField = createInput("• Floor / apartment");
-
-        TextField coordinatesField = createInput("• GPS coordinates");
-        coordinatesField.setEditable(false);
-
-        Button locateButton = new Button("• USE MY LOCATION");
-        locateButton.setPrefWidth(300);
-        locateButton.setPrefHeight(38);
-        locateButton.setStyle(
-                "-fx-background-color: #EAF4FF;" +
-                "-fx-text-fill: #1565C0;" +
-                "-fx-font-size: 12px;" +
-                "-fx-font-weight: bold;" +
-                "-fx-background-radius: 8;" +
-                "-fx-border-radius: 8;" +
-                "-fx-border-color: #B8D8F5;" +
-                "-fx-cursor: hand;"
-        );
-
-        locateButton.setOnAction(e -> {
-            try {
-                URL url = new URL("http://ip-api.com/json/");
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("GET");
-
-                BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(connection.getInputStream())
-                );
-
-                StringBuilder response = new StringBuilder();
-                String line;
-
-                while ((line = reader.readLine()) != null) {
-                    response.append(line);
-                }
-
-                reader.close();
-
-                JSONObject data = new JSONObject(response.toString());
-
-                cityField.setText(data.getString("city"));
-                countryField.setText(data.getString("country"));
-
-                double lat = data.getDouble("lat");
-                double lon = data.getDouble("lon");
-
-                coordinatesField.setText(lat + ", " + lon);
-
-            } catch (Exception ex) {
-                coordinatesField.setText("Location unavailable");
-                ex.printStackTrace();
-            }
-        });
-
-        TextField emergencyContactField = createInput("• Emergency contact");
-        limitToDigits(emergencyContactField, 10);
-
-        ComboBox<String> roleBox = createComboBox("• Role");
-        roleBox.getItems().addAll("Citizen", "Rescue Team");
-
-        VBox citizenBox = new VBox(10);
-        citizenBox.setAlignment(Pos.CENTER);
         citizenBox.setVisible(false);
         citizenBox.setManaged(false);
+        root.getChildren().add(citizenBox);
 
-        ComboBox<String> mobilityBox = createComboBox("• Mobility status");
-        mobilityBox.getItems().addAll(
-                "Standard",
-                "Reduced mobility",
-                "Elderly",
-                "Child"
+        // --- REGISTER SUBMIT BUTTON ---
+        registerBtn.setMaxWidth(Double.MAX_VALUE);
+        registerBtn.setPrefHeight(45);
+        registerBtn.setFont(Font.font("System", FontWeight.BOLD, 15));
+        registerBtn.setTextFill(Color.WHITE);
+        registerBtn.setStyle("-fx-background-color: #0b5cbf; -fx-background-radius: 6; -fx-cursor: hand;");
+        VBox.setMargin(registerBtn, new Insets(15, 0, 0, 0));
+
+        registerBtn.setOnMouseEntered(e -> registerBtn.setStyle("-fx-background-color: #0e73eb; -fx-background-radius: 6; -fx-cursor: hand;"));
+        registerBtn.setOnMouseExited(e -> registerBtn.setStyle("-fx-background-color: #0b5cbf; -fx-background-radius: 6;"));
+        registerBtn.setOnAction(e -> handleRegister());
+        
+        root.getChildren().add(registerBtn);
+    }
+
+    public Button getBackButton() {
+        return backButton;
+    }
+
+    public void setController(RegisterController controller) {
+        this.controller = controller;
+        setupPasswordLiveCheck(); 
+    }
+
+    // ==========================================
+    // MÉTHODES UTILITAIRES DE STYLISATION
+    // ==========================================
+    
+    private Label createSectionLabel(String text) {
+        Label label = new Label(text);
+        label.setFont(Font.font("System", FontWeight.SEMI_BOLD, 15));
+        label.setTextFill(Color.WHITE);
+        label.setPadding(new Insets(10, 0, 2, 0));
+        return label;
+    }
+
+    private void applyTextFieldStyle(TextField textField) {
+        textField.setPrefHeight(42);
+        textField.setFont(Font.font("System", 13));
+        textField.setStyle(
+            "-fx-background-color: rgba(255, 255, 255, 0.05);" +
+            "-fx-border-color: rgba(255, 255, 255, 0.25);" +
+            "-fx-border-radius: 6;" +
+            "-fx-background-radius: 6;" +
+            "-fx-text-fill: white;" +
+            "-fx-prompt-text-fill: #a0b2ce;"
         );
 
-        TextField householdField = createInput("• Number of people in household");
-        limitToDigits(householdField, 2);
-
-        ComboBox<String> petsBox = createComboBox("• Pets present?");
-        petsBox.getItems().addAll("No", "Yes");
-
-        TextField petsNumberField = createInput("• Number of pets");
-        limitToDigits(petsNumberField, 2);
-        petsNumberField.setVisible(false);
-        petsNumberField.setManaged(false);
-
-        ComboBox<String> medicalNeedsBox = createComboBox("• Medical needs?");
-        medicalNeedsBox.getItems().addAll("No", "Yes");
-
-        ComboBox<String> medicalTypeBox = createComboBox("• Medical need type");
-        medicalTypeBox.getItems().addAll(
-                "Medication",
-                "Wheelchair",
-                "Oxygen",
-                "Other"
-        );
-        medicalTypeBox.setVisible(false);
-        medicalTypeBox.setManaged(false);
-
-        petsBox.setOnAction(e -> {
-            boolean hasPets = "Yes".equals(petsBox.getValue());
-            petsNumberField.setVisible(hasPets);
-            petsNumberField.setManaged(hasPets);
-            if (!hasPets) {
-                petsNumberField.clear();
+        textField.focusedProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal) {
+                textField.setStyle(
+                    "-fx-background-color: rgba(255, 255, 255, 0.08);" +
+                    "-fx-border-color: #0b5cbf;" +
+                    "-fx-border-radius: 6;" +
+                    "-fx-background-radius: 6;" +
+                    "-fx-text-fill: white;" +
+                    "-fx-prompt-text-fill: #a0b2ce;"
+                );
+            } else {
+                applyTextFieldStyle(textField);
             }
         });
+    }
 
-        medicalNeedsBox.setOnAction(e -> {
-            boolean hasMedicalNeeds = "Yes".equals(medicalNeedsBox.getValue());
-            medicalTypeBox.setVisible(hasMedicalNeeds);
-            medicalTypeBox.setManaged(hasMedicalNeeds);
-            if (!hasMedicalNeeds) {
-                medicalTypeBox.setValue(null);
-            }
-        });
-
-        citizenBox.getChildren().addAll(
-                mobilityBox,
-                householdField,
-                petsBox,
-                petsNumberField,
-                medicalNeedsBox,
-                medicalTypeBox
-        );
-
-        roleBox.setOnAction(e -> {
-            boolean isCitizen = "Citizen".equals(roleBox.getValue());
-            citizenBox.setVisible(isCitizen);
-            citizenBox.setManaged(isCitizen);
-        });
-
-        Label messageLabel = new Label();
-        messageLabel.setFont(Font.font("Arial", 11));
-
-        addPasswordMatchValidation(passwordField, confirmPasswordField, messageLabel);
-        addEmailValidation(emailField, messageLabel);
-
-        Button registerButton = new Button("REGISTER");
-        registerButton.setPrefWidth(300);
-        registerButton.setPrefHeight(42);
-        registerButton.setStyle(
-                "-fx-background-color: linear-gradient(to right, #0A4EA3, #1976D2);" +
+    // Gestion centralisée de la couleur : supprime l'impact du focus natif
+    private void applyPasswordColorStyle(PasswordField field, String text, boolean isValid) {
+        if (text == null || text.isEmpty()) {
+            field.setStyle(
+                "-fx-background-color: rgba(255, 255, 255, 0.05);" +
+                "-fx-border-color: rgba(255, 255, 255, 0.25);" +
+                "-fx-border-width: 1;" +
+                "-fx-border-radius: 6;" +
+                "-fx-background-radius: 6;" +
                 "-fx-text-fill: white;" +
-                "-fx-font-size: 13px;" +
-                "-fx-font-weight: bold;" +
-                "-fx-background-radius: 8;" +
-                "-fx-cursor: hand;"
-        );
-
-        setNextOnEnter(fullNameField, emailField);
-        setNextOnEnter(emailField, phoneField);
-        setNextOnEnter(phoneField, passwordField);
-        setNextOnEnter(passwordField, confirmPasswordField);
-        setNextOnEnter(confirmPasswordField, addressField);
-        setNextOnEnter(addressField, cityField);
-        setNextOnEnter(cityField, countryField);
-        setNextOnEnter(countryField, housingTypeBox);
-        setNextOnEnter(floorField, coordinatesField);
-        setNextOnEnter(emergencyContactField, roleBox);
-        setNextOnEnter(householdField, petsBox);
-        setNextOnEnter(petsNumberField, medicalNeedsBox);
-
-        registerButton.setOnAction(e -> {
-
-            if (fullNameField.getText().isEmpty()
-                    || emailField.getText().isEmpty()
-                    || phoneField.getText().isEmpty()
-                    || passwordField.getText().isEmpty()
-                    || confirmPasswordField.getText().isEmpty()
-                    || addressField.getText().isEmpty()
-                    || cityField.getText().isEmpty()
-                    || countryField.getText().isEmpty()
-                    || housingTypeBox.getValue() == null
-                    || emergencyContactField.getText().isEmpty()
-                    || roleBox.getValue() == null) {
-
-                showError(messageLabel, "Please fill all required fields.");
-                return;
-            }
-
-            if (!isValidEmail(emailField.getText())) {
-                showError(messageLabel, "Please enter a valid email address.");
-                emailField.setStyle(errorStyle());
-                return;
-            }
-
-            if (phoneField.getText().length() != 10) {
-                showError(messageLabel, "Phone number must contain 10 digits.");
-                phoneField.setStyle(errorStyle());
-                return;
-            }
-
-            if (emergencyContactField.getText().length() != 10) {
-                showError(messageLabel, "Emergency contact must contain 10 digits.");
-                emergencyContactField.setStyle(errorStyle());
-                return;
-            }
-
-            if (!passwordField.getText().equals(confirmPasswordField.getText())) {
-                showError(messageLabel, "Passwords do not match.");
-                confirmPasswordField.setStyle(errorStyle());
-                return;
-            }
-
-            if ("Citizen".equals(roleBox.getValue())) {
-                if (mobilityBox.getValue() == null
-                        || householdField.getText().isEmpty()
-                        || petsBox.getValue() == null
-                        || medicalNeedsBox.getValue() == null) {
-
-                    showError(messageLabel, "Please complete the citizen profile.");
-                    return;
-                }
-
-                if (Integer.parseInt(householdField.getText()) <= 0) {
-                    showError(messageLabel, "Household size must be at least 1.");
-                    return;
-                }
-
-                if ("Yes".equals(petsBox.getValue())) {
-                    if (petsNumberField.getText().isEmpty()) {
-                        showError(messageLabel, "Please enter the number of pets.");
-                        return;
-                    }
-
-                    if (Integer.parseInt(petsNumberField.getText()) <= 0) {
-                        showError(messageLabel, "Number of pets must be at least 1.");
-                        return;
-                    }
-                }
-
-                if ("Yes".equals(medicalNeedsBox.getValue()) && medicalTypeBox.getValue() == null) {
-                    showError(messageLabel, "Please select the medical need type.");
-                    return;
-                }
-            }
-
-            messageLabel.setText("Account created successfully!");
-            messageLabel.setTextFill(Color.GREEN);
-        });
-
-        Label alreadyLabel = new Label("Already have an account?");
-        alreadyLabel.setTextFill(Color.web("#6B7A90"));
-        alreadyLabel.setFont(Font.font("Arial", 12));
-
-        Hyperlink loginLink = new Hyperlink("Log in");
-        loginLink.setStyle("-fx-text-fill: #1976D2; -fx-font-weight: bold; -fx-font-size: 12px;");
-        loginLink.setOnAction(e -> Main.showLoginView());
-
-        HBox bottomText = new HBox(4, alreadyLabel, loginLink);
-        bottomText.setAlignment(Pos.CENTER);
-
-        card.getChildren().addAll(
-                topBar,
-                title,
-                subtitle,
-                fullNameField,
-                emailField,
-                phoneField,
-                passwordField,
-                confirmPasswordField,
-                addressField,
-                cityField,
-                countryField,
-                housingTypeBox,
-                floorField,
-                locateButton,
-                coordinatesField,
-                emergencyContactField,
-                roleBox,
-                citizenBox,
-                messageLabel,
-                registerButton,
-                bottomText
-        );
-
-        StackPane wrapper = new StackPane(card);
-        wrapper.setPadding(new Insets(25));
-
-        scrollPane.setContent(wrapper);
-
-        getChildren().add(scrollPane);
-    }
-
-    private TextField createInput(String prompt) {
-        TextField field = new TextField();
-        field.setPromptText(prompt);
-        field.setPrefWidth(300);
-        field.setPrefHeight(36);
-        field.setStyle(inputStyle());
-        return field;
-    }
-
-    private PasswordField createPasswordInput(String prompt) {
-        PasswordField field = new PasswordField();
-        field.setPromptText(prompt);
-        field.setPrefWidth(300);
-        field.setPrefHeight(36);
-        field.setStyle(inputStyle());
-        return field;
-    }
-
-    private ComboBox<String> createComboBox(String prompt) {
-        ComboBox<String> comboBox = new ComboBox<>();
-        comboBox.setPromptText(prompt);
-        comboBox.setPrefWidth(300);
-        comboBox.setPrefHeight(36);
-        comboBox.setStyle(inputStyle());
-        return comboBox;
-    }
-
-    private void limitToDigits(TextField field, int maxLength) {
-        field.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (!newValue.matches("\\d*")) {
-                field.setText(newValue.replaceAll("[^\\d]", ""));
-            }
-
-            if (field.getText().length() > maxLength) {
-                field.setText(field.getText().substring(0, maxLength));
-            }
-
-            field.setStyle(inputStyle());
-        });
-    }
-
-    private void setNextOnEnter(Control current, Control next) {
-        current.setOnKeyPressed(event -> {
-            switch (event.getCode()) {
-                case ENTER:
-                    next.requestFocus();
-                    event.consume();
-                    break;
-                default:
-                    break;
-            }
-        });
-    }
-
-    private void addPasswordMatchValidation(
-            PasswordField passwordField,
-            PasswordField confirmPasswordField,
-            Label messageLabel
-    ) {
-        confirmPasswordField.textProperty().addListener((obs, oldValue, newValue) -> {
-            validatePasswordsLive(passwordField, confirmPasswordField, messageLabel);
-        });
-
-        passwordField.textProperty().addListener((obs, oldValue, newValue) -> {
-            validatePasswordsLive(passwordField, confirmPasswordField, messageLabel);
-        });
-    }
-
-    private void validatePasswordsLive(
-            PasswordField passwordField,
-            PasswordField confirmPasswordField,
-            Label messageLabel
-    ) {
-        if (confirmPasswordField.getText().isEmpty()) {
-            confirmPasswordField.setStyle(inputStyle());
+                "-fx-prompt-text-fill: #a0b2ce;"
+            );
             return;
         }
 
-        if (!passwordField.getText().equals(confirmPasswordField.getText())) {
-            confirmPasswordField.setStyle(errorStyle());
-            messageLabel.setText("Passwords do not match.");
-            messageLabel.setTextFill(Color.RED);
+        if (isValid) {
+            field.setStyle(
+                "-fx-background-color: rgba(46, 204, 113, 0.1);" +
+                "-fx-border-color: #2ecc71;" + 
+                "-fx-text-box-border: transparent;" + 
+                "-fx-focus-color: transparent;" + 
+                "-fx-border-width: 1.5;" +
+                "-fx-border-radius: 6;" +
+                "-fx-background-radius: 6;" +
+                "-fx-text-fill: white;" +
+                "-fx-prompt-text-fill: #a0b2ce;"
+            );
         } else {
-            confirmPasswordField.setStyle(inputStyle());
-            messageLabel.setText("");
+            field.setStyle(
+                "-fx-background-color: rgba(231, 76, 60, 0.1);" +
+                "-fx-border-color: #e74c3c;" + 
+                "-fx-text-box-border: transparent;" + 
+                "-fx-focus-color: transparent;" + 
+                "-fx-border-width: 1.5;" +
+                "-fx-border-radius: 6;" +
+                "-fx-background-radius: 6;" +
+                "-fx-text-fill: white;" +
+                "-fx-prompt-text-fill: #a0b2ce;"
+            );
         }
     }
 
-    private void addEmailValidation(TextField emailField, Label messageLabel) {
-        emailField.focusedProperty().addListener((obs, wasFocused, isFocused) -> {
-            if (!isFocused && !emailField.getText().isEmpty()) {
-                if (!isValidEmail(emailField.getText())) {
-                    emailField.setStyle(errorStyle());
-                    showError(messageLabel, "Please enter a valid email address.");
+    private void applyComboBoxStyle(ComboBox<String> combo) {
+        combo.setMaxWidth(Double.MAX_VALUE);
+        combo.setPrefHeight(42);
+        combo.setStyle(
+            "-fx-background-color: rgba(255, 255, 255, 0.05);" +
+            "-fx-border-color: rgba(255, 255, 255, 0.25);" +
+            "-fx-border-radius: 6;" +
+            "-fx-background-radius: 6;"
+        );
+        combo.setCellFactory(lv -> new ListCell<String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
                 } else {
-                    emailField.setStyle(inputStyle());
-                    messageLabel.setText("");
+                    setText(item);
+                    setStyle("-fx-text-fill: black;");
                 }
             }
         });
     }
 
-    private boolean isValidEmail(String email) {
-        return email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+    private void applyRuleLabelSuccessStyle(Label label) {
+        label.setFont(Font.font("System", FontWeight.BOLD, 12));
+        label.setTextFill(Color.web("#2ecc71")); 
     }
 
-    private void showError(Label messageLabel, String message) {
-        messageLabel.setText(message);
-        messageLabel.setTextFill(Color.RED);
+    private void applyRuleLabelErrorStyle(Label label) {
+        label.setFont(Font.font("System", FontWeight.NORMAL, 12));
+        label.setTextFill(Color.web("#e74c3c")); 
     }
 
-    private String inputStyle() {
-        return "-fx-background-color: white;" +
-                "-fx-border-color: #DDE8F3;" +
-                "-fx-border-width: 1.2;" +
-                "-fx-border-radius: 8;" +
-                "-fx-background-radius: 8;" +
-                "-fx-font-size: 12px;" +
-                "-fx-padding: 0 10 0 10;";
+    // ==========================================
+    // LOGIQUE DE COMPORTEMENT DYNAMIQUE (MDP)
+    // ==========================================
+
+    private void setupPasswordLiveCheck() {
+        if (controller == null) return;
+
+        // Écouteur du champ principal
+        password.textProperty().addListener((obs, oldV, pwd) -> {
+            boolean length = controller.validatePasswordLength(pwd);
+            boolean upper = controller.validatePasswordUpper(pwd);
+            boolean digit = controller.validatePasswordDigit(pwd);
+
+            if (length) applyRuleLabelSuccessStyle(ruleLength); else applyRuleLabelErrorStyle(ruleLength);
+            if (upper) applyRuleLabelSuccessStyle(ruleUpper); else applyRuleLabelErrorStyle(ruleUpper);
+            if (digit) applyRuleLabelSuccessStyle(ruleDigit); else applyRuleLabelErrorStyle(ruleDigit);
+
+            boolean passwordValid = (length && upper && digit);
+            applyPasswordColorStyle(password, pwd, passwordValid);
+
+            triggerConfirmPasswordCheck(confirmPassword.getText());
+        });
+
+        // Écouteur de la confirmation
+        confirmPassword.textProperty().addListener((obs, oldV, val) -> {
+            triggerConfirmPasswordCheck(val);
+        });
     }
 
-    private String errorStyle() {
-        return "-fx-background-color: white;" +
-                "-fx-border-color: #E53935;" +
-                "-fx-border-width: 1.5;" +
-                "-fx-border-radius: 8;" +
-                "-fx-background-radius: 8;" +
-                "-fx-font-size: 12px;" +
-                "-fx-padding: 0 10 0 10;";
+    private void triggerConfirmPasswordCheck(String confirmValue) {
+        if (controller == null) return;
+
+        String mainPwd = password.getText();
+        boolean match = controller.passwordsMatch(mainPwd, confirmValue);
+        
+        boolean complexOk = controller.validatePasswordLength(mainPwd) 
+                            && controller.validatePasswordUpper(mainPwd) 
+                            && controller.validatePasswordDigit(mainPwd);
+
+        // Bascule de rouge à vert instantanément
+        applyPasswordColorStyle(confirmPassword, confirmValue, (match && complexOk));
+    }
+
+    private void setupRoleVisibility() {
+        role.valueProperty().addListener((obs, oldV, newV) -> {
+            boolean isCitizen = "citizen".equalsIgnoreCase(newV);
+            citizenBox.setVisible(isCitizen);
+            citizenBox.setManaged(isCitizen);
+        });
+    }
+
+    private void handleRegister() {
+        if (controller == null) return;
+        
+        String pwd = password.getText();
+        String confirm = confirmPassword.getText();
+
+        // 1. On vérifie d'abord si les mots de passe respectent les règles
+        boolean ok = controller.canRegister(pwd, confirm);
+
+        if (!ok) {
+            System.out.println("[Register] FORMULAIRE INVALIDE (Mots de passe incorrects)");
+            applyPasswordColorStyle(confirmPassword, confirm, false);
+            return;
+        }
+
+        // 2. On convertit les champs numériques de façon sécurisée (pour éviter les bugs si c'est vide)
+        int size = 0;
+        if (householdSize.getText() != null && !householdSize.getText().isEmpty()) {
+            try {
+                size = Integer.parseInt(householdSize.getText());
+            } catch (NumberFormatException e) {
+                System.out.println("[Register] Erreur : Taille du foyer invalide");
+            }
+        }
+
+        int floorNum = 0;
+        if (floor.getText() != null && !floor.getText().isEmpty()) {
+            try {
+                floorNum = Integer.parseInt(floor.getText());
+            } catch (NumberFormatException e) {
+                System.out.println("[Register] Erreur : Étage invalide");
+            }
+        }
+
+        // 3. ON ENVOIE TOUT AU CONTRÔLEUR POUR ÉCRIRE DANS LE JSON
+        boolean writeSuccess = controller.handleUserRegistration(
+            firstName.getText(),
+            lastName.getText(),
+            birthDate.getValue(),
+            email.getText(),
+            phone.getText(),
+            pwd,
+            address.getText(),
+            city.getText(),
+            country.getText(),
+            houseType.getValue(), // Récupère "Apartment" ou "House"
+            floorNum,
+            48.85, 2.35,          // Coordonnées GPS (à remplacer par tes vraies variables si besoin)
+            role.getValue(),       // Récupère "citizen", "rescue" ou "admin"
+            size,
+            pets.isSelected(),     // Récupère true ou false si la case est cochée
+            medicalNeeds.getText(),
+            emergencyContact.getText()
+        );
+
+        // 4. Si l'écriture a réussi, on change d'écran
+        if (writeSuccess) {
+            System.out.println("[Register] INSCRIPTION RÉUSSIE ET ENREGISTRÉE !");
+            Main.showWelcomeView(); // Redirection automatique
+        } else {
+            System.out.println("[Register] L'inscription a échoué (Email déjà utilisé ou erreur JSON)");
+        }
     }
 }

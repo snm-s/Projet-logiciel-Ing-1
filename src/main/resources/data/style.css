@@ -1,0 +1,69 @@
+/* Conteneur principal */
+.main-container {
+    -fx-background-color: #ffffff;
+}
+
+/* Panneau Gauche (Bleu avec image) */
+.left-panel {
+    -fx-background-color: linear-gradient(to bottom, rgba(26, 54, 93, 0.85), rgba(12, 74, 110, 0.85)), 
+                          url("https://images.unsplash.com/photo-1547683905-f686c993aae5?w=800"); /* Remplacez par votre image locale */
+    -fx-background-size: cover;
+    -fx-padding: 40;
+    -fx-alignment: center;
+}
+
+.app-title {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #ffffff;
+}
+
+.app-subtitle {
+    -fx-font-size: 14px;
+    -fx-text-fill: #cbd5e1;
+}
+
+/* Panneau Droit (Formulaire) */
+.right-panel {
+    -fx-padding: 60;
+    -fx-alignment: center-left;
+    -fx-max-width: 450px;
+}
+
+.form-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1e293b;
+}
+
+/* Champs de texte */
+.text-field {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #cbd5e1;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 10;
+    -fx-pref-height: 40;
+}
+
+/* Bouton Se Connecter */
+.login-button {
+    -fx-background-color: #0f172a;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-background-radius: 4;
+    -fx-pref-height: 40;
+    -fx-cursor: hand;
+}
+.login-button:hover {
+    -fx-background-color: #1e293b;
+}
+
+/* Lien pour s'inscrire */
+.link-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #2563eb;
+    -fx-underline: true;
+    -fx-cursor: hand;
+}
