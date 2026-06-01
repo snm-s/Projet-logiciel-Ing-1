@@ -1,0 +1,81 @@
+[
+  {
+    "firstName": "Jean",
+    "lastName": "Dupont",
+    "birthDate": {
+      "year": 1990,
+      "month": 5,
+      "day": 15
+    },
+    "email": "citoyen1@exemple.com",
+    "phone": "0601020304",
+    "passwordHash": "ef92b778bafee5b4a5c2a5c7d1a9c3f0a9b1c2d3e4f5a6b7c8d9e0f11223344",
+    "address": "12 Rue de la Paix",
+    "city": "Paris",
+    "country": "France",
+    "houseType": "Apartment",
+    "floor": 2,
+    "gpsLat": 48.8566,
+    "gpsLng": 2.3522,
+    "emergencyContact": "0611223344",
+    "role": "citizen",
+    "mobilityStatus": "normal",
+    "householdSize": 3,
+    "hasPets": true,
+    "medicalNeeds": "Aucun"
+  },
+
+
+  {
+    "firstName": "Marc",
+    "lastName": "Prévost",
+    "birthDate": {
+      "year": 1985,
+      "month": 10,
+      "day": 22
+    },
+    "email": "secours1@exemple.com",
+    "phone": "0605060708",
+    "passwordHash": "3b5d5c3712955042212316173ccf37be8003a0b9c1d2e3f4a5b6c7d8e9f00112",
+    "address": "45 Avenue des Pompiers",
+    "city": "Lyon",
+    "country": "France",
+    "houseType": "House",
+    "floor": 0,
+    "gpsLat": 45.7640,
+    "gpsLng": 4.8357,
+    "emergencyContact": "112",
+    "role": "rescue",
+    "mobilityStatus": "normal",
+    "householdSize": 1,
+    "hasPets": false,
+    "medicalNeeds": ""
+  },
+
+  
+  {
+    "firstName": "Sophie",
+    "lastName": "Manager",
+    "birthDate": {
+      "year": 1978,
+      "month": 3,
+      "day": 30
+    },
+    "email": "admin@exemple.com",
+    "phone": "0609101112",
+    "passwordHash": "8c6976e5b5410415bde908bd4dee15dfb16f1c1c2c3c4c5c6c7c8c9d0e1f234",
+    "address": "1 HQ Place",
+    "city": "Paris",
+    "country": "France",
+    "houseType": "Apartment",
+    "floor": 5,
+    "gpsLat": 48.8566,
+    "gpsLng": 2.3522,
+    "emergencyContact": "",
+    "role": "admin",
+    "mobilityStatus": "normal",
+    "householdSize": 1,
+    "hasPets": false,
+    "medicalNeeds": ""
+  }
+]

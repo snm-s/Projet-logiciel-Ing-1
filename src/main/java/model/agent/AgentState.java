@@ -1,5 +1,9 @@
 package model.agent;
 
-public class AgentState {
-    
+public enum AgentState {
+    CALME,
+    STRESSE,
+    PANIQUE,
+    BLESSE,
+    PMR
 }
