@@ -35,16 +35,21 @@ public class Main extends Application {
     }
 
     public static void showLoginView() {
-
         LoginView loginView = new LoginView();
 
-        Scene scene = new Scene(loginView, 1000, 650);
+        // CRITIQUE : On instancie le contrôleur pour lier le bouton retour !
+        new controller.LoginController(loginView, mainStage);
 
+        Scene scene = new Scene(loginView, 1000, 650);
         mainStage.setScene(scene);
     }
 
     public static void showRegisterView() {
         RegisterView registerView = new RegisterView();
+
+        // CRITIQUE : On instancie le contrôleur d'inscription en lui passant la vue et le stage
+        new controller.RegisterController(registerView, mainStage);
+
         Scene scene = new Scene(registerView, 1000, 650);
         mainStage.setScene(scene);
     }
