@@ -1,0 +1,199 @@
+package view;
+
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
+import javafx.scene.paint.*;
+import javafx.scene.shape.*;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+
+public class LoginView extends StackPane {
+
+    public LoginView(Runnable onRegisterClick) {
+
+        setBackground(new Background(new BackgroundFill(
+                Color.web("#f8fbff"),
+                CornerRadii.EMPTY,
+                Insets.EMPTY
+        )));
+
+        Pane wavesPane = new Pane();
+        wavesPane.setMouseTransparent(true);
+
+        Path wave1 = createWave(Color.web("#dbeafe"), 620);
+        Path wave2 = createWave(Color.web("#bfdbfe"), 700);
+
+        wavesPane.getChildren().addAll(wave1, wave2);
+
+        HBox mainContainer = new HBox();
+        mainContainer.setAlignment(Pos.CENTER);
+        mainContainer.setSpacing(100);
+        mainContainer.setPadding(new Insets(50));
+
+        VBox leftBox = new VBox(18);
+        leftBox.setAlignment(Pos.CENTER_LEFT);
+        leftBox.setMaxWidth(430);
+
+        Label logo = new Label("🌊 FloodRoute");
+        logo.setFont(Font.font("Arial", FontWeight.BOLD, 42));
+        logo.setTextFill(Color.web("#0f172a"));
+
+        Label subtitle = new Label("Simulation & Gestion");
+        subtitle.setFont(Font.font("Arial", FontWeight.NORMAL, 24));
+        subtitle.setTextFill(Color.web("#2563eb"));
+
+        Label description = new Label(
+                "Anticiper, réagir, protéger.\n" +
+                "Ensemble, faisons face\n" +
+                "aux inondations."
+        );
+
+        description.setFont(Font.font("Arial", 22));
+        description.setTextFill(Color.web("#475569"));
+
+        leftBox.getChildren().addAll(
+                logo,
+                subtitle,
+                description
+        );
+
+        VBox loginCard = new VBox(20);
+        loginCard.setAlignment(Pos.CENTER);
+        loginCard.setPadding(new Insets(45));
+        loginCard.setMaxWidth(460);
+        loginCard.setMinWidth(360);
+        loginCard.setPrefWidth(430);
+        loginCard.setMinHeight(520);
+
+        loginCard.setBackground(new Background(new BackgroundFill(
+                Color.WHITE,
+                new CornerRadii(32),
+                Insets.EMPTY
+        )));
+
+        loginCard.setStyle(
+                "-fx-effect: dropshadow(gaussian, rgba(15,23,42,0.12), 28, 0, 0, 10);"
+        );
+
+        Label title = new Label("Connexion");
+        title.setFont(Font.font("Arial", FontWeight.BOLD, 38));
+        title.setTextFill(Color.web("#0f172a"));
+
+        TextField emailField = new TextField();
+        emailField.setPromptText("Adresse e-mail");
+        styleTextField(emailField);
+
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText("Mot de passe");
+        styleTextField(passwordField);
+
+        Button loginButton = new Button("Se connecter →");
+        loginButton.setMaxWidth(Double.MAX_VALUE);
+        loginButton.setPrefHeight(56);
+
+        loginButton.setStyle(
+                "-fx-background-color: linear-gradient(to right, #2563eb, #0ea5e9);" +
+                "-fx-text-fill: white;" +
+                "-fx-font-size: 18px;" +
+                "-fx-font-weight: bold;" +
+                "-fx-background-radius: 15;" +
+                "-fx-cursor: hand;"
+        );
+
+        Label registerText = new Label("Pas encore de compte ?  S'inscrire");
+        registerText.setFont(Font.font("Arial", 16));
+        registerText.setTextFill(Color.web("#2563eb"));
+
+        registerText.setStyle(
+                "-fx-cursor: hand;"
+        );
+
+        registerText.setOnMouseClicked(e -> onRegisterClick.run());
+
+        loginCard.getChildren().addAll(
+                title,
+                emailField,
+                passwordField,
+                loginButton,
+                registerText
+        );
+
+        mainContainer.getChildren().addAll(leftBox, loginCard);
+
+        widthProperty().addListener((obs, oldWidth, newWidth) -> {
+
+            if (newWidth.doubleValue() < 900) {
+
+                leftBox.setVisible(false);
+                leftBox.setManaged(false);
+
+                mainContainer.setSpacing(0);
+                mainContainer.setPadding(new Insets(30));
+
+                loginCard.setMaxWidth(420);
+
+            } else {
+
+                leftBox.setVisible(true);
+                leftBox.setManaged(true);
+
+                mainContainer.setSpacing(100);
+                mainContainer.setPadding(new Insets(50));
+
+                loginCard.setMaxWidth(460);
+            }
+        });
+
+        getChildren().addAll(
+                wavesPane,
+                mainContainer
+        );
+    }
+
+    private void styleTextField(TextField field) {
+
+        field.setMaxWidth(Double.MAX_VALUE);
+        field.setPrefHeight(54);
+
+        field.setStyle(
+                "-fx-background-color: white;" +
+                "-fx-border-color: #cbd5e1;" +
+                "-fx-border-radius: 14;" +
+                "-fx-background-radius: 14;" +
+                "-fx-font-size: 16px;" +
+                "-fx-padding: 10 15 10 15;" +
+                "-fx-prompt-text-fill: #94a3b8;" +
+                "-fx-text-fill: #0f172a;"
+        );
+    }
+
+    private Path createWave(Color color, double yPosition) {
+
+        Path wave = new Path();
+
+        wave.getElements().add(new MoveTo(0, yPosition));
+
+        wave.getElements().add(new CubicCurveTo(
+                250, yPosition - 60,
+                450, yPosition + 60,
+                700, yPosition
+        ));
+
+        wave.getElements().add(new CubicCurveTo(
+                950, yPosition - 60,
+                1200, yPosition + 60,
+                1600, yPosition
+        ));
+
+        wave.getElements().add(new LineTo(1600, 1000));
+        wave.getElements().add(new LineTo(0, 1000));
+        wave.getElements().add(new ClosePath());
+
+        wave.setFill(color);
+        wave.setStroke(Color.TRANSPARENT);
+
+        return wave;
+    }
+}
