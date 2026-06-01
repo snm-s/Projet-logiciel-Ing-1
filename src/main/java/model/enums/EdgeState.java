@@ -1,5 +1,8 @@
 package model.enums;
 
-public class EdgeState {
-    
+public enum EdgeState {
+    ACCESSIBLE,
+    DANGEREUSE,
+    BLOQUEE,
+    INONDEE
 }
