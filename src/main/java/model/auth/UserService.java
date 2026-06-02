@@ -32,15 +32,18 @@ public class UserService {
             
 
     public static List<Agent> loadAgents() {
+        File file = FILE_PATH.toFile();
+        if (!file.exists()) {
+            System.out.println("Fichier inexistant, création d'une nouvelle liste.");
+            return new ArrayList<>();
+        }
         try {
-            File file = FILE_PATH.toFile();
-            if (!file.exists()) {
-                return new ArrayList<>();
-            }
-            // Lecture du fichier vers une liste d'Agent (gère automatiquement les sous-types)
-            return mapper.readValue(file, new TypeReference<List<Agent>>() {});
+            List<Agent> agents = mapper.readValue(file, new TypeReference<List<Agent>>() {});
+            System.out.println("Chargement réussi : " + agents.size() + " agents trouvés.");
+            return agents;
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("ERREUR LORS DU CHARGEMENT DU JSON :");
+            e.printStackTrace(); // C'est ici que tu verras le vrai problème
             return new ArrayList<>();
         }
     }
@@ -48,7 +51,8 @@ public class UserService {
     public static void saveAgents(List<Agent> agents) {
         try {
             Files.createDirectories(FILE_PATH.getParent());
-            mapper.writeValue(FILE_PATH.toFile(), agents);
+            mapper.writerFor(new TypeReference<List<Agent>>() {})
+              .writeValue(FILE_PATH.toFile(), agents);
         } catch (Exception e) {
             e.printStackTrace();
         }

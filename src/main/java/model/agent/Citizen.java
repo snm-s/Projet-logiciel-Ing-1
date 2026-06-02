@@ -2,8 +2,10 @@ package model.agent;
 
 import java.time.LocalDate;
 import java.time.Period;
+
 import model.graph.Node;
 
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
 public class Citizen extends Agent {
     private boolean hasPhone;
     private String mobilityStatus;
@@ -14,10 +16,16 @@ public class Citizen extends Agent {
     private String medicalNeeds;
     private String emergencyContact;
 
+    
+    public Citizen() {
+        super(); // Appelle le constructeur par défaut de Agent
+    }
+    
     public Citizen(int id, String firstName, String lastName, Node position) {
         super(id, firstName, lastName, position);
     }
 
+    // --- setters corrigés (suppression du TODO et du throw) ---
 
     public void setHasPets(boolean hasPets) {
         this.hasPets = hasPets;

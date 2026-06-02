@@ -4,6 +4,9 @@ public class Node {
     private double lat;
     private double lng;
 
+    public Node() {
+    }
+
     public Node(double lat, double lng) {
         this.lat = lat;
         this.lng = lng;

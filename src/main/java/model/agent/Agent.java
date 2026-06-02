@@ -21,8 +21,8 @@ import model.graph.Node;
 })
 public abstract class Agent {
     private int id;
-    private final String firstName;
-    private final String lastName;
+    private String firstName;
+    private String lastName;
     private LocalDate birthDate;
     private String email;
     private String phone;
@@ -38,6 +38,14 @@ public abstract class Agent {
     private double congestionTolerance;
 
     
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
 
     public LocalDate getBirthDate() {
         return birthDate;
@@ -95,6 +103,7 @@ public abstract class Agent {
         this.country = country;
     }
 
+    public Agent() {}
 
     public Agent(int id, String firstName, String lastName, Node position) {
         this.id = id;
