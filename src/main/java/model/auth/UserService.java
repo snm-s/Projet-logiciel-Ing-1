@@ -27,8 +27,9 @@ public class UserService {
     
     // Configuration de l'ObjectMapper pour gérer les dates (Java 8) et le polymorphisme
     private static final ObjectMapper mapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule()) // Support de LocalDate
-            .enable(SerializationFeature.INDENT_OUTPUT); // Pour un JSON lisible
+            .registerModule(new JavaTimeModule())
+            .enable(SerializationFeature.INDENT_OUTPUT); 
+            
 
     public static List<Agent> loadAgents() {
         try {

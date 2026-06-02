@@ -226,7 +226,7 @@ public class RegisterView extends StackPane {
         // --- CITIZEN BOX SECTION ---
 
 
-        houseType.getItems().addAll("APPARTEMENT", "HOUSE");
+        houseType.getItems().addAll("APARTMENT", "HOUSE");
         houseType.setPromptText("Select House Type");
         applyComboBoxStyle(houseType);
 
@@ -251,6 +251,8 @@ public class RegisterView extends StackPane {
         citizenBox.getChildren().clear(); 
         citizenBox.getChildren().addAll(
                 createSectionLabel("Citizen Information"),
+                houseType,
+                floor,
                 householdSize,
                 pets,
                 pmrCheckBox,
@@ -399,23 +401,51 @@ public class RegisterView extends StackPane {
     private void applyComboBoxStyle(ComboBox<String> combo) {
         combo.setMaxWidth(Double.MAX_VALUE);
         combo.setPrefHeight(42);
+        
+        // Style de la boîte (fermé)
         combo.setStyle(
             "-fx-background-color: rgba(255, 255, 255, 0.05);" +
             "-fx-border-color: rgba(255, 255, 255, 0.25);" +
             "-fx-border-radius: 6;" +
-            "-fx-background-radius: 6;"
+            "-fx-background-radius: 6;" +
+            "-fx-text-fill: white;"
         );
-        combo.setCellFactory(lv -> new ListCell<String>() {
+
+        // Style de l'affichage du choix actuel (le bouton)
+        combo.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(combo.getPromptText());
+                } else {
+                    setText(item);
+                }
+                setTextFill(Color.WHITE);
+            }
+        });
+
+        // Style de la liste déroulante (le menu qui s'ouvre)
+        combo.setCellFactory(lv -> new ListCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
                     setText(null);
+                    setStyle("-fx-background-color: #0b1a30;");
                 } else {
                     setText(item);
-                    setStyle("-fx-text-fill: black;");
+                    // Fond sombre et texte blanc pour chaque ligne
+                    setStyle("-fx-background-color: #0b1a30; -fx-text-fill: white;");
                 }
             }
+        });
+        
+        // Pour forcer le fond du menu déroulant (Popup)
+        combo.setOnShowing(e -> {
+            combo.getScene().getRoot().lookupAll(".combo-box-popup .list-view .list-cell").forEach(n -> {
+                n.setStyle("-fx-background-color: #0b1a30; -fx-text-fill: white;");
+            });
         });
     }
 

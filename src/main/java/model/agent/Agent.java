@@ -8,12 +8,16 @@ import model.enums.AgentState;
 import model.graph.Node;
 
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
+@JsonTypeInfo(
+    use = JsonTypeInfo.Id.NAME,
+    include = JsonTypeInfo.As.PROPERTY,
+    property = "type"
+)
 @JsonSubTypes({
     @JsonSubTypes.Type(value = Citizen.class, name = "citizen"),
     @JsonSubTypes.Type(value = PMRAgent.class, name = "pmr"),
     @JsonSubTypes.Type(value = RescueAgent.class, name = "rescueAgent"),
-    @JsonSubTypes.Type(value = AdminAgent.class, name = "admin") // Ajout de l'admin
+    @JsonSubTypes.Type(value = AdminAgent.class, name = "admin")
 })
 public abstract class Agent {
     private int id;

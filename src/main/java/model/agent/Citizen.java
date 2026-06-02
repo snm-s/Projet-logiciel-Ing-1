@@ -2,7 +2,6 @@ package model.agent;
 
 import java.time.LocalDate;
 import java.time.Period;
-
 import model.graph.Node;
 
 public class Citizen extends Agent {
@@ -11,32 +10,40 @@ public class Citizen extends Agent {
     private HouseType houseType;
     private int floor;
     private int householdSize;
+    private boolean hasPets;
+    private String medicalNeeds;
+    private String emergencyContact;
 
     public Citizen(int id, String firstName, String lastName, Node position) {
         super(id, firstName, lastName, position);
     }
 
-    public Citizen(int id, String firstName, String lastName, Node position, boolean hasPhone, String mobilityStatus, HouseType houseType, int floor, int householdSize) {
-        this(id, firstName, lastName, position);
-        this.hasPhone = hasPhone;
-        this.mobilityStatus = mobilityStatus;
-        this.houseType = houseType;
-        this.floor = floor;
-        this.householdSize = householdSize;
-    }
 
     public void setHasPets(boolean hasPets) {
-        this.setHasPets(hasPets);
+        this.hasPets = hasPets;
     }
 
     public void setMedicalNeeds(String medicalNeeds) {
-        this.setMedicalNeeds(medicalNeeds);
+        this.medicalNeeds = medicalNeeds;
     }
 
     public void setEmergencyContact(String emergencyContact) {
-        this.setEmergencyContact(emergencyContact);
+        this.emergencyContact = emergencyContact;
     }
 
+    public void setHouseholdSize(int householdSize) {
+        this.householdSize = householdSize;
+    }
+
+    public void setFloor(int floor) {
+        this.floor = floor;
+    }
+
+    public void setHouseType(HouseType houseType) {
+        this.houseType = houseType;
+    }
+
+    // --- Méthodes existantes ---
 
     public void calculateMobilityStatus(LocalDate birthDate) {
         int age = Period.between(birthDate, LocalDate.now()).getYears();
@@ -47,20 +54,5 @@ public class Citizen extends Agent {
 
     public void setMobilityStatus(String mobilityStatus) {
         this.mobilityStatus = mobilityStatus;
-    }
-
-    public void setHouseholdSize(int householdSize2) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setHouseholdSize'");
-    }
-
-    public void setFloor(int floor2) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setFloor'");
-    }
-
-    public void setHouseType(HouseType houseType2) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setHouseType'");
     }
 }
