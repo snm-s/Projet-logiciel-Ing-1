@@ -1,5 +1,7 @@
 package model.agent;
 
+import java.time.LocalDate;
+
 import model.enums.AgentState;
 import model.graph.Node;
 
@@ -12,23 +14,92 @@ import model.graph.Node;
 })
 public abstract class Agent {
     private int id;
-    private String name;
+    private final String firstName;
+    private final String lastName;
+    private LocalDate birthDate;
+    private String email;
+    private String phone;
+    private String passwordHash;
+    private String address;
+    private String city;
+    private String country;
+
+    
+
+    public LocalDate getBirthDate() {
+        return birthDate;
+    }
+
+    public void setBirthDate(LocalDate birthDate) {
+        this.birthDate = birthDate;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public String getCountry() {
+        return country;
+    }
+
+    public void setCountry(String country) {
+        this.country = country;
+    }
+
     private Node position;
     private Node destination;
     private double maxSpeed;
     private AgentState state;
     private double congestionTolerance;
 
-    public Agent(int id, String name, Node position) {
+    public Agent(int id, String firstName, String lastName, Node position) {
         this.id = id;
-        this.name = name;
+        this.firstName = firstName;
+        this.lastName = lastName;
         this.position = position;
         this.state = AgentState.CALME;
     }
 
     // Getters et Setters basiques pour que le code compile
     public int getId() { return id; }
-    public String getName() { return name; }
+    public String getFirstName() { return firstName; }
+    public String getLastName() { return lastName; }
     public Node getPosition() { return position; }
     public void setPosition(Node position) { this.position = position; }
     public Node getDestination() { return destination; }

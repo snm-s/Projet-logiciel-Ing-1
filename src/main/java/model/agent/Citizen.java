@@ -6,13 +6,37 @@ import java.time.Period;
 import model.graph.Node;
 
 public class Citizen extends Agent {
-    private int age;
     private boolean hasPhone;
     private String mobilityStatus;
+    private HouseType houseType;
+    private int floor;
+    private int householdSize;
 
-    public Citizen(int id, String name, Node position) {
-        super(id, name, position);
+    public Citizen(int id, String firstName, String lastName, Node position) {
+        super(id, firstName, lastName, position);
     }
+
+    public Citizen(int id, String firstName, String lastName, Node position, boolean hasPhone, String mobilityStatus, HouseType houseType, int floor, int householdSize) {
+        this(id, firstName, lastName, position);
+        this.hasPhone = hasPhone;
+        this.mobilityStatus = mobilityStatus;
+        this.houseType = houseType;
+        this.floor = floor;
+        this.householdSize = householdSize;
+    }
+
+    public void setHasPets(boolean hasPets) {
+        this.setHasPets(hasPets);
+    }
+
+    public void setMedicalNeeds(String medicalNeeds) {
+        this.setMedicalNeeds(medicalNeeds);
+    }
+
+    public void setEmergencyContact(String emergencyContact) {
+        this.setEmergencyContact(emergencyContact);
+    }
+
 
     public void calculateMobilityStatus(LocalDate birthDate) {
         int age = Period.between(birthDate, LocalDate.now()).getYears();
@@ -23,5 +47,20 @@ public class Citizen extends Agent {
 
     public void setMobilityStatus(String mobilityStatus) {
         this.mobilityStatus = mobilityStatus;
+    }
+
+    public void setHouseholdSize(int householdSize2) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'setHouseholdSize'");
+    }
+
+    public void setFloor(int floor2) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'setFloor'");
+    }
+
+    public void setHouseType(String houseType2) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'setHouseType'");
     }
 }

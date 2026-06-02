@@ -5,6 +5,7 @@ import view.RegisterView;
 import app.Main;
 import model.agent.Agent;
 import model.agent.Citizen;
+import model.agent.HouseType;
 import model.agent.PMRAgent;
 import model.agent.RescueTeam;
 import model.auth.User;
@@ -40,7 +41,7 @@ public class RegisterController {
             String firstName, String lastName, LocalDate birthDate,
             String email, String phone, String password,
             String address, String city, String country,
-            String houseType, int floor, double lat, double lng,
+            HouseType houseType, int floor, double lat, double lng,
             String role, int householdSize, boolean hasPets, 
             String medicalNeeds, String emergencyContact,
             boolean isPmr
@@ -61,7 +62,7 @@ public class RegisterController {
             if (isPmr) {
                 newAgent = new PMRAgent(0, firstName + " " + lastName, null);
             } else {
-                Citizen citizen = new Citizen(0, firstName + " " + lastName, null);
+                Citizen citizen = new Citizen(0, firstName, LastName, null, null);
                 // Calcul automatique de l'âge et du statut via la méthode de la classe Citizen
                 citizen.calculateMobilityStatus(birthDate);
                 newAgent = citizen;
@@ -82,18 +83,19 @@ public class RegisterController {
         newAgent.setAddress(address);
         newAgent.setCity(city);
         newAgent.setCountry(country);
-        newAgent.setHouseType(houseType);
-        newAgent.setFloor(floor);
         newAgent.setGpsLat(lat);
         newAgent.setGpsLng(lng);
-        newAgent.setEmergencyContact(emergencyContact);
+
 
         // 4. Remplissage des données spécifiques aux citoyens
         if (newAgent instanceof Citizen) {
             Citizen cit = (Citizen) newAgent;
+            cit.setHouseType(houseType);
+            cit.setFloor(floor);
             cit.setHouseholdSize(householdSize);
             cit.setHasPets(hasPets);
             cit.setMedicalNeeds(medicalNeeds);
+            cit.setEmergencyContact(emergencyContact);
         }
 
         // 5. Écriture physique dans le fichier JSON
