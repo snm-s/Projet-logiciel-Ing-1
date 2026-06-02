@@ -55,6 +55,7 @@ public class RegisterView extends StackPane {
     private VBox citizenBox = new VBox(15);
     private TextField householdSize = new TextField();
     private CheckBox pets = new CheckBox("Has pets");
+    private CheckBox pmrCheckBox = new CheckBox("PMR (Person with reduced mobility)");
     private TextArea medicalNeeds = new TextArea();
     private TextField emergencyContact = new TextField();
 
@@ -196,13 +197,7 @@ public class RegisterView extends StackPane {
         country.setPromptText("Country"); applyTextFieldStyle(country);
         root.getChildren().addAll(address, city, country);
 
-        // --- HOUSING ---
-        root.getChildren().add(createSectionLabel("Housing"));
-        houseType.getItems().addAll("Apartment", "House");
-        houseType.setPromptText("Select House Type");
-        applyComboBoxStyle(houseType);
-        floor.setPromptText("Floor"); applyTextFieldStyle(floor);
-        root.getChildren().addAll(houseType, floor);
+
 
         // --- LOCATION ---
         root.getChildren().add(createSectionLabel("Location"));
@@ -220,12 +215,21 @@ public class RegisterView extends StackPane {
 
         // --- ROLE ---
         root.getChildren().add(createSectionLabel("Role"));
-        role.getItems().addAll("citizen", "rescue", "admin");
+        role.getItems().addAll("citizen", "rescue");
         role.setPromptText("Select your role");
         applyComboBoxStyle(role);
         root.getChildren().add(role);
 
         // --- CITIZEN BOX SECTION ---
+
+
+        houseType.getItems().addAll("Apartment", "House");
+        houseType.setPromptText("Select House Type");
+        applyComboBoxStyle(houseType);
+
+        floor.setPromptText("Floor"); 
+        applyTextFieldStyle(floor);
+
         householdSize.setPromptText("Household size"); applyTextFieldStyle(householdSize);
         medicalNeeds.setPromptText("Medical needs");
         medicalNeeds.setPrefHeight(80);
@@ -246,6 +250,7 @@ public class RegisterView extends StackPane {
                 createSectionLabel("Citizen Information"),
                 householdSize,
                 pets,
+                pmrCheckBox,
                 medicalNeeds,
                 createSectionLabel("Emergency Contact"),
                 emergencyContact
@@ -440,8 +445,19 @@ public class RegisterView extends StackPane {
     private void setupRoleVisibility() {
         role.valueProperty().addListener((obs, oldV, newV) -> {
             boolean isCitizen = "citizen".equalsIgnoreCase(newV);
+            
+            // Afficher les détails citoyen
             citizenBox.setVisible(isCitizen);
             citizenBox.setManaged(isCitizen);
+        });
+
+        // Adapter le label du champ "floor" selon le type de logement
+        houseType.valueProperty().addListener((obs, oldV, newV) -> {
+            if ("Apartment".equalsIgnoreCase(newV)) {
+                floor.setPromptText("Floor number");
+            } else if ("House".equalsIgnoreCase(newV)) {
+                floor.setPromptText("Number of floors in the house");
+            }
         });
     }
 
@@ -497,7 +513,8 @@ public class RegisterView extends StackPane {
             size,
             pets.isSelected(),     // Récupère true ou false si la case est cochée
             medicalNeeds.getText(),
-            emergencyContact.getText()
+            emergencyContact.getText(),
+            pmrCheckBox.isSelected()
         );
 
         // 4. Si l'écriture a réussi, on change d'écran
