@@ -45,7 +45,7 @@ public class LoginController {
             }
         });
 
-        // --- CORRECTION : Déplacement du lien oublié DANS initActions ---
+        // Action du lien Mot de passe oublié
         view.getForgotPasswordLink().setOnAction(e -> {
             String email = view.getEmailInput();
             
@@ -75,6 +75,7 @@ public class LoginController {
     }
 
     public Agent login(String email, String password) {
+        // Le hashage est effectué ici avant l'authentification
         return UserService.authenticate(email, PasswordHasher.hash(password));
     }
 }

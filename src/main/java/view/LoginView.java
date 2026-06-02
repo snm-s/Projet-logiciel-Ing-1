@@ -13,13 +13,13 @@ import javafx.scene.text.Text;
 
 public class LoginView extends StackPane {
 
-    private final Button backButton; 
+    private final Button backButton;
     private Hyperlink registerLink;
     private Hyperlink forgotPasswordLink;
-    
+
     private TextField emailField;
     private PasswordField passwordField;
-    private TextField visiblePasswordField; // Ajouté pour la visibilité
+    private TextField visiblePasswordField;
     private Button loginButton;
     private Label errorLabel;
 
@@ -48,11 +48,11 @@ public class LoginView extends StackPane {
         gradientOverlay.prefHeightProperty().bind(this.heightProperty());
         gradientOverlay.setStyle("-fx-background-color: linear-gradient(to right, #0b1a30 0%, #0b1a30 35%, rgba(11, 26, 48, 0.8) 55%, rgba(11, 26, 48, 0.3) 75%, transparent 100%);");
 
-        VBox leftColumn = new VBox(25); 
+        VBox leftColumn = new VBox(25);
         leftColumn.setAlignment(Pos.CENTER_LEFT);
         leftColumn.setPadding(new Insets(40, 80, 40, 80));
         leftColumn.setMaxWidth(520);
-        
+
         backButton = new Button("←");
         backButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #a0b2ce; -fx-font-size: 28px; -fx-padding: 0 0 10 0; -fx-cursor: hand;");
         backButton.setOnMouseEntered(e -> backButton.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 28px; -fx-padding: 0 0 10 0; -fx-cursor: hand;"));
@@ -82,33 +82,42 @@ public class LoginView extends StackPane {
         formTitle.setFont(Font.font("System", FontWeight.SEMI_BOLD, 22));
         formTitle.setFill(Color.WHITE);
         emailField = new TextField();
-        
-        // --- LOGIQUE MOT DE PASSE ---
+
+        // --- LOGIQUE MOT DE PASSE CORRIGÉE (SYNCHRONISATION) ---
         passwordField = new PasswordField();
         visiblePasswordField = new TextField();
+
+        String fieldStyle = "-fx-background-color: transparent; -fx-text-fill: white; -fx-prompt-text-fill: #a0b2ce; -fx-padding: 0;";
+        passwordField.setStyle(fieldStyle);
+        visiblePasswordField.setStyle(fieldStyle);
+        passwordField.setPromptText("Mot de passe");
+        visiblePasswordField.setPromptText("Mot de passe");
+
+        // Synchronisation en temps réel (c'est ce qui empêche l'effacement)
+        passwordField.textProperty().bindBidirectional(visiblePasswordField.textProperty());
+
         visiblePasswordField.setVisible(false);
         visiblePasswordField.setManaged(false);
-        StackPane passwordStack = new StackPane(passwordField, visiblePasswordField);
-        
+
         Button eyeButton = new Button("👁");
-        eyeButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #a0b2ce; -fx-cursor: hand;");
+        eyeButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #a0b2ce; -fx-cursor: hand; -fx-padding: 0 5 0 0;");
+
+        StackPane passwordStack = new StackPane(passwordField, visiblePasswordField, eyeButton);
+        StackPane.setAlignment(eyeButton, Pos.CENTER_RIGHT);
+
         eyeButton.setOnAction(e -> {
             boolean isVisible = visiblePasswordField.isVisible();
             visiblePasswordField.setVisible(!isVisible);
             visiblePasswordField.setManaged(!isVisible);
             passwordField.setVisible(isVisible);
             passwordField.setManaged(isVisible);
-            if (isVisible) {
-                visiblePasswordField.setText(passwordField.getText());
-                eyeButton.setText("🔒");
-            } else {
-                passwordField.setText(visiblePasswordField.getText());
-                eyeButton.setText("👁");
-            }
+            
+            // On change juste l'icône, plus besoin de copier le texte, le "bind" le fait
+            eyeButton.setText(isVisible ? "👁" : "🔒");
         });
 
-        HBox emailBox = createStyledInputField("✉", "Email", emailField, null);
-        HBox passwordBox = createStyledInputField("🔑", "Mot de passe", passwordStack, eyeButton);
+        HBox emailBox = createStyledInputField("✉", "Email", emailField);
+        HBox passwordBox = createStyledInputField("🔑", null, passwordStack);
 
         errorLabel = new Label("");
         errorLabel.setFont(Font.font("System", FontWeight.MEDIUM, 13));
@@ -149,7 +158,7 @@ public class LoginView extends StackPane {
     public void displayErrorMessage(String message) { errorLabel.setText(message); }
     public Hyperlink getForgotPasswordLink() { return forgotPasswordLink; }
 
-    private HBox createStyledInputField(String iconUnicode, String prompt, Node inputField, Button extraButton) {
+    private HBox createStyledInputField(String iconUnicode, String prompt, Node inputField) {
         HBox fieldContainer = new HBox(12);
         fieldContainer.setAlignment(Pos.CENTER_LEFT);
         fieldContainer.setPadding(new Insets(0, 15, 0, 15));
@@ -159,14 +168,12 @@ public class LoginView extends StackPane {
         Label iconLabel = new Label(iconUnicode);
         iconLabel.setStyle("-fx-text-fill: #a0b2ce; -fx-font-size: 16px;");
 
-        if (inputField instanceof TextField) {
+        if (inputField instanceof TextField && !(inputField instanceof PasswordField)) {
             ((TextField) inputField).setPromptText(prompt);
             ((TextField) inputField).setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-prompt-text-fill: #a0b2ce; -fx-padding: 0;");
         }
         HBox.setHgrow(inputField, Priority.ALWAYS);
-        fieldContainer.getChildren().add(iconLabel);
-        fieldContainer.getChildren().add(inputField);
-        if (extraButton != null) fieldContainer.getChildren().add(extraButton);
+        fieldContainer.getChildren().addAll(iconLabel, inputField);
         return fieldContainer;
     }
 }
