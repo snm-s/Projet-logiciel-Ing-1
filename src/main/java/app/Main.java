@@ -46,6 +46,7 @@ public class Main extends Application {
         mainStage.setScene(scene);
     }
 
+
     public static void showRegisterView() {
         RegisterView registerView = new RegisterView();
 
@@ -58,15 +59,17 @@ public class Main extends Application {
 
 
     public static void showForgotPasswordView(String email) {
-            // 1. Instanciation de votre vue
-            ForgotPasswordView view = new ForgotPasswordView();
-            
-            // 2. Instanciation du contrôleur (en utilisant mainStage comme déclaré dans votre classe)
-            new ForgotPasswordController(view, mainStage, email);
-            
-            // 3. Création de la scène et affichage
-            Scene scene = new Scene(view.getRoot(), 1000, 650);
-            mainStage.setScene(scene);
+        // 1. Instanciation
+        ForgotPasswordView view = new ForgotPasswordView();
+        
+        // 2. Instanciation du contrôleur
+        new ForgotPasswordController(view, mainStage, email);
+        
+        // 3. ICI : On passe directement 'view' (car ForgotPasswordView étend StackPane)
+        // Pas besoin de .getRoot()
+        Scene scene = new Scene(view, 1000, 650);
+        
+        mainStage.setScene(scene);
     }
 
 

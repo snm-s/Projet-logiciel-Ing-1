@@ -47,16 +47,7 @@ public class RegisterController {
             boolean isPmr
     ) {
 
-        // 1. Conversion sécurisée
-        HouseType houseType;
-        try {
-            // .toUpperCase() permet de s'assurer que "apartment" ou "Apartment" 
-            // correspondent à "APARTMENT" dans l'enum
-            houseType = HouseType.valueOf(houseTypeString.toUpperCase());
-        } catch (IllegalArgumentException | NullPointerException e) {
-            System.err.println("[RegisterController] Type de maison invalide : " + houseTypeString);
-            return false; // On arrête l'enregistrement si la valeur est corrompue
-        }
+
         // 1. Sécurité : Vérifier si l'utilisateur existe déjà
         if (UserService.findByEmail(email) != null) {
             System.out.println("[RegisterController] Erreur : Cet email est déjà utilisé !");
@@ -98,7 +89,15 @@ public class RegisterController {
         // 4. Remplissage des données spécifiques aux citoyens
         if (newAgent instanceof Citizen) {
             Citizen cit = (Citizen) newAgent;
-            cit.setHouseType(houseType);
+            try {
+                // Conversion protégée
+                HouseType houseType = HouseType.valueOf(houseTypeString.toUpperCase());
+                cit.setHouseType(houseType);
+            } catch (Exception e) {
+                System.err.println("[RegisterController] Type de maison invalide : " + houseTypeString);
+                return false; // Stoppe l'enregistrement si le type de maison est invalide
+            }
+            
             cit.setFloor(floor);
             cit.setHouseholdSize(householdSize);
             cit.setHasPets(hasPets);
