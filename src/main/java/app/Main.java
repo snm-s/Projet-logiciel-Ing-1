@@ -1,10 +1,12 @@
 package app;
 
+import controller.ForgotPasswordController;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 import view.WelcomeView;
+import view.ForgotPasswordView;
 import view.LoginView;
 import view.RegisterView;
 
@@ -53,6 +55,20 @@ public class Main extends Application {
         Scene scene = new Scene(registerView, 1000, 650);
         mainStage.setScene(scene);
     }
+
+
+    public static void showForgotPasswordView(String email) {
+            // 1. Instanciation de votre vue
+            ForgotPasswordView view = new ForgotPasswordView();
+            
+            // 2. Instanciation du contrôleur (en utilisant mainStage comme déclaré dans votre classe)
+            new ForgotPasswordController(view, mainStage, email);
+            
+            // 3. Création de la scène et affichage
+            Scene scene = new Scene(view.getRoot(), 1000, 650);
+            mainStage.setScene(scene);
+    }
+
 
     public static void main(String[] args) {
         launch(args);

@@ -20,6 +20,10 @@ public class UserService {
     private static final String ADMIN_PASSWORD_HASH = "8c6976e5b5410415bde908bd4dee15dfb16f1c1c2c3c4c5c6c7c8c9d0e1f234";
 
     private static final Path FILE_PATH = Paths.get("dataUser", "users.json");
+
+    
+    // Pour sécuriser la réinitialisation
+    private static Map<String, String> resetTokens = new HashMap<>();
     
     // Configuration de l'ObjectMapper pour gérer les dates (Java 8) et le polymorphisme
     private static final ObjectMapper mapper = new ObjectMapper()
@@ -70,6 +74,16 @@ public class UserService {
                 .orElse(null);
     }
 
+
+    // Ajoutez ces deux méthodes pour manipuler la Map de tokens
+    public static void setResetToken(String email, String token) {
+        resetTokens.put(email, token);
+    }
+
+    public static boolean verifyToken(String email, String token) {
+        // Retourne true si le token existe et correspond à l'email
+        return token.equals(resetTokens.get(email));
+    }
 
     public static boolean resetPassword(String email, String newPasswordHash) {
         List<Agent> agents = loadAgents();
