@@ -7,6 +7,7 @@ import model.agent.Agent;
 import model.agent.Citizen;
 import model.agent.HouseType;
 import model.agent.PMRAgent;
+import model.agent.RescueAgent;
 import model.agent.RescueTeam;
 import model.auth.User;
 import model.auth.UserService;
@@ -56,13 +57,13 @@ public class RegisterController {
         Agent newAgent;
 
         if ("rescueAgent".equalsIgnoreCase(role)) {
-            newAgent = new RescueTeam(0, firstName + " " + lastName, null);
+            newAgent = new RescueAgent(0, firstName, lastName, null);
         } 
         else if ("citizen".equalsIgnoreCase(role)) {
             if (isPmr) {
-                newAgent = new PMRAgent(0, firstName + " " + lastName, null);
+                newAgent = new PMRAgent(0, firstName, lastName, null);
             } else {
-                Citizen citizen = new Citizen(0, firstName, LastName, null, null);
+                Citizen citizen = new Citizen(0, firstName, lastName, null);
                 // Calcul automatique de l'âge et du statut via la méthode de la classe Citizen
                 citizen.calculateMobilityStatus(birthDate);
                 newAgent = citizen;
@@ -74,8 +75,6 @@ public class RegisterController {
 
         // 3. Remplissage des données communes à tous les agents
         // (Note : Ces setters doivent exister dans la classe parente Agent)
-        newAgent.setFirstName(firstName);
-        newAgent.setLastName(lastName);
         newAgent.setBirthDate(birthDate);
         newAgent.setEmail(email);
         newAgent.setPhone(phone);

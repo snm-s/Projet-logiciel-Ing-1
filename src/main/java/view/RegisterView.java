@@ -223,7 +223,7 @@ public class RegisterView extends StackPane {
         // --- CITIZEN BOX SECTION ---
 
 
-        houseType.getItems().addAll("Apartment", "House");
+        houseType.getItems().addAll("APPARTEMENT", "HOUSE");
         houseType.setPromptText("Select House Type");
         applyComboBoxStyle(houseType);
 

@@ -2,11 +2,11 @@ package model.agent;
 
 import model.graph.Node;
 
-public class RescueTeam extends Agent {
+public class RescueAgent extends Agent {
     private String teamType;
 
-    public RescueTeam(int id, String name, Node position) {
-        super(id, name, position);
+    public RescueAgent(int id, String firstName, String lastName, Node position) {
+        super(id, firstName, lastName, position);
     }
 
     public boolean isIdle() {
