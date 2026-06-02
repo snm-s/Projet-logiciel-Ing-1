@@ -1,5 +1,5 @@
 package model.simulation;
 
-public class Flood {
+public class FloodSimulation {
     
 }
