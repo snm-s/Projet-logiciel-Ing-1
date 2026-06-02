@@ -8,9 +8,8 @@ import model.agent.Citizen;
 import model.agent.HouseType;
 import model.agent.PMRAgent;
 import model.agent.RescueAgent;
-import model.agent.RescueTeam;
-import model.auth.User;
 import model.auth.UserService;
+import model.graph.Node;
 
 import java.time.LocalDate;
 
@@ -42,11 +41,22 @@ public class RegisterController {
             String firstName, String lastName, LocalDate birthDate,
             String email, String phone, String password,
             String address, String city, String country,
-            HouseType houseType, int floor, double lat, double lng,
+            String houseTypeString, int floor, double lat, double lng,
             String role, int householdSize, boolean hasPets, 
             String medicalNeeds, String emergencyContact,
             boolean isPmr
     ) {
+
+        // 1. Conversion sécurisée
+        HouseType houseType;
+        try {
+            // .toUpperCase() permet de s'assurer que "apartment" ou "Apartment" 
+            // correspondent à "APARTMENT" dans l'enum
+            houseType = HouseType.valueOf(houseTypeString.toUpperCase());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            System.err.println("[RegisterController] Type de maison invalide : " + houseTypeString);
+            return false; // On arrête l'enregistrement si la valeur est corrompue
+        }
         // 1. Sécurité : Vérifier si l'utilisateur existe déjà
         if (UserService.findByEmail(email) != null) {
             System.out.println("[RegisterController] Erreur : Cet email est déjà utilisé !");
@@ -82,8 +92,7 @@ public class RegisterController {
         newAgent.setAddress(address);
         newAgent.setCity(city);
         newAgent.setCountry(country);
-        newAgent.setGpsLat(lat);
-        newAgent.setGpsLng(lng);
+        newAgent.setPosition(new Node(lat, lng));
 
 
         // 4. Remplissage des données spécifiques aux citoyens

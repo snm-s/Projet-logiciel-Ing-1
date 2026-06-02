@@ -59,7 +59,7 @@ public class Citizen extends Agent {
         throw new UnsupportedOperationException("Unimplemented method 'setFloor'");
     }
 
-    public void setHouseType(String houseType2) {
+    public void setHouseType(HouseType houseType2) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'setHouseType'");
     }

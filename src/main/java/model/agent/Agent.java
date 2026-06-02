@@ -1,6 +1,8 @@
 package model.agent;
 
 import java.time.LocalDate;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
 
 import model.enums.AgentState;
 import model.graph.Node;
@@ -10,7 +12,7 @@ import model.graph.Node;
 @JsonSubTypes({
     @JsonSubTypes.Type(value = Citizen.class, name = "citizen"),
     @JsonSubTypes.Type(value = PMRAgent.class, name = "pmr"),
-    @JsonSubTypes.Type(value = RescueTeam.class, name = "rescueAgent")
+    @JsonSubTypes.Type(value = RescueAgent.class, name = "rescueAgent")
 })
 public abstract class Agent {
     private int id;
@@ -23,6 +25,12 @@ public abstract class Agent {
     private String address;
     private String city;
     private String country;
+
+    private Node position;
+    private Node destination;
+    private double maxSpeed;
+    private AgentState state;
+    private double congestionTolerance;
 
     
 
@@ -82,11 +90,6 @@ public abstract class Agent {
         this.country = country;
     }
 
-    private Node position;
-    private Node destination;
-    private double maxSpeed;
-    private AgentState state;
-    private double congestionTolerance;
 
     public Agent(int id, String firstName, String lastName, Node position) {
         this.id = id;
@@ -111,4 +114,5 @@ public abstract class Agent {
         // Un agent est sauvé s'il est arrivé sur un nœud de type REFUGE (on complétera après)
         return false; 
     }
+
 }

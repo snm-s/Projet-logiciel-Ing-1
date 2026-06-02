@@ -1,8 +1,8 @@
 package controller;
 
+import model.agent.Agent;
 import model.auth.PasswordHasher;
 import model.auth.UserService;
-import model.auth.User;
 import javafx.stage.Stage;
 import view.LoginView;
 import app.Main; 
@@ -47,7 +47,7 @@ public class LoginController {
             }
 
             // Tentative d'authentification
-            User authenticatedUser = login(email, password);
+            Agent authenticatedUser = login(email, password);
 
             if (authenticatedUser != null) {
                 System.out.println("[LoginController] Connexion réussie pour : " + authenticatedUser.getFirstName());
@@ -69,9 +69,9 @@ public class LoginController {
      * @param password Le mot de passe en clair saisi par l'utilisateur
      * @return L'objet User si l'authentification réussit, null sinon.
      */
-    public User login(String email, String password) {
+    public Agent login(String email, String password) {
         // 1. Recherche de l'utilisateur par son email via le service
-        User user = UserService.findByEmail(email);
+        Agent user = UserService.findByEmail(email);
 
         // Si aucun utilisateur n'est trouvé, on s'arrête là
         if (user == null) {

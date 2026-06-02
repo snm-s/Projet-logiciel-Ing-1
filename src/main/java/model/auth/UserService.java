@@ -1,62 +1,57 @@
 package model.auth;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-import model.auth.User;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import model.agent.Agent; // Import de votre classe abstraite
 
-import java.io.*;
-import java.lang.reflect.Type;
+import java.io.File;
 import java.nio.file.*;
 import java.util.*;
 
 public class UserService {
 
-    private static final Path FILE = Paths.get("src/main/java/ressources/data/users.json");
-    private static final Gson gson = new Gson();
+    private static final Path FILE_PATH = Paths.get("src/main/resources/data/users.json");
+    
+    // Configuration de l'ObjectMapper pour gérer les dates (Java 8) et le polymorphisme
+    private static final ObjectMapper mapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule()) // Support de LocalDate
+            .enable(SerializationFeature.INDENT_OUTPUT); // Pour un JSON lisible
 
-    private static Type type = new TypeToken<List<User>>() {}.getType();
-
-    public static List<User> loadUsers() {
+    public static List<Agent> loadAgents() {
         try {
-            if (!Files.exists(FILE)) {
+            File file = FILE_PATH.toFile();
+            if (!file.exists()) {
                 return new ArrayList<>();
             }
-
-            Reader reader = Files.newBufferedReader(FILE);
-            List<User> users = gson.fromJson(reader, type);
-            reader.close();
-
-            return users != null ? users : new ArrayList<>();
-
+            // Lecture du fichier vers une liste d'Agent (gère automatiquement les sous-types)
+            return mapper.readValue(file, new TypeReference<List<Agent>>() {});
         } catch (Exception e) {
+            e.printStackTrace();
             return new ArrayList<>();
         }
     }
 
-    public static void saveUsers(List<User> users) {
+    public static void saveAgents(List<Agent> agents) {
         try {
-            Files.createDirectories(FILE.getParent());
-
-            Writer writer = Files.newBufferedWriter(FILE);
-            gson.toJson(users, writer);
-            writer.close();
-
+            Files.createDirectories(FILE_PATH.getParent());
+            mapper.writeValue(FILE_PATH.toFile(), agents);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public static void addUser(User user) {
-        List<User> users = loadUsers();
-        users.add(user);
-        saveUsers(users);
+    public static void addAgent(Agent agent) {
+        List<Agent> agents = loadAgents();
+        agents.add(agent);
+        saveAgents(agents);
     }
 
-    public static User findByEmail(String email) {
-        return loadUsers()
+    public static Agent findByEmail(String email) {
+        return loadAgents()
                 .stream()
-                // CORRECTION ICI : u.email remplacé par u.getEmail() pour respecter l'accès privé
-                .filter(u -> u.getEmail() != null && u.getEmail().equalsIgnoreCase(email))
+                .filter(a -> a.getEmail() != null && a.getEmail().equalsIgnoreCase(email))
                 .findFirst()
                 .orElse(null);
     }
