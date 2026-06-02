@@ -71,14 +71,14 @@ public class LoginView extends StackPane {
         Text titleText = new Text("Inondation");
         titleText.setFont(Font.font("System", FontWeight.BOLD, 30));
         titleText.setFill(Color.WHITE);
-        Text subtitleText = new Text("Simulation & Gestion des secours");
+        Text subtitleText = new Text("Simulation & emergency management");
         subtitleText.setFont(Font.font("System", FontWeight.LIGHT, 12));
         subtitleText.setFill(Color.web("#a0b2ce"));
         brandTitles.getChildren().addAll(titleText, subtitleText);
         brandHeader.getChildren().addAll(logoContainer, brandTitles);
 
         VBox formGroup = new VBox(15);
-        Text formTitle = new Text("Connexion");
+        Text formTitle = new Text("Log in");
         formTitle.setFont(Font.font("System", FontWeight.SEMI_BOLD, 22));
         formTitle.setFill(Color.WHITE);
         emailField = new TextField();

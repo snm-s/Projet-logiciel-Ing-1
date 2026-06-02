@@ -5,6 +5,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.SVGPath;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
@@ -138,18 +139,40 @@ public class RegisterView extends StackPane {
     }
 
     private void build() {
-        root.getChildren().add(backButton);
-
-        Text titleText = new Text("Create Account");
-        titleText.setFont(Font.font("System", FontWeight.BOLD, 28));
-        titleText.setFill(Color.WHITE);
-
-        Text subtitleText = new Text("Join the flood emergency and simulation system");
-        subtitleText.setFont(Font.font("System", FontWeight.LIGHT, 12));
-        subtitleText.setFill(Color.web("#a0b2ce"));
         
-        VBox headerBox = new VBox(5, titleText, subtitleText);
-        headerBox.setPadding(new Insets(0, 0, 10, 0));
+        // 4. HEADER (Logo + Titre)
+        HBox brandHeader = new HBox(15);
+        brandHeader.setAlignment(Pos.CENTER_LEFT);
+        SVGPath logoSvg = new SVGPath();
+        logoSvg.setContent("M15 2 L28 12 H23 V22 H7 V12 H2 Z M2 25 Q8 23 15 25 T28 25 M2 28 Q8 26 15 28 T28 28");
+        logoSvg.setStroke(Color.WHITE);
+        logoSvg.setStrokeWidth(2.2);
+        logoSvg.setFill(Color.TRANSPARENT);
+        StackPane logoContainer = new StackPane(logoSvg);
+        logoContainer.setPrefSize(35, 35);
+        
+        VBox brandTitles = new VBox(2);
+        Text brandTitle = new Text("Inondation"); // Renommé
+        brandTitle.setFont(Font.font("System", FontWeight.BOLD, 30));
+        brandTitle.setFill(Color.WHITE);
+        Text brandSubtitle = new Text("Simulation & emergency management"); // Renommé
+        brandSubtitle.setFont(Font.font("System", FontWeight.LIGHT, 12));
+        brandSubtitle.setFill(Color.web("#a0b2ce"));
+        brandTitles.getChildren().addAll(brandTitle, brandSubtitle);
+        brandHeader.getChildren().addAll(logoContainer, brandTitles);
+        root.getChildren().add(brandHeader);
+
+        // 5. TITRE DE LA PAGE (Sign up)
+        Text pageTitle = new Text("Sign up"); // Renommé
+        pageTitle.setFont(Font.font("System", FontWeight.BOLD, 28));
+        pageTitle.setFill(Color.WHITE);
+
+        Text pageSubtitle = new Text("Join the flood emergency and simulation system"); // Renommé
+        pageSubtitle.setFont(Font.font("System", FontWeight.LIGHT, 12));
+        pageSubtitle.setFill(Color.web("#a0b2ce"));
+        
+        VBox headerBox = new VBox(5, pageTitle, pageSubtitle);
+        headerBox.setPadding(new Insets(20, 0, 10, 0));
         root.getChildren().add(headerBox);
 
         // --- IDENTITY ---
