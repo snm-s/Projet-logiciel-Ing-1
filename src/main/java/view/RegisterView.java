@@ -23,7 +23,7 @@ public class RegisterView extends StackPane {
     private TextField lastName = new TextField();
     private DatePicker birthDate = new DatePicker();
 
-    // Contact
+    // Contact-
     private TextField email = new TextField();
     private TextField phone = new TextField();
 
@@ -169,43 +169,29 @@ public class RegisterView extends StackPane {
         phone.setPromptText("Phone number"); applyTextFieldStyle(phone);
         root.getChildren().addAll(email, phone);
 
-        // --- PASSWORD ---
-        root.getChildren().add(createSectionLabel("Password"));
-        
-        password.setPrefHeight(42);
-        password.setFont(Font.font("System", 13));
-        password.setPromptText("Password");
-        
-        confirmPassword.setPrefHeight(42);
-        confirmPassword.setFont(Font.font("System", 13));
-        confirmPassword.setPromptText("Confirm password");
-        
 
-        // --- PASSWORD ---
+        // --- PASSWORD (Version unique et synchronisée) ---
         root.getChildren().add(createSectionLabel("Password"));
-        visiblePassword.setVisible(false); visiblePassword.setManaged(false);
-        visibleConfirmPassword.setVisible(false); visibleConfirmPassword.setManaged(false);
-        
-        StackPane pStack = createPasswordFieldWithEye(password, visiblePassword, "Password");
-        StackPane cStack = createPasswordFieldWithEye(confirmPassword, visibleConfirmPassword, "Confirm password");
-        
+
+        // Liaison bidirectionnelle
+        password.textProperty().bindBidirectional(visiblePassword.textProperty());
+        confirmPassword.textProperty().bindBidirectional(visibleConfirmPassword.textProperty());
+
+        // 1. Ajout des champs avec l'œil (ces deux-là suffisent)
+        root.getChildren().addAll(
+            createPasswordFieldWithEye(password, visiblePassword, "Password"),
+            createPasswordFieldWithEye(confirmPassword, visibleConfirmPassword, "Confirm password")
+        );
+
+        // 2. Ajout des règles de validation
         VBox rulesBox = new VBox(4, ruleLength, ruleUpper, ruleDigit);
-        root.getChildren().addAll(pStack, cStack, rulesBox);
+        rulesBox.setPadding(new Insets(0, 0, 10, 5));
+        root.getChildren().add(rulesBox);
 
-
-
-        // Initialisation à l'état neutre (évite d'avoir du rouge dès le début)
-        applyPasswordColorStyle(password, "", false);
-        applyPasswordColorStyle(confirmPassword, "", false);
-        
-        // Règles indicatives en rouge par défaut
+        // 3. Initialisation des styles des règles (en rouge par défaut)
         applyRuleLabelErrorStyle(ruleLength);
         applyRuleLabelErrorStyle(ruleUpper);
         applyRuleLabelErrorStyle(ruleDigit);
-        
-        VBox rulesBox1 = new VBox(4, ruleLength, ruleUpper, ruleDigit);
-        rulesBox1.setPadding(new Insets(0, 0, 0, 5));
-        root.getChildren().addAll(password, confirmPassword, rulesBox1);
 
         // --- ADDRESS ---
         root.getChildren().add(createSectionLabel("Address"));
@@ -298,16 +284,25 @@ public class RegisterView extends StackPane {
 
     
     private StackPane createPasswordFieldWithEye(PasswordField pf, TextField tf, String prompt) {
-        pf.setPromptText(prompt); pf.setPrefHeight(42);
-        tf.setPromptText(prompt); tf.setPrefHeight(42);
+        pf.setPromptText(prompt); tf.setPromptText(prompt);
+        pf.setPrefHeight(42); tf.setPrefHeight(42);
         applyTextFieldStyle(pf); applyTextFieldStyle(tf);
+        
+        // État initial : le TextField est caché, le PasswordField est visible
+        tf.setVisible(false); tf.setManaged(false);
+        pf.setVisible(true); pf.setManaged(true);
+        
         Button btn = new Button("👁");
         btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #a0b2ce; -fx-cursor: hand;");
+        
         btn.setOnAction(e -> {
             boolean v = tf.isVisible();
-            tf.setVisible(!v); tf.setManaged(!v); pf.setVisible(v); pf.setManaged(v);
-            if (!v) { tf.setText(pf.getText()); btn.setText("🔒"); } else { pf.setText(tf.getText()); btn.setText("👁"); }
+            // Inversion de visibilité
+            tf.setVisible(!v); tf.setManaged(!v);
+            pf.setVisible(v); pf.setManaged(v);
+            btn.setText(v ? "👁" : "🔒");
         });
+        
         StackPane s = new StackPane(pf, tf, btn);
         StackPane.setAlignment(btn, Pos.CENTER_RIGHT);
         StackPane.setMargin(btn, new Insets(0, 10, 0, 0));
