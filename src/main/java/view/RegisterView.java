@@ -141,8 +141,15 @@ public class RegisterView extends StackPane {
     private void build() {
         
         // 4. HEADER (Logo + Titre)
+
+         backButton = new Button("←");
+        backButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #a0b2ce; -fx-font-size: 28px; -fx-padding: 0 0 10 0; -fx-cursor: hand;");
+        backButton.setOnMouseEntered(e -> backButton.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 28px; -fx-padding: 0 0 10 0; -fx-cursor: hand;"));
+        backButton.setOnMouseExited(e -> backButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #a0b2ce; -fx-font-size: 28px; -fx-padding: 0 0 10 0;"));
+        
         HBox brandHeader = new HBox(15);
         brandHeader.setAlignment(Pos.CENTER_LEFT);
+        brandHeader.getChildren().add(backButton); 
         SVGPath logoSvg = new SVGPath();
         logoSvg.setContent("M15 2 L28 12 H23 V22 H7 V12 H2 Z M2 25 Q8 23 15 25 T28 25 M2 28 Q8 26 15 28 T28 28");
         logoSvg.setStroke(Color.WHITE);
