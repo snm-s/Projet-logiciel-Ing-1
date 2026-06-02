@@ -1,47 +1,64 @@
 [
   {
-    "type": "citizen",
-    "firstName": "Jean",
-    "lastName": "Dupont",
-    "birthDate": {"year": 1990, "month": 5, "day": 15},
-    "email": "citoyen1@exemple.com",
-    "phone": "0601020304",
-    "passwordHash": "ef92b778bafee5b4a5c2a5c7d1a9c3f0a9b1c2d3e4f5a6b7c8d9e0f11223344",
-    "address": "12 Rue de la Paix",
+    "type": "rescueAgent",
+    "id": 1,
+    "firstName": "Thomas",
+    "lastName": "Durand",
+    "birthDate": [1992, 11, 14],
+    "email": "t.durand@secours.fr",
+    "phone": "0612345678",
+    "passwordHash": "dc5dc2c773728e6e3338f3bcff1bf6483ba9875044d4ee996f15b6e2af242fda",
+    "address": "12 rue des Lilas",
     "city": "Paris",
     "country": "France",
-    "houseType": "APARTMENT",
-    "floor": 2,
-    "householdSize": 3,
-    "hasPets": true,
-    "medicalNeeds": "Aucun",
-    "emergencyContact": "0611223344",
-    "position": {"lat": 48.8566, "lng": 2.3522}
+    "position": {
+      "lat": 48.86,
+      "lng": 2.34
+    },
+    "destination": null,
+    "state": "CALME",
+    "idle": true,
+    "saved": false
   },
   {
     "type": "rescueAgent",
-    "firstName": "Marc",
-    "lastName": "Prévost",
-    "birthDate": {"year": 1985, "month": 10, "day": 22},
-    "email": "secours1@exemple.com",
-    "phone": "0605060708",
-    "passwordHash": "3b5d5c3712955042212316173ccf37be8003a0b9c1d2e3f4a5b6c7d8e9f00112",
-    "address": "45 Avenue des Pompiers",
+    "id": 2,
+    "firstName": "Sophie",
+    "lastName": "Martin",
+    "birthDate": [1988, 5, 22],
+    "email": "s.martin@secours.fr",
+    "phone": "0698765432",
+    "passwordHash": "dc5dc2c773728e6e3338f3bcff1bf6483ba9875044d4ee996f15b6e2af242fda",
+    "address": "45 avenue de la République",
     "city": "Lyon",
     "country": "France",
-    "position": {"lat": 45.7640, "lng": 4.8357}
+    "position": {
+      "lat": 45.75,
+      "lng": 4.83
+    },
+    "destination": null,
+    "state": "CALME",
+    "idle": true,
+    "saved": false
   },
   {
-    "type": "admin",
-    "firstName": "Sophie",
-    "lastName": "Manager",
-    "birthDate": {"year": 1978, "month": 3, "day": 30},
-    "email": "admin@exemple.com",
-    "phone": "0609101112",
-    "passwordHash": "8c6976e5b5410415bde908bd4dee15dfb16f1c1c2c3c4c5c6c7c8c9d0e1f234",
-    "address": "1 HQ Place",
-    "city": "Paris",
+    "type": "pmr",
+    "id": 3,
+    "firstName": "Marc",
+    "lastName": "Lefebvre",
+    "birthDate": [1975, 2, 10],
+    "email": "m.lefebvre@domicile.fr",
+    "phone": "0745612398",
+    "passwordHash": "dc5dc2c773728e6e3338f3bcff1bf6483ba9875044d4ee996f15b6e2af242fda",
+    "address": "8 impasse du Parc",
+    "city": "Bordeaux",
     "country": "France",
-    "position": {"lat": 48.8566, "lng": 2.3522}
+    "position": {
+      "lat": 44.84,
+      "lng": -0.57
+    },
+    "destination": null,
+    "state": "CALME",
+    "saved": false
   }
 ]
