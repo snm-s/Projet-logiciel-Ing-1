@@ -70,26 +70,11 @@ public class LoginController {
      * @return L'objet User si l'authentification réussit, null sinon.
      */
     public Agent login(String email, String password) {
-        // 1. Recherche de l'utilisateur par son email via le service
-        Agent user = UserService.findByEmail(email);
-
-        // Si aucun utilisateur n'est trouvé, on s'arrête là
-        if (user == null) {
-            return null;
-        }
-
-        // 2. Hachage du mot de passe saisi pour comparaison
+        // 1. Hacher le mot de passe saisi
         String hashedInput = PasswordHasher.hash(password);
-
-        // 3. Vérification de la correspondance des empreintes de mots de passe
-        try {
-            if (hashedInput != null && hashedInput.equals(user.getPasswordHash())) {
-                return user; // Authentification réussie
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return null; // Mot de passe incorrect
+        
+        // 2. Utiliser la méthode authenticate du service qui gère l'Admin et le JSON
+        // Note : UserService.authenticate attend le hash, donc on lui donne hashedInput
+        return UserService.authenticate(email, hashedInput);
     }
 }

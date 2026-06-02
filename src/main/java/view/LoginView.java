@@ -14,6 +14,7 @@ public class LoginView extends StackPane {
 
     private final Button backButton; 
     private Hyperlink registerLink;
+    private Hyperlink forgotPasswordLink;
     
     private TextField emailField;
     private PasswordField passwordField;
@@ -130,7 +131,7 @@ public class LoginView extends StackPane {
         errorLabel.setTextFill(Color.web("#e74c3c"));
         errorLabel.setWrapText(true);
 
-        Hyperlink forgotPasswordLink = new Hyperlink("Mot de passe oublié ?");
+        forgotPasswordLink = new Hyperlink("Mot de passe oublié ?");
         forgotPasswordLink.setFont(Font.font("System", 12));
         forgotPasswordLink.setTextFill(Color.web("#a0b2ce"));
         forgotPasswordLink.setStyle("-fx-underline: false; -fx-padding: 0;");
@@ -179,6 +180,7 @@ public class LoginView extends StackPane {
     public String getPasswordInput() { return passwordField.getText(); }
     public Button getLoginButton() { return loginButton; }
     public void displayErrorMessage(String message) { errorLabel.setText(message); }
+    public Hyperlink getForgotPasswordLink() {return forgotPasswordLink;}
 
     // ==========================================
     // MÉTHODE UTILITAIRE DE STYLE DE SAISIE

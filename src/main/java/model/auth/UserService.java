@@ -18,8 +18,8 @@ public class UserService {
     private static final String ADMIN_EMAIL = "admin@exemple.com";
     // Le hash SHA-256 (ou autre) du mot de passe admin
     private static final String ADMIN_PASSWORD_HASH = "8c6976e5b5410415bde908bd4dee15dfb16f1c1c2c3c4c5c6c7c8c9d0e1f234";
-    
-    private static final Path FILE_PATH = Paths.get("src/main/resources/data/users.json");
+
+    private static final Path FILE_PATH = Paths.get("dataUser", "users.json");
     
     // Configuration de l'ObjectMapper pour gérer les dates (Java 8) et le polymorphisme
     private static final ObjectMapper mapper = new ObjectMapper()
@@ -69,6 +69,26 @@ public class UserService {
                 .findFirst()
                 .orElse(null);
     }
+
+
+    public static boolean resetPassword(String email, String newPasswordHash) {
+        List<Agent> agents = loadAgents();
+        boolean found = false;
+        if (ADMIN_EMAIL.equalsIgnoreCase(email)) return false;
+        for (Agent agent : agents) {
+            if (agent.getEmail().equalsIgnoreCase(email)) {
+                agent.setPasswordHash(newPasswordHash);
+                found = true;
+                break;
+            }
+        }
+
+        if (found) {
+            saveAgents(agents); // On réécrit la liste complète avec le nouveau hash
+        }
+        return found;
+    }
+
 
     public static Agent findByEmail(String email) {
         return loadAgents()
