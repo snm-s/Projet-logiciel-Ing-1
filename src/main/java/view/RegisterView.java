@@ -31,6 +31,9 @@ public class RegisterView extends StackPane {
     private PasswordField password = new PasswordField();
     private PasswordField confirmPassword = new PasswordField();
 
+    private TextField visiblePassword = new TextField();
+    private TextField visibleConfirmPassword = new TextField();
+
     private Label ruleLength = new Label("• At least 8 characters");
     private Label ruleUpper = new Label("• At least 1 uppercase letter");
     private Label ruleDigit = new Label("• At least 1 number");
@@ -177,6 +180,20 @@ public class RegisterView extends StackPane {
         confirmPassword.setFont(Font.font("System", 13));
         confirmPassword.setPromptText("Confirm password");
         
+
+        // --- PASSWORD ---
+        root.getChildren().add(createSectionLabel("Password"));
+        visiblePassword.setVisible(false); visiblePassword.setManaged(false);
+        visibleConfirmPassword.setVisible(false); visibleConfirmPassword.setManaged(false);
+        
+        StackPane pStack = createPasswordFieldWithEye(password, visiblePassword, "Password");
+        StackPane cStack = createPasswordFieldWithEye(confirmPassword, visibleConfirmPassword, "Confirm password");
+        
+        VBox rulesBox = new VBox(4, ruleLength, ruleUpper, ruleDigit);
+        root.getChildren().addAll(pStack, cStack, rulesBox);
+
+
+
         // Initialisation à l'état neutre (évite d'avoir du rouge dès le début)
         applyPasswordColorStyle(password, "", false);
         applyPasswordColorStyle(confirmPassword, "", false);
@@ -186,9 +203,9 @@ public class RegisterView extends StackPane {
         applyRuleLabelErrorStyle(ruleUpper);
         applyRuleLabelErrorStyle(ruleDigit);
         
-        VBox rulesBox = new VBox(4, ruleLength, ruleUpper, ruleDigit);
-        rulesBox.setPadding(new Insets(0, 0, 0, 5));
-        root.getChildren().addAll(password, confirmPassword, rulesBox);
+        VBox rulesBox1 = new VBox(4, ruleLength, ruleUpper, ruleDigit);
+        rulesBox1.setPadding(new Insets(0, 0, 0, 5));
+        root.getChildren().addAll(password, confirmPassword, rulesBox1);
 
         // --- ADDRESS ---
         root.getChildren().add(createSectionLabel("Address"));
@@ -279,6 +296,24 @@ public class RegisterView extends StackPane {
         return backButton;
     }
 
+    
+    private StackPane createPasswordFieldWithEye(PasswordField pf, TextField tf, String prompt) {
+        pf.setPromptText(prompt); pf.setPrefHeight(42);
+        tf.setPromptText(prompt); tf.setPrefHeight(42);
+        applyTextFieldStyle(pf); applyTextFieldStyle(tf);
+        Button btn = new Button("👁");
+        btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #a0b2ce; -fx-cursor: hand;");
+        btn.setOnAction(e -> {
+            boolean v = tf.isVisible();
+            tf.setVisible(!v); tf.setManaged(!v); pf.setVisible(v); pf.setManaged(v);
+            if (!v) { tf.setText(pf.getText()); btn.setText("🔒"); } else { pf.setText(tf.getText()); btn.setText("👁"); }
+        });
+        StackPane s = new StackPane(pf, tf, btn);
+        StackPane.setAlignment(btn, Pos.CENTER_RIGHT);
+        StackPane.setMargin(btn, new Insets(0, 10, 0, 0));
+        return s;
+    }
+    
     public void setController(RegisterController controller) {
         this.controller = controller;
         setupPasswordLiveCheck(); 
@@ -406,26 +441,36 @@ public class RegisterView extends StackPane {
     private void setupPasswordLiveCheck() {
         if (controller == null) return;
 
-        // Écouteur du champ principal
-        password.textProperty().addListener((obs, oldV, pwd) -> {
+        // Fonction de validation commune pour éviter la duplication
+        Runnable validate = () -> {
+            // On récupère le texte selon le champ actif
+            String pwd = password.isVisible() ? password.getText() : visiblePassword.getText();
+            String confirm = confirmPassword.isVisible() ? confirmPassword.getText() : visibleConfirmPassword.getText();
+
             boolean length = controller.validatePasswordLength(pwd);
             boolean upper = controller.validatePasswordUpper(pwd);
             boolean digit = controller.validatePasswordDigit(pwd);
 
-            if (length) applyRuleLabelSuccessStyle(ruleLength); else applyRuleLabelErrorStyle(ruleLength);
-            if (upper) applyRuleLabelSuccessStyle(ruleUpper); else applyRuleLabelErrorStyle(ruleUpper);
-            if (digit) applyRuleLabelSuccessStyle(ruleDigit); else applyRuleLabelErrorStyle(ruleDigit);
+            // Mise à jour visuelle des labels
+            ruleLength.setTextFill(length ? Color.web("#2ecc71") : Color.web("#e74c3c"));
+            ruleUpper.setTextFill(upper ? Color.web("#2ecc71") : Color.web("#e74c3c"));
+            ruleDigit.setTextFill(digit ? Color.web("#2ecc71") : Color.web("#e74c3c"));
 
             boolean passwordValid = (length && upper && digit);
+            
+            // Appliquer la couleur au champ actif
             applyPasswordColorStyle(password, pwd, passwordValid);
+            
+            // Validation de la confirmation
+            boolean match = controller.passwordsMatch(pwd, confirm);
+            applyPasswordColorStyle(confirmPassword, confirm, (match && passwordValid));
+        };
 
-            triggerConfirmPasswordCheck(confirmPassword.getText());
-        });
-
-        // Écouteur de la confirmation
-        confirmPassword.textProperty().addListener((obs, oldV, val) -> {
-            triggerConfirmPasswordCheck(val);
-        });
+        // On attache la même logique aux 4 champs possibles
+        password.textProperty().addListener((o, oldV, n) -> validate.run());
+        visiblePassword.textProperty().addListener((o, oldV, n) -> validate.run());
+        confirmPassword.textProperty().addListener((o, oldV, n) -> validate.run());
+        visibleConfirmPassword.textProperty().addListener((o, oldV, n) -> validate.run());
     }
 
     private void triggerConfirmPasswordCheck(String confirmValue) {
@@ -464,8 +509,8 @@ public class RegisterView extends StackPane {
     private void handleRegister() {
         if (controller == null) return;
         
-        String pwd = password.getText();
-        String confirm = confirmPassword.getText();
+        String pwd = password.isVisible() ? password.getText() : visiblePassword.getText();
+        String confirm = confirmPassword.isVisible() ? confirmPassword.getText() : visibleConfirmPassword.getText();
 
         // 1. On vérifie d'abord si les mots de passe respectent les règles
         boolean ok = controller.canRegister(pwd, confirm);

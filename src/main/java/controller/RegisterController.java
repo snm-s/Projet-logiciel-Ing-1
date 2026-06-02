@@ -66,7 +66,7 @@ public class RegisterController {
         // 2. Création de l'objet via polymorphisme
         Agent newAgent;
 
-        if ("rescueAgent".equalsIgnoreCase(role)) {
+        if ("rescue".equalsIgnoreCase(role)) {
             newAgent = new RescueAgent(0, firstName, lastName, null);
         } 
         else if ("citizen".equalsIgnoreCase(role)) {
@@ -88,7 +88,7 @@ public class RegisterController {
         newAgent.setBirthDate(birthDate);
         newAgent.setEmail(email);
         newAgent.setPhone(phone);
-        newAgent.setPasswordHash(password);
+        newAgent.setPasswordHash(model.auth.PasswordHasher.hash(password));
         newAgent.setAddress(address);
         newAgent.setCity(city);
         newAgent.setCountry(country);
