@@ -1,10 +1,16 @@
+package view;
+
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import model.alert.Alert; 
 
 public class GestionAlertsView extends BorderPane {
 
@@ -23,27 +29,43 @@ public class GestionAlertsView extends BorderPane {
         // Alert Table
         TableView<Alert> table = new TableView<>();
         
-        TableColumn<Alert, String> colType = new TableColumn<>("Type");
-        colType.setCellValueFactory(new PropertyValueFactory<>("type"));
+        // Colonne pour l'ID (attribut 'id' de ta classe Alert)
+        TableColumn<Alert, Integer> colId = new TableColumn<>("ID");
+        colId.setCellValueFactory(new PropertyValueFactory<>("id"));
+        colId.setPrefWidth(50);
         
-        TableColumn<Alert, String> colDesc = new TableColumn<>("Description");
-        colDesc.setCellValueFactory(new PropertyValueFactory<>("description"));
+        // Colonne pour le Message (attribut 'message' de ta classe Alert)
+        TableColumn<Alert, String> colMessage = new TableColumn<>("Message / Description");
+        colMessage.setCellValueFactory(new PropertyValueFactory<>("message"));
+        colMessage.setPrefWidth(300);
         
-        TableColumn<Alert, String> colLocation = new TableColumn<>("Location");
-        colLocation.setCellValueFactory(new PropertyValueFactory<>("location"));
-        
-        TableColumn<Alert, String> colSeverity = new TableColumn<>("Severity");
-        colSeverity.setCellValueFactory(new PropertyValueFactory<>("severity"));
-        
-        TableColumn<Alert, String> colStatus = new TableColumn<>("Status");
-        colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
+        // Colonne pour l'Urgence (attribut 'urgencyLevel' de ta classe Alert)
+        TableColumn<Alert, Integer> colUrgency = new TableColumn<>("Urgency Level");
+        colUrgency.setCellValueFactory(new PropertyValueFactory<>("urgencyLevel"));
+        colUrgency.setPrefWidth(120);
 
-        table.getColumns().addAll(colType, colDesc, colLocation, colSeverity, colStatus);
+        // On ajoute les colonnes qui correspondent à ton modèle
+        table.getColumns().addAll(colId, colMessage, colUrgency);
+        
+        // On remplit avec les fausses alertes adaptées à ton constructeur
         table.setItems(getAlertsMock());
 
         this.setCenter(table);
         BorderPane.setMargin(table, new Insets(20, 0, 0, 0));
     }
 
-
+    /**
+     * Génère une liste fictive d'alertes en respectant le constructeur :
+     * new Alert(int id, String message, int urgencyLevel)
+     */
+    private ObservableList<Alert> getAlertsMock() {
+        ObservableList<Alert> mockList = FXCollections.observableArrayList();
+        
+        // Utilise exactement la signature (int, String, int) de ton modèle !
+        mockList.add(new Alert(1, "Crue subite détectée - Secteur Nord", 5));
+        mockList.add(new Alert(2, "Pluies torrentielles - Évacuation préventive Zone B", 4));
+        mockList.add(new Alert(3, "Vigilance météo orange activée", 2));
+        
+        return mockList;
+    }
 }

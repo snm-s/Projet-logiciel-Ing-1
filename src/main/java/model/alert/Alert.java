@@ -1,3 +1,4 @@
+
 package model.alert;
 
 public class Alert {
@@ -12,4 +13,6 @@ public class Alert {
     }
 
     public String getMessage() { return message; }
+    public int getId() { return id; }
+public int getUrgencyLevel() { return urgencyLevel; }
 }

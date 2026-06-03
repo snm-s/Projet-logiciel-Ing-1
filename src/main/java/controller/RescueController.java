@@ -10,7 +10,6 @@ public class RescueController {
 
     public RescueController(FloodSimulation simulation) {
         this.simulation = simulation;
-        m
     }
 
     public int getDeployedAgents() { return simulation.getActiveAgentsCount(); }
