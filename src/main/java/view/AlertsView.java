@@ -6,9 +6,9 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 
-public class GestionAlertsView extends BorderPane {
+public class AlertsView extends BorderPane {
 
-    public GestionAlertsView() {
+    public AlertsView() {
         this.setPadding(new Insets(20));
 
         // Header: Title and action button
