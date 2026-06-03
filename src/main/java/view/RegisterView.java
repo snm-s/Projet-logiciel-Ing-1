@@ -74,7 +74,7 @@ public class RegisterView extends StackPane {
         // ==========================================
         Region backgroundFiller = new Region();
         try {
-            String imagePath = "/images/P32695412D5775606G-4208711993.jpeg";
+            String imagePath = "/images/Gemini_Generated_Image_qyih9tqyih9tqyih.png";
             var resource = getClass().getResource(imagePath);
             if (resource != null) {
                 String imageUrl = resource.toExternalForm();
