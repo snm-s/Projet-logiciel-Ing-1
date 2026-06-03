@@ -1,16 +1,24 @@
 [
   {
-    "type": "rescueAgent",
+    "type": "admin",
     "id": 1,
-    "firstName": "Thomas",
-    "lastName": "Durand",
-    "birthDate": [1992, 11, 14],
-    "email": "t.durand@secours.fr",
-    "phone": "0612345678",
-    "passwordHash": "dc5dc2c773728e6e3338f3bcff1bf6483ba9875044d4ee996f15b6e2af242fda",
-    "address": "12 rue des Lilas",
-    "city": "Paris",
-    "country": "France",
+    "firstName": "Chef",
+    "lastName": "Admin",
+    "email": "admin@test.com",
+    "passwordHash": "admin123",
+    "position": {
+      "lat": 48.85,
+      "lng": 2.35
+    },
+    "state": "CALME"
+  },
+  {
+    "type": "rescueAgent",
+    "id": 2,
+    "firstName": "Capitaine",
+    "lastName": "Secours",
+    "email": "secours@test.com",
+    "passwordHash": "secours123",
     "position": {
       "lat": 48.86,
       "lng": 2.34
@@ -21,41 +29,15 @@
     "saved": false
   },
   {
-    "type": "rescueAgent",
-    "id": 2,
-    "firstName": "Sophie",
-    "lastName": "Martin",
-    "birthDate": [1988, 5, 22],
-    "email": "s.martin@secours.fr",
-    "phone": "0698765432",
-    "passwordHash": "dc5dc2c773728e6e3338f3bcff1bf6483ba9875044d4ee996f15b6e2af242fda",
-    "address": "45 avenue de la République",
-    "city": "Lyon",
-    "country": "France",
-    "position": {
-      "lat": 45.75,
-      "lng": 4.83
-    },
-    "destination": null,
-    "state": "CALME",
-    "idle": true,
-    "saved": false
-  },
-  {
-    "type": "pmr",
+    "type": "citizen",
     "id": 3,
-    "firstName": "Marc",
-    "lastName": "Lefebvre",
-    "birthDate": [1975, 2, 10],
-    "email": "m.lefebvre@domicile.fr",
-    "phone": "0745612398",
-    "passwordHash": "dc5dc2c773728e6e3338f3bcff1bf6483ba9875044d4ee996f15b6e2af242fda",
-    "address": "8 impasse du Parc",
-    "city": "Bordeaux",
-    "country": "France",
+    "firstName": "Jean",
+    "lastName": "Dupont",
+    "email": "citoyen@test.com",
+    "passwordHash": "citoyen123",
     "position": {
-      "lat": 44.84,
-      "lng": -0.57
+      "lat": 48.87,
+      "lng": 2.33
     },
     "destination": null,
     "state": "CALME",

@@ -4,21 +4,24 @@ import controller.ForgotPasswordController;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-
-import view.WelcomeView;
+import model.agent.Agent;
+import view.AdminDashboardView;
+import view.CitizenDashboardView;
 import view.ForgotPasswordView;
 import view.LoginView;
 import view.RegisterView;
+import view.RescueDashboardView;
+import view.WelcomeView;
 
 public class Main extends Application {
 
     private static Stage mainStage;
+    // 🔥 Variable globale pour stocker l'agent connecté (Session)
+    public static Agent currentUser; 
 
     @Override
     public void start(Stage stage) {
-
         mainStage = stage;
-
         showWelcomeView();
 
         stage.setTitle("Flood Simulation - Agents & Graphs");
@@ -28,50 +31,65 @@ public class Main extends Application {
     }
 
     public static void showWelcomeView() {
-
         WelcomeView welcomeView = new WelcomeView();
-
         Scene scene = new Scene(welcomeView, 1000, 650);
-
         mainStage.setScene(scene);
     }
 
     public static void showLoginView() {
         LoginView loginView = new LoginView();
-
-        // CRITIQUE : On instancie le contrôleur pour lier le bouton retour !
         new controller.LoginController(loginView, mainStage);
 
         Scene scene = new Scene(loginView, 1000, 650);
         mainStage.setScene(scene);
     }
 
-
     public static void showRegisterView() {
         RegisterView registerView = new RegisterView();
-
-        // CRITIQUE : On instancie le contrôleur d'inscription en lui passant la vue et le stage
         new controller.RegisterController(registerView, mainStage);
 
         Scene scene = new Scene(registerView, 1000, 650);
         mainStage.setScene(scene);
     }
 
-
     public static void showForgotPasswordView(String email) {
-        // 1. Instanciation
         ForgotPasswordView view = new ForgotPasswordView();
-        
-        // 2. Instanciation du contrôleur
         new ForgotPasswordController(view, mainStage, email);
         
-        // 3. ICI : On passe directement 'view' (car ForgotPasswordView étend StackPane)
-        // Pas besoin de .getRoot()
         Scene scene = new Scene(view, 1000, 650);
-        
         mainStage.setScene(scene);
     }
 
+    // 🔥 Redirection vers les vues en utilisant le constructeur vide d'origine
+    public static void showDashboardView(String role) {
+        if (role == null) {
+            role = "citizen";
+        }
+        
+        String cleanRole = role.trim().toLowerCase();
+        Scene scene;
+        
+        switch (cleanRole) {
+            case "admin":
+                scene = new Scene(new AdminDashboardView(), 1000, 650);
+                mainStage.setTitle("Flood Simulation - Admin Panel");
+                break;
+                
+            case "rescue":
+            case "rescueagent":
+                scene = new Scene(new RescueDashboardView(), 1000, 650);
+                mainStage.setTitle("Flood Simulation - Rescue Command");
+                break;
+                
+            case "citizen":
+            default:
+                scene = new Scene(new CitizenDashboardView(), 1000, 650);
+                mainStage.setTitle("Flood Simulation - Citizen Portal");
+                break;
+        }
+
+        mainStage.setScene(scene);
+    }
 
     public static void main(String[] args) {
         launch(args);

@@ -1,10 +1,19 @@
 package view;
 
+import controller.LoginController;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Hyperlink;
+import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.SVGPath;
 import javafx.scene.text.Font;
@@ -22,6 +31,8 @@ public class LoginView extends StackPane {
     private TextField visiblePasswordField;
     private Button loginButton;
     private Label errorLabel;
+    
+    private LoginController controller; 
 
     public LoginView() {
         this.setPrefSize(1100, 650);
@@ -83,7 +94,6 @@ public class LoginView extends StackPane {
         formTitle.setFill(Color.WHITE);
         emailField = new TextField();
 
-        // --- LOGIQUE MOT DE PASSE CORRIGÉE (SYNCHRONISATION) ---
         passwordField = new PasswordField();
         visiblePasswordField = new TextField();
 
@@ -93,7 +103,6 @@ public class LoginView extends StackPane {
         passwordField.setPromptText("Mot de passe");
         visiblePasswordField.setPromptText("Mot de passe");
 
-        // Synchronisation en temps réel (c'est ce qui empêche l'effacement)
         passwordField.textProperty().bindBidirectional(visiblePasswordField.textProperty());
 
         visiblePasswordField.setVisible(false);
@@ -111,8 +120,6 @@ public class LoginView extends StackPane {
             visiblePasswordField.setManaged(!isVisible);
             passwordField.setVisible(isVisible);
             passwordField.setManaged(isVisible);
-            
-            // On change juste l'icône, plus besoin de copier le texte, le "bind" le fait
             eyeButton.setText(isVisible ? "👁" : "🔒");
         });
 
@@ -129,13 +136,37 @@ public class LoginView extends StackPane {
         forgotPasswordLink.setStyle("-fx-underline: false; -fx-padding: 0;");
         HBox forgotAligner = new HBox(forgotPasswordLink);
         forgotAligner.setAlignment(Pos.CENTER_RIGHT);
+        
         loginButton = new Button("Se connecter");
         loginButton.setMaxWidth(Double.MAX_VALUE);
         loginButton.setPrefHeight(45);
         loginButton.setFont(Font.font("System", FontWeight.BOLD, 14));
         loginButton.setTextFill(Color.WHITE);
         loginButton.setStyle("-fx-background-color: #0b5cbf; -fx-background-radius: 6; -fx-cursor: hand;");
-        formGroup.getChildren().addAll(formTitle, errorLabel, emailBox, passwordBox, forgotAligner, loginButton);
+
+        // 🔥 LE BOUTON ADMIN BYPASS DIRECTEMENT DANS LE FORMULAIRE
+        Button adminBypassButton = new Button("🛠 Connexion Forcée (Super Admin)");
+        adminBypassButton.setMaxWidth(Double.MAX_VALUE);
+        adminBypassButton.setPrefHeight(35);
+        adminBypassButton.setFont(Font.font("System", FontWeight.BOLD, 12));
+        adminBypassButton.setTextFill(Color.WHITE);
+        adminBypassButton.setStyle("-fx-background-color: #e74c3c; -fx-background-radius: 6; -fx-cursor: hand;");
+        
+        adminBypassButton.setOnAction(e -> {
+            // Instanciation de l'agent conforme à ton modèle d'héritage abstrait
+            model.agent.Agent forceAdmin = new model.agent.AdminAgent();
+            forceAdmin.setFirstName("Super");
+            forceAdmin.setLastName("Admin");
+            forceAdmin.setState(model.enums.AgentState.CALME);
+            
+            // Injection en session globale
+            app.Main.currentUser = forceAdmin;
+            
+            // Appel direct de ta méthode de routage du Main
+            app.Main.showDashboardView("admin");
+        });
+
+        formGroup.getChildren().addAll(formTitle, errorLabel, emailBox, passwordBox, forgotAligner, loginButton, adminBypassButton);
 
         HBox footerGroup = new HBox(6);
         footerGroup.setAlignment(Pos.CENTER_LEFT);
@@ -157,6 +188,8 @@ public class LoginView extends StackPane {
     public Button getLoginButton() { return loginButton; }
     public void displayErrorMessage(String message) { errorLabel.setText(message); }
     public Hyperlink getForgotPasswordLink() { return forgotPasswordLink; }
+    
+    public void setController(LoginController controller) { this.controller = controller; }
 
     private HBox createStyledInputField(String iconUnicode, String prompt, Node inputField) {
         HBox fieldContainer = new HBox(12);

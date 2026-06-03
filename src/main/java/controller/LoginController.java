@@ -1,12 +1,13 @@
 package controller;
 
-import model.agent.Agent;
-import model.auth.PasswordHasher;
-import model.auth.UserService;
-import javafx.stage.Stage;
-import view.LoginView;
 import java.util.UUID;
-import app.Main; 
+ 
+import app.Main;
+import javafx.stage.Stage;
+import model.agent.Agent;
+import model.agent.RescueTeam;
+import model.auth.UserService;
+import view.LoginView; 
 
 public class LoginController {
 
@@ -20,13 +21,9 @@ public class LoginController {
     }
 
     private void initActions() {
-        // Action du bouton retour
         view.getBackButton().setOnAction(e -> Main.showWelcomeView());
-
-        // Action du lien "Créer un compte"
         view.getRegisterLink().setOnAction(e -> Main.showRegisterView());
 
-        // Action du bouton Connexion
         view.getLoginButton().setOnAction(e -> {
             String email = view.getEmailInput();
             String password = view.getPasswordInput();
@@ -39,13 +36,27 @@ public class LoginController {
             Agent authenticatedUser = login(email, password);
             if (authenticatedUser != null) {
                 view.displayErrorMessage("");
-                Main.showWelcomeView(); 
+                
+                // 🔥 SAUVEGARDE DE LA SESSION
+                Main.currentUser = authenticatedUser; 
+                
+                String role = "citizen"; 
+                String className = authenticatedUser.getClass().getSimpleName().toLowerCase();
+                if (className.contains("admin")) {
+                    role = "admin";
+                } else if (className.contains("rescue") || authenticatedUser instanceof RescueTeam) {
+                    role = "rescue";
+                } else {
+                    role = "citizen";
+                }
+
+                Main.showDashboardView(role); 
+                
             } else {
                 view.displayErrorMessage("Email ou mot de passe incorrect.");
             }
         });
 
-        // Action du lien Mot de passe oublié
         view.getForgotPasswordLink().setOnAction(e -> {
             String email = view.getEmailInput();
             
@@ -75,7 +86,7 @@ public class LoginController {
     }
 
     public Agent login(String email, String password) {
-        // Le hashage est effectué ici avant l'authentification
-        return UserService.authenticate(email, PasswordHasher.hash(password));
+        // 🔥 On passe directement 'password' en clair à ton UserService
+        return UserService.authenticate(email, password);
     }
 }

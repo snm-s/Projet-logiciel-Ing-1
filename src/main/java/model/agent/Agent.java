@@ -2,8 +2,9 @@
 package model.agent;
 
 import java.time.LocalDate;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
 import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 import model.enums.AgentState;
 import model.graph.Node;
@@ -115,7 +116,9 @@ public abstract class Agent {
     }
 
     // Getters et Setters basiques pour que le code compile
-    public int getId() { return id; }
+    public int getId() {
+         return id;
+         }
     public String getFirstName() { return firstName; }
     public String getLastName() { return lastName; }
     public Node getPosition() { return position; }
@@ -128,6 +131,23 @@ public abstract class Agent {
     public boolean isSaved() {
         // Un agent est sauvé s'il est arrivé sur un nœud de type REFUGE (on complétera après)
         return false; 
+    }
+
+
+    public double getMaxSpeed() { 
+        return maxSpeed; 
+    }
+
+    public void setMaxSpeed(double maxSpeed) {
+        this.maxSpeed = maxSpeed;
+    }
+
+    public double getCongestionTolerance() {
+        return congestionTolerance;
+    }
+
+    public void setCongestionTolerance(double congestionTolerance) {
+        this.congestionTolerance = congestionTolerance;
     }
 
 }
