@@ -196,7 +196,11 @@ public class RegisterView extends StackPane {
         gpsButton.setOnMouseEntered(e -> gpsButton.setStyle(GPS_HOVER));
         gpsButton.setOnMouseExited(e -> gpsButton.setStyle(GPS_NORMAL));
         gpsLabel.setFont(Font.font("System", 13)); gpsLabel.setTextFill(Color.web("#a0b2ce"));
-        gpsButton.setOnAction(e -> gpsLabel.setText("📍 Lat: 48.85 | Lng: 2.35"));
+  
+        gpsButton.setOnAction(e -> {
+        gpsLabel.setText("⏳ Detecting...");
+        controller.handleDetectGps();
+        });
         root.getChildren().addAll(createSectionLabel("Location"), gpsButton, gpsLabel);
 
         // --- ROLE ---
@@ -480,4 +484,11 @@ public class RegisterView extends StackPane {
     // GETTER
     // ==========================================
     public Button getBackButton() { return backButton; }
+
+   public void fillLocationFields(String addressValue, String cityValue, String countryValue) {
+        address.setText(addressValue); // reste vide, user remplit manuellement
+        city.setText(cityValue);
+        country.setText(countryValue);
+        gpsLabel.setText(cityValue.isEmpty() ? "❌ Detection failed" : "✅ City & country detected — enter your street manually");
+    }
 }
