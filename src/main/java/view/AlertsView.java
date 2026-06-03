@@ -12,9 +12,9 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import model.alert.Alert; 
 
-public class GestionAlertsView extends BorderPane {
+public class AlertsView extends BorderPane {
 
-    public GestionAlertsView() {
+    public AlertsView() {
         this.setPadding(new Insets(20));
 
         // Header: Title and action button
