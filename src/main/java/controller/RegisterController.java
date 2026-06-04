@@ -144,4 +144,38 @@ public class RegisterController {
                 && validatePasswordDigit(password)
                 && passwordsMatch(password, confirmPassword);
     }
+
+
+    public void handleDetectGps() {
+        javafx.concurrent.Task<Void> task = new javafx.concurrent.Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                java.net.URL url = new java.net.URL("http://ip-api.com/json?fields=city,regionName,country,query");
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setConnectTimeout(4000);
+                conn.setReadTimeout(4000);
+                String json = new String(conn.getInputStream().readAllBytes());
+
+                String city    = parseJsonString(json, "city");
+                String country = parseJsonString(json, "country");
+                // address = région (meilleure approximation sans GPS réel)
+                javafx.application.Platform.runLater(() -> view.fillLocationFields("", city, country));
+                return null;
+            }
+            @Override
+            protected void failed() {
+                javafx.application.Platform.runLater(() ->
+                    view.fillLocationFields("", "", ""));
+            }
+        };
+        new Thread(task).start();
+    }
+
+    private String parseJsonString(String json, String key) {
+        int i = json.indexOf("\"" + key + "\":");
+        if (i == -1) return "";
+        int start = json.indexOf('"', i + key.length() + 3) + 1;
+        int end   = json.indexOf('"', start);
+        return json.substring(start, end);
+    }
 }
