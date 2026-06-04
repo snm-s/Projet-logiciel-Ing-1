@@ -26,12 +26,10 @@ import javafx.scene.shape.SVGPath;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
-<<<<<<< HEAD
-=======
+
 import app.Main;
 import controller.RegisterController;
 import java.time.LocalDate;
->>>>>>> 202e8c5cf26626ad7f5e6dfae62a2f7a828be56c
 
 public class RegisterView extends StackPane {
 
@@ -491,40 +489,20 @@ private double detectedLng = 2.3522;
         catch (NumberFormatException e) { System.out.println("[Register] Erreur : Étage invalide"); }
 
         boolean writeSuccess = controller.handleUserRegistration(
-<<<<<<< HEAD
-    firstName.getText(), lastName.getText(), birthDate.getValue(),
-    email.getText(), phone.getText(), pwd,
-    address.getText(), city.getText(), country.getText(),
-    houseType.getValue(), floorNum, this.detectedLat, this.detectedLng, role.getValue(), // <-- CORRIGÉ ICI
-    size, pets.isSelected(), medicalNeeds.getText(),
-    emergencyContact.getText(), pmrCheckBox.isSelected());
+
+        firstName.getText(), lastName.getText(), birthDate.getValue(),
+        email.getText(), phone.getText(), pwd,
+        address.getText(), city.getText(), country.getText(),
+        houseType.getValue(), floorNum, this.detectedLat, this.detectedLng, role.getValue(), // <-- CORRIGÉ ICI
+        size, pets.isSelected(), medicalNeeds.getText(),
+        emergencyContact.getText(), pmrCheckBox.isSelected());
 
         if (writeSuccess) { System.out.println("[Register] INSCRIPTION RÉUSSIE ET ENREGISTRÉE !"); Main.showWelcomeView(); }
         else              { System.out.println("[Register] L'inscription a échoué (Email déjà utilisé ou erreur JSON)"); }
-=======
-            firstName.getText(), lastName.getText(), birthDate.getValue(),
-            email.getText(), phone.getText(), pwd,
-            address.getText(), city.getText(), country.getText(),
-            houseType.getValue(), floorNum, 48.85, 2.35, role.getValue(),
-            size, pets.isSelected(), medicalNeeds.getText(),
-            emergencyContact.getText(), pmrCheckBox.isSelected());
 
-        if (writeSuccess) { System.out.println("[Register] INSCRIPTION RÉUSSIE ET ENREGISTRÉE !"); Main.showWelcomeView(); }
-        else              { System.out.println("[Register] L'inscription a échoué (Email déjà utilisé ou erreur JSON)"); }
+
     }
 
-    // ==========================================
-    // GETTER
-    // ==========================================
-    public Button getBackButton() { return backButton; }
-
-   public void fillLocationFields(String addressValue, String cityValue, String countryValue) {
-        address.setText(addressValue); // reste vide, user remplit manuellement
-        city.setText(cityValue);
-        country.setText(countryValue);
-        gpsLabel.setText(cityValue.isEmpty() ? "❌ Detection failed" : "✅ City & country detected — enter your street manually");
->>>>>>> 202e8c5cf26626ad7f5e6dfae62a2f7a828be56c
-    }
 
     // ==========================================
     // GETTER
