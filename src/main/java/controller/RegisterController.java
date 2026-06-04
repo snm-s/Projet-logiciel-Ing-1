@@ -143,29 +143,21 @@ public class RegisterController {
                 && passwordsMatch(password, confirmPassword);
     }
 
-<<<<<<< HEAD
     // ==========================================
     // DÉTECTION GPS PAR IP
     // ==========================================
-=======
->>>>>>> 202e8c5cf26626ad7f5e6dfae62a2f7a828be56c
 
     public void handleDetectGps() {
         javafx.concurrent.Task<Void> task = new javafx.concurrent.Task<>() {
             @Override
             protected Void call() throws Exception {
-<<<<<<< HEAD
                 // Ajout des champs lat et lon à l'URL pour récupérer la position géographique
                 java.net.URL url = new java.net.URL("http://ip-api.com/json?fields=city,country,lat,lon");
-=======
-                java.net.URL url = new java.net.URL("http://ip-api.com/json?fields=city,regionName,country,query");
->>>>>>> 202e8c5cf26626ad7f5e6dfae62a2f7a828be56c
                 java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
                 conn.setConnectTimeout(4000);
                 conn.setReadTimeout(4000);
                 String json = new String(conn.getInputStream().readAllBytes());
 
-<<<<<<< HEAD
                 String city = parseJsonString(json, "city");
                 String country = parseJsonString(json, "country");
                 
@@ -175,24 +167,13 @@ public class RegisterController {
 
                 // Envoi des 4 arguments à la vue mise à jour
                 javafx.application.Platform.runLater(() -> view.fillLocationFields(lat, lng, city, country));
-=======
-                String city    = parseJsonString(json, "city");
-                String country = parseJsonString(json, "country");
-                // address = région (meilleure approximation sans GPS réel)
-                javafx.application.Platform.runLater(() -> view.fillLocationFields("", city, country));
->>>>>>> 202e8c5cf26626ad7f5e6dfae62a2f7a828be56c
                 return null;
             }
             @Override
             protected void failed() {
-<<<<<<< HEAD
                 // En cas d'échec de la requête, valeurs par défaut (Paris)
                 javafx.application.Platform.runLater(() ->
                     view.fillLocationFields(48.8566, 2.3522, "", ""));
-=======
-                javafx.application.Platform.runLater(() ->
-                    view.fillLocationFields("", "", ""));
->>>>>>> 202e8c5cf26626ad7f5e6dfae62a2f7a828be56c
             }
         };
         new Thread(task).start();
@@ -205,7 +186,6 @@ public class RegisterController {
         int end   = json.indexOf('"', start);
         return json.substring(start, end);
     }
-<<<<<<< HEAD
 
     private double parseJsonDouble(String json, String key, double defaultValue) {
         try {
@@ -222,6 +202,4 @@ public class RegisterController {
             return defaultValue;
         }
     }
-=======
->>>>>>> 202e8c5cf26626ad7f5e6dfae62a2f7a828be56c
 }
