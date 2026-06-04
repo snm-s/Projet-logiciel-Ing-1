@@ -144,29 +144,7 @@ public class LoginView extends StackPane {
         loginButton.setTextFill(Color.WHITE);
         loginButton.setStyle("-fx-background-color: #0b5cbf; -fx-background-radius: 6; -fx-cursor: hand;");
 
-        // 🔥 LE BOUTON ADMIN BYPASS DIRECTEMENT DANS LE FORMULAIRE
-        Button adminBypassButton = new Button("🛠 Connexion Forcée (Super Admin)");
-        adminBypassButton.setMaxWidth(Double.MAX_VALUE);
-        adminBypassButton.setPrefHeight(35);
-        adminBypassButton.setFont(Font.font("System", FontWeight.BOLD, 12));
-        adminBypassButton.setTextFill(Color.WHITE);
-        adminBypassButton.setStyle("-fx-background-color: #e74c3c; -fx-background-radius: 6; -fx-cursor: hand;");
-        
-        adminBypassButton.setOnAction(e -> {
-            // Instanciation de l'agent conforme à ton modèle d'héritage abstrait
-            model.agent.Agent forceAdmin = new model.agent.AdminAgent();
-            forceAdmin.setFirstName("Super");
-            forceAdmin.setLastName("Admin");
-            forceAdmin.setState(model.enums.AgentState.CALME);
-            
-            // Injection en session globale
-            app.Main.currentUser = forceAdmin;
-            
-            // Appel direct de ta méthode de routage du Main
-            app.Main.showDashboardView("admin");
-        });
-
-        formGroup.getChildren().addAll(formTitle, errorLabel, emailBox, passwordBox, forgotAligner, loginButton, adminBypassButton);
+        formGroup.getChildren().addAll(formTitle, errorLabel, emailBox, passwordBox, forgotAligner, loginButton);
 
         HBox footerGroup = new HBox(6);
         footerGroup.setAlignment(Pos.CENTER_LEFT);
