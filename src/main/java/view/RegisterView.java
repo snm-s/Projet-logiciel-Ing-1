@@ -4,13 +4,13 @@ import java.time.LocalDate;
 
 import app.Main;
 import controller.RegisterController;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Control;
-import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.PasswordField;
@@ -26,10 +26,7 @@ import javafx.scene.shape.SVGPath;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
-
-import app.Main;
-import controller.RegisterController;
-import java.time.LocalDate;
+import service.CityService;
 
 public class RegisterView extends StackPane {
 
@@ -42,18 +39,22 @@ public class RegisterView extends StackPane {
     private Button backButton;
 
     private TextField firstName = new TextField(), lastName = new TextField();
-    private DatePicker birthDate = new DatePicker();
+    private ComboBox<Integer> birthDay = new ComboBox<>();
+    private ComboBox<Integer> birthMonth = new ComboBox<>();
+    private ComboBox<Integer> birthYear = new ComboBox<>();
     private TextField email = new TextField(), phone = new TextField();
     private PasswordField password = new PasswordField(), confirmPassword = new PasswordField();
     private TextField visiblePassword = new TextField(), visibleConfirmPassword = new TextField();
     private Label ruleLength = new Label("• At least 8 characters"),
                   ruleUpper  = new Label("• At least 1 uppercase letter"),
                   ruleDigit  = new Label("• At least 1 number");
-    private TextField address = new TextField(), city = new TextField(), country = new TextField();
+    private TextField address = new TextField(), country = new TextField();
+    private ComboBox<String> city = new ComboBox<>();
+    private boolean citySelectionInProgress = false;
     private ComboBox<String> houseType = new ComboBox<>();
     private TextField floor = new TextField();
     private Label gpsLabel = new Label("GPS not set");
-    private Button gpsButton = new Button("Detect GPS");
+    private Button gpsButton = new Button("Detect location");
     private ComboBox<String> role = new ComboBox<>();
     private VBox citizenBox = new VBox(15);
     private TextField householdSize = new TextField();
@@ -134,6 +135,8 @@ private double detectedLng = 2.3522;
 
         build();
         setupRoleVisibility();
+        setupOnlyLettersFields();
+        setupEnterNavigation();
         this.getChildren().addAll(backgroundFiller, gradientOverlay, scrollPane);
     }
 
@@ -172,14 +175,20 @@ private double detectedLng = 2.3522;
         // --- IDENTITY ---
         firstName.setPromptText("First name"); lastName.setPromptText("Last name");
         applyTextFieldStyle(firstName); applyTextFieldStyle(lastName);
-        birthDate.setPromptText("Birth date"); birthDate.setMaxWidth(Double.MAX_VALUE);
-        birthDate.getEditor().setStyle("-fx-text-fill: white; -fx-background-color: transparent;");
-        birthDate.setStyle("-fx-background-color: rgba(255,255,255,0.05); -fx-border-color: rgba(255,255,255,0.25); -fx-border-radius: 6; -fx-background-radius: 6; -fx-height: 45;");
-        setupLiveValidation(firstName, errFirstName, f -> !f.getText().trim().isEmpty());
-        setupLiveValidation(lastName, errLastName, f -> !f.getText().trim().isEmpty());
-        birthDate.valueProperty().addListener((obs, o, n) -> validateBirthDate());
-        root.getChildren().addAll(createSectionLabel("Identity"),
-            fieldRow(firstName, errFirstName), fieldRow(lastName, errLastName), fieldRow(birthDate, errBirthDate));
+        setupBirthDateComboBoxes();
+
+setupLiveValidation(firstName, errFirstName, f -> f.getText().matches("[a-zA-ZÀ-ÿ\\s'-]+"));
+setupLiveValidation(lastName, errLastName, f -> f.getText().matches("[a-zA-ZÀ-ÿ\\s'-]+"));
+
+HBox birthBox = new HBox(10, birthDay, birthMonth, birthYear);
+birthBox.setMaxWidth(Double.MAX_VALUE);
+
+root.getChildren().addAll(
+    createSectionLabel("Identity"),
+    fieldRow(firstName, errFirstName),
+    fieldRow(lastName, errLastName),
+    new VBox(3, birthBox, errBirthDate)
+);
 
         // --- CONTACT ---
         email.setPromptText("Email"); applyTextFieldStyle(email);
@@ -202,11 +211,60 @@ private double detectedLng = 2.3522;
 
         // --- ADDRESS ---
         address.setPromptText("Address"); applyTextFieldStyle(address);
-        city.setPromptText("City"); applyTextFieldStyle(city);
+        city.setPromptText("City");
+city.setEditable(true);
+city.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
+
+    if (citySelectionInProgress) {
+        return;
+    }
+
+    if (newValue == null || newValue.trim().length() < 2) {
+        city.getItems().clear();
+        city.hide();
+        return;
+    }
+
+    new Thread(() -> {
+        var results = CityService.searchCities(newValue);
+
+        Platform.runLater(() -> {
+            if (!city.getEditor().getText().equals(newValue)) {
+                return;
+            }
+
+            city.getItems().setAll(results);
+
+            if (!results.isEmpty() && city.isFocused()) {
+                city.show();
+            } else {
+                city.hide();
+            }
+        });
+    }).start();
+});
+
+city.valueProperty().addListener((obs, oldValue, selected) -> {
+    if (selected != null) {
+        citySelectionInProgress = true;
+        city.getEditor().setText(selected);
+        citySelectionInProgress = false;
+        city.hide();
+        country.requestFocus();
+    }
+});
+
+applyEditableComboBoxStyle(city);
         country.setPromptText("Country"); applyTextFieldStyle(country);
-        setupLiveValidation(address, errAddress, f -> !f.getText().trim().isEmpty());
-        setupLiveValidation(city, errCity, f -> !f.getText().trim().isEmpty());
-        setupLiveValidation(country, errCountry, f -> !f.getText().trim().isEmpty());
+        setupLiveValidation(address, errAddress, f ->
+            f.getText().matches(".*\\d+.*") &&
+            f.getText().matches(".*[a-zA-ZÀ-ÿ]+.*")
+        );
+        
+        
+        setupLiveValidation(country, errCountry, f ->
+            f.getText().equalsIgnoreCase("France")
+        );
         root.getChildren().addAll(createSectionLabel("Address"),
             fieldRow(address, errAddress), fieldRow(city, errCity), fieldRow(country, errCountry));
 
@@ -309,7 +367,13 @@ private double detectedLng = 2.3522;
 
     private void applyComboBoxStyle(ComboBox<String> combo) {
         combo.setMaxWidth(Double.MAX_VALUE); combo.setPrefHeight(42);
-        combo.setStyle("-fx-background-color: rgba(255,255,255,0.05); -fx-border-color: rgba(255,255,255,0.25); -fx-border-radius: 6; -fx-background-radius: 6; -fx-text-fill: white;");
+        combo.setStyle(
+            "-fx-background-color: rgba(255,255,255,0.05);" +
+            "-fx-border-color: rgba(255,255,255,0.25);" +
+            "-fx-border-radius: 6;" +
+            "-fx-background-radius: 6;" +
+            "-fx-text-fill: white;"
+        );
         combo.setButtonCell(new ListCell<>() {
             @Override protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
@@ -329,6 +393,17 @@ private double detectedLng = 2.3522;
             .forEach(n -> n.setStyle("-fx-background-color: #0b1a30; -fx-text-fill: white;")));
     }
 
+    private void applyEditableComboBoxStyle(ComboBox<String> combo) {
+        applyComboBoxStyle(combo);
+    
+        combo.getEditor().setStyle(
+            "-fx-background-color: rgba(255,255,255,0.05);" +
+            "-fx-text-fill: white;" +
+            "-fx-prompt-text-fill: #a0b2ce;" +
+            "-fx-border-color: transparent;"
+        );
+    }
+
     private void applyPasswordColorStyle(PasswordField field, String text, boolean isValid) {
         if (text == null || text.isEmpty()) { field.setStyle(TF_NORMAL); return; }
         field.setStyle(isValid
@@ -340,21 +415,72 @@ private double detectedLng = 2.3522;
     private void applyRuleLabelErrorStyle(Label l)   { l.setFont(Font.font("System", FontWeight.NORMAL, 12)); l.setTextFill(Color.web("#e74c3c")); }
 
     private StackPane createPasswordFieldWithEye(PasswordField pf, TextField tf, String prompt) {
-        pf.setPromptText(prompt); tf.setPromptText(prompt);
-        pf.setPrefHeight(42); tf.setPrefHeight(42);
-        applyTextFieldStyle(pf); applyTextFieldStyle(tf);
-        tf.setVisible(false); tf.setManaged(false);
-        Button btn = new Button("👁");
-        btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #a0b2ce; -fx-cursor: hand;");
-        btn.setOnAction(e -> {
-            boolean v = tf.isVisible();
-            tf.setVisible(!v); tf.setManaged(!v);
-            pf.setVisible(v); pf.setManaged(v);
-            btn.setText(v ? "👁" : "🔒");
+        pf.setPromptText(prompt);
+        tf.setPromptText(prompt);
+    
+        pf.setPrefHeight(42);
+        tf.setPrefHeight(42);
+    
+        applyTextFieldStyle(pf);
+        applyTextFieldStyle(tf);
+    
+        tf.setVisible(false);
+        tf.setManaged(false);
+    
+        Button eyeButton = new Button();
+        eyeButton.setPrefSize(38, 38);
+        eyeButton.setMinSize(38, 38);
+        eyeButton.setMaxSize(38, 38);
+        eyeButton.setStyle(
+            "-fx-background-color: transparent;" +
+            "-fx-cursor: hand;"
+        );
+    
+        SVGPath eyeIcon = new SVGPath();
+        eyeIcon.setContent(
+            "M2 10 Q10 2 18 10 Q10 18 2 10 " +
+            "M10 6 A4 4 0 1 1 10 14 A4 4 0 1 1 10 6"
+        );
+        eyeIcon.setStroke(Color.WHITE);
+        eyeIcon.setStrokeWidth(1.8);
+        eyeIcon.setFill(Color.TRANSPARENT);
+    
+        SVGPath slashIcon = new SVGPath();
+        slashIcon.setContent("M3 17 L17 3");
+        slashIcon.setStroke(Color.WHITE);
+        slashIcon.setStrokeWidth(2.2);
+        slashIcon.setFill(Color.TRANSPARENT);
+        slashIcon.setVisible(false);
+    
+        StackPane iconPane = new StackPane(eyeIcon, slashIcon);
+        iconPane.setPrefSize(22, 22);
+    
+        eyeButton.setGraphic(iconPane);
+    
+        eyeButton.setOnAction(e -> {
+            boolean isPasswordHidden = pf.isVisible();
+    
+            tf.setVisible(isPasswordHidden);
+            tf.setManaged(isPasswordHidden);
+    
+            pf.setVisible(!isPasswordHidden);
+            pf.setManaged(!isPasswordHidden);
+    
+            slashIcon.setVisible(isPasswordHidden);
+    
+            if (isPasswordHidden) {
+                tf.requestFocus();
+                tf.positionCaret(tf.getText().length());
+            } else {
+                pf.requestFocus();
+                pf.positionCaret(pf.getText().length());
+            }
         });
-        StackPane s = new StackPane(pf, tf, btn);
-        StackPane.setAlignment(btn, Pos.CENTER_RIGHT);
-        StackPane.setMargin(btn, new Insets(0, 10, 0, 0));
+    
+        StackPane s = new StackPane(pf, tf, eyeButton);
+        StackPane.setAlignment(eyeButton, Pos.CENTER_RIGHT);
+        StackPane.setMargin(eyeButton, new Insets(0, 10, 0, 0));
+    
         return s;
     }
 
@@ -382,39 +508,140 @@ private double detectedLng = 2.3522;
     private String getFieldError(TextField tf) {
         if (tf == email)            return "Valid email required (must contain @)";
         if (tf == phone)            return "Phone must be exactly 10 digits";
-        if (tf == firstName)        return "First name is required";
-        if (tf == lastName)         return "Last name is required";
-        if (tf == address)          return "Address is required";
-        if (tf == city)             return "City is required";
-        if (tf == country)          return "Country is required";
+        if (tf == firstName)        return "First name must contain only letters";
+        if (tf == lastName)         return "Last name must contain only letters";
+        if (tf == address)          return "Address must contain a street number and a street name";
+        if (tf == country)          return "Country must be France";
         if (tf == floor)            return "Floor is required";
         if (tf == householdSize)    return "Household size is required";
         if (tf == emergencyContact) return "Emergency contact is required";
         return "This field is required";
     }
+    
+    private void setupBirthDateComboBoxes() {
+        birthDay.setPromptText("Day");
+        birthMonth.setPromptText("Month");
+        birthYear.setPromptText("Year");
+    
+        for (int i = 1; i <= 31; i++) {
+            birthDay.getItems().add(i);
+        }
+    
+        for (int i = 1; i <= 12; i++) {
+            birthMonth.getItems().add(i);
+        }
+    
+        int currentYear = LocalDate.now().getYear();
+        for (int y = currentYear; y >= 1900; y--) {
+            birthYear.getItems().add(y);
+        }
+    
+        birthDay.setPrefWidth(120);
+        birthMonth.setPrefWidth(160);
+        birthYear.setPrefWidth(160);
+    
+        applyIntegerComboBoxStyle(birthDay);
+        applyIntegerComboBoxStyle(birthMonth);
+        applyIntegerComboBoxStyle(birthYear);
+    
+        birthDay.valueProperty().addListener((obs, o, n) -> validateBirthDate());
+        birthMonth.valueProperty().addListener((obs, o, n) -> validateBirthDate());
+        birthYear.valueProperty().addListener((obs, o, n) -> validateBirthDate());
+    }
+    
+    private void applyIntegerComboBoxStyle(ComboBox<Integer> combo) {
+        combo.setPrefHeight(42);
+        combo.setStyle(
+            "-fx-background-color: rgba(255,255,255,0.05);" +
+            "-fx-border-color: rgba(255,255,255,0.25);" +
+            "-fx-border-radius: 6;" +
+            "-fx-background-radius: 6;" +
+            "-fx-text-fill: white;"
+        );
+    
+        combo.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(Integer item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? combo.getPromptText() : String.valueOf(item));
+                setTextFill(Color.WHITE);
+            }
+        });
+    
+        combo.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(Integer item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("-fx-background-color: #0b1a30;");
+                } else {
+                    setText(String.valueOf(item));
+                    setStyle("-fx-background-color: #0b1a30; -fx-text-fill: white;");
+                }
+            }
+        });
+    }
+    
+    private LocalDate getBirthDateValue() {
+        if (birthDay.getValue() == null || birthMonth.getValue() == null || birthYear.getValue() == null) {
+            return null;
+        }
+    
+        try {
+            return LocalDate.of(birthYear.getValue(), birthMonth.getValue(), birthDay.getValue());
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
     private void validateBirthDate() {
-        boolean err = birthDate.getValue() == null || birthDate.getValue().isAfter(LocalDate.now());
-        errBirthDate.setText(birthDate.getValue() == null ? "Birth date is required" : "Birth date cannot be in the future");
-        errBirthDate.setVisible(err); errBirthDate.setManaged(err);
-        birthDate.setStyle(err
-            ? "-fx-background-color: rgba(231,76,60,0.1); -fx-border-color: #e74c3c; -fx-border-width: 1.5; -fx-border-radius: 6; -fx-background-radius: 6; -fx-height: 45;"
-            : "-fx-background-color: rgba(255,255,255,0.05); -fx-border-color: rgba(255,255,255,0.25); -fx-border-radius: 6; -fx-background-radius: 6; -fx-height: 45;");
-    }
+    LocalDate date = getBirthDateValue();
+
+    boolean hasError = date == null || date.isAfter(LocalDate.now());
+
+    errBirthDate.setText(date == null ? "Birth date is required" : "Birth date cannot be in the future");
+    errBirthDate.setVisible(hasError);
+    errBirthDate.setManaged(hasError);
+
+    String style = hasError
+        ? "-fx-background-color: rgba(231,76,60,0.1); -fx-border-color: #e74c3c; -fx-border-width: 1.5; -fx-border-radius: 6; -fx-background-radius: 6;"
+        : "-fx-background-color: rgba(255,255,255,0.05); -fx-border-color: rgba(255,255,255,0.25); -fx-border-radius: 6; -fx-background-radius: 6;";
+
+    birthDay.setStyle(style);
+    birthMonth.setStyle(style);
+    birthYear.setStyle(style);
+}
 
     private boolean validateAll() {
         boolean valid = true;
         // Identity
         if (firstName.getText().trim().isEmpty())  { showError(errFirstName, firstName, true, getFieldError(firstName)); valid = false; }
         if (lastName.getText().trim().isEmpty())   { showError(errLastName, lastName, true, getFieldError(lastName)); valid = false; }
-        if (birthDate.getValue() == null || birthDate.getValue().isAfter(LocalDate.now())) { validateBirthDate(); valid = false; }
+        if (getBirthDateValue() == null || getBirthDateValue().isAfter(LocalDate.now())) {
+            validateBirthDate();
+            valid = false;
+        }
         // Contact
         if (!email.getText().contains("@") || email.getText().trim().isEmpty()) { showError(errEmail, email, true, getFieldError(email)); valid = false; }
         if (!phone.getText().matches("\\d{10}")) { showError(errPhone, phone, true, getFieldError(phone)); valid = false; }
         // Address
-        if (address.getText().trim().isEmpty()) { showError(errAddress, address, true, getFieldError(address)); valid = false; }
-        if (city.getText().trim().isEmpty())    { showError(errCity, city, true, getFieldError(city)); valid = false; }
-        if (country.getText().trim().isEmpty()) { showError(errCountry, country, true, getFieldError(country)); valid = false; }
+        if (!address.getText().matches(".*\\d+.*") || !address.getText().matches(".*[a-zA-ZÀ-ÿ]+.*")) {
+            showError(errAddress, address, true, getFieldError(address));
+            valid = false;
+        }
+        
+        String cityValue = city.getEditor().getText().trim();
+
+if (cityValue.isEmpty() || !city.getItems().contains(cityValue)) {
+    showError(errCity, city, true, "Select a city from the list");
+    valid = false;
+}
+        
+        if (!country.getText().equalsIgnoreCase("France")) {
+            showError(errCountry, country, true, getFieldError(country));
+            valid = false;
+        }
         // Role
         if (role.getValue() == null) { showError(errRole, role, true, "Role is required"); valid = false; }
         // Citizen fields
@@ -467,6 +694,43 @@ private double detectedLng = 2.3522;
         });
     }
 
+    private void allowOnlyLetters(TextField field) {
+        field.textProperty().addListener((obs, oldValue, newValue) -> {
+            if (!newValue.matches("[a-zA-ZÀ-ÿ\\s'-]*")) {
+                field.setText(oldValue);
+            }
+        });
+    }
+
+    private void setupOnlyLettersFields() {
+        allowOnlyLetters(firstName);
+        allowOnlyLetters(lastName);
+    }
+
+    private void setupEnterNavigation() {
+
+        firstName.setOnAction(e -> lastName.requestFocus());
+        lastName.setOnAction(e -> birthDay.requestFocus());
+    
+        email.setOnAction(e -> phone.requestFocus());
+        phone.setOnAction(e -> password.requestFocus());
+    
+        password.setOnAction(e -> confirmPassword.requestFocus());
+        visiblePassword.setOnAction(e -> visibleConfirmPassword.requestFocus());
+    
+        confirmPassword.setOnAction(e -> address.requestFocus());
+        visibleConfirmPassword.setOnAction(e -> address.requestFocus());
+    
+        address.setOnAction(e -> city.requestFocus());
+        city.getEditor().setOnAction(e -> country.requestFocus());
+    
+        country.setOnAction(e -> gpsButton.requestFocus());
+    
+        floor.setOnAction(e -> householdSize.requestFocus());
+        householdSize.setOnAction(e -> emergencyContact.requestFocus());
+        emergencyContact.setOnAction(e -> registerBtn.fire());
+    }
+
     // ==========================================
     // SOUMISSION DU FORMULAIRE
     // ==========================================
@@ -490,9 +754,9 @@ private double detectedLng = 2.3522;
 
         boolean writeSuccess = controller.handleUserRegistration(
 
-        firstName.getText(), lastName.getText(), birthDate.getValue(),
+        firstName.getText(), lastName.getText(), getBirthDateValue(),
         email.getText(), phone.getText(), pwd,
-        address.getText(), city.getText(), country.getText(),
+        address.getText(), city.getEditor().getText(), country.getText(),
         houseType.getValue(), floorNum, this.detectedLat, this.detectedLng, role.getValue(), // <-- CORRIGÉ ICI
         size, pets.isSelected(), medicalNeeds.getText(),
         emergencyContact.getText(), pmrCheckBox.isSelected());
@@ -512,8 +776,10 @@ private double detectedLng = 2.3522;
    public void fillLocationFields(double lat, double lng, String cityValue, String countryValue) {
     this.detectedLat = lat;
     this.detectedLng = lng;
-    city.setText(cityValue);
+    city.getEditor().setText(cityValue);
     country.setText(countryValue);
-    gpsLabel.setText(cityValue.isEmpty() ? "❌ Detection failed" : "✅ GPS Set — enter your street manually");
+    gpsLabel.setText(cityValue.isEmpty()
+    ? "❌ Location detection failed"
+    : "✅ Approximate location detected — enter your street manually");
 }
 }

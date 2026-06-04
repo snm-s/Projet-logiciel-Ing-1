@@ -108,8 +108,7 @@ public class LoginView extends StackPane {
         visiblePasswordField.setVisible(false);
         visiblePasswordField.setManaged(false);
 
-        Button eyeButton = new Button("👁");
-        eyeButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #a0b2ce; -fx-cursor: hand; -fx-padding: 0 5 0 0;");
+        Button eyeButton = createEyeButton();
 
         StackPane passwordStack = new StackPane(passwordField, visiblePasswordField, eyeButton);
         StackPane.setAlignment(eyeButton, Pos.CENTER_RIGHT);
@@ -120,11 +119,11 @@ public class LoginView extends StackPane {
             visiblePasswordField.setManaged(!isVisible);
             passwordField.setVisible(isVisible);
             passwordField.setManaged(isVisible);
-            eyeButton.setText(isVisible ? "👁" : "🔒");
+            updateEyeIcon(eyeButton, !isVisible);
         });
 
-        HBox emailBox = createStyledInputField("✉", "Email", emailField);
-        HBox passwordBox = createStyledInputField("🔑", null, passwordStack);
+        HBox emailBox = createStyledInputField("mail", "Email", emailField);
+        HBox passwordBox = createStyledInputField("key", null, passwordStack);
 
         errorLabel = new Label("");
         errorLabel.setFont(Font.font("System", FontWeight.MEDIUM, 13));
@@ -169,22 +168,73 @@ public class LoginView extends StackPane {
     
     public void setController(LoginController controller) { this.controller = controller; }
 
-    private HBox createStyledInputField(String iconUnicode, String prompt, Node inputField) {
+    private HBox createStyledInputField(String iconType, String prompt, Node inputField) {
         HBox fieldContainer = new HBox(12);
         fieldContainer.setAlignment(Pos.CENTER_LEFT);
         fieldContainer.setPadding(new Insets(0, 15, 0, 15));
         fieldContainer.setPrefHeight(45);
         fieldContainer.setStyle("-fx-background-color: rgba(255, 255, 255, 0.05); -fx-border-color: rgba(255, 255, 255, 0.25); -fx-border-width: 1; -fx-border-radius: 6; -fx-background-radius: 6;");
-
-        Label iconLabel = new Label(iconUnicode);
-        iconLabel.setStyle("-fx-text-fill: #a0b2ce; -fx-font-size: 16px;");
-
+    
+        Node iconNode = createInputIcon(iconType);
+    
         if (inputField instanceof TextField && !(inputField instanceof PasswordField)) {
             ((TextField) inputField).setPromptText(prompt);
             ((TextField) inputField).setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-prompt-text-fill: #a0b2ce; -fx-padding: 0;");
         }
+    
         HBox.setHgrow(inputField, Priority.ALWAYS);
-        fieldContainer.getChildren().addAll(iconLabel, inputField);
+        fieldContainer.getChildren().addAll(iconNode, inputField);
         return fieldContainer;
+    }
+
+    private Node createInputIcon(String type) {
+        SVGPath icon = new SVGPath();
+    
+        if ("mail".equals(type)) {
+            icon.setContent("M2 5 H22 V17 H2 Z M2 5 L12 12 L22 5");
+        } else {
+            icon.setContent("M8 14 A4 4 0 1 1 8 6 A4 4 0 1 1 8 14 M12 10 H22 M18 10 V13 M15 10 V12");
+        }
+    
+        icon.setStroke(Color.web("#a0b2ce"));
+        icon.setStrokeWidth(1.6);
+        icon.setFill(Color.TRANSPARENT);
+    
+        StackPane box = new StackPane(icon);
+        box.setPrefSize(22, 22);
+        return box;
+    }
+    
+    private Button createEyeButton() {
+        Button eyeButton = new Button();
+        eyeButton.setPrefSize(34, 34);
+        eyeButton.setMinSize(34, 34);
+        eyeButton.setMaxSize(34, 34);
+        eyeButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
+        updateEyeIcon(eyeButton, false);
+        return eyeButton;
+    }
+    
+    private void updateEyeIcon(Button eyeButton, boolean crossed) {
+        SVGPath eyeIcon = new SVGPath();
+        eyeIcon.setContent(
+            "M2 10 Q10 2 18 10 Q10 18 2 10 " +
+            "M10 6 A4 4 0 1 1 10 14 A4 4 0 1 1 10 6"
+        );
+        eyeIcon.setStroke(Color.WHITE);
+        eyeIcon.setStrokeWidth(1.7);
+        eyeIcon.setFill(Color.TRANSPARENT);
+    
+        SVGPath slashIcon = new SVGPath();
+        slashIcon.setContent("M3 17 L17 3");
+        slashIcon.setStroke(Color.WHITE);
+        slashIcon.setStrokeWidth(2.1);
+        slashIcon.setFill(Color.TRANSPARENT);
+        slashIcon.setVisible(crossed);
+    
+        StackPane iconPane = new StackPane(eyeIcon, slashIcon);
+        iconPane.setPrefSize(22, 22);
+    
+        eyeButton.setGraphic(iconPane);
     }
 }
