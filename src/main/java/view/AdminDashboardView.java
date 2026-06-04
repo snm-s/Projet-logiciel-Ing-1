@@ -1,223 +1,317 @@
 package view;
 
 import app.Main;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.Slider;
-import javafx.scene.control.TextField;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
-import javafx.scene.layout.VBox;
+import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-import model.agent.Agent;
+import javafx.scene.web.WebView;
+
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class AdminDashboardView extends BorderPane {
 
+    private final StackPane centralViewContainer;
+    private ObservableList<AgentInscrit> listeInscritsGlobal;
+
+    private VBox pageSupervision;
+    private VBox pageInscrits;
+    private VBox pageGraphe;
+    private VBox pageMoteur;
+    private WebView mapWebView;
+
     public AdminDashboardView() {
-        // Fond principal sombre tactique / cockpit
-        this.setStyle("-fx-background-color: #081225;");
+        this.setPrefSize(1280, 750);
+        this.setStyle("-fx-background-color: #f4f7fc;");
 
-        // Récupération de l'admin en session
-        Agent user = Main.currentUser;
-        String adminName = (user != null) ? user.getFirstName() + " " + user.getLastName() : "Chef Admin";
+        // 1. CHARGEMENT DEPUIS TON VRAI FICHIER USER.JSON
+        chargerDonneesDepuisJSON();
 
         // ==========================================
-        // 1. SIDEBAR (GAUCHE) - Design Pro & Déconnexion
+        // 2. SIDEBAR DE NAVIGATION
         // ==========================================
-        VBox sidebar = new VBox();
-        sidebar.setPrefWidth(250);
-        sidebar.setStyle("-fx-background-color: #030a16; -fx-border-color: rgba(255,255,255,0.05); -fx-border-width: 0 1 0 0;");
-        sidebar.setPadding(new Insets(25, 15, 25, 15));
-        sidebar.setSpacing(10);
+        VBox sidebar = new VBox(5);
+        sidebar.setPrefWidth(260);
+        sidebar.setStyle("-fx-background-color: #0b1a30;");
+        sidebar.setPadding(new Insets(20, 15, 20, 15));
 
-        // Profil Admin
-        HBox profileBox = new HBox(12);
-        profileBox.setAlignment(Pos.CENTER_LEFT);
-        profileBox.setPadding(new Insets(0, 0, 25, 5));
-        
-        Circle avatar = new Circle(18, Color.web("#e74c3c")); // Rouge Alerte pour l'admin
-        VBox profileTexts = new VBox(2);
-        Label lblName = new Label(adminName);
-        lblName.setTextFill(Color.WHITE);
-        lblName.setFont(Font.font("System", FontWeight.BOLD, 14));
-        Label lblRole = new Label("Super Administrateur");
-        lblRole.setTextFill(Color.web("#718096"));
-        lblRole.setFont(Font.font("System", 11));
-        profileTexts.getChildren().addAll(lblName, lblRole);
-        profileBox.getChildren().addAll(avatar, profileTexts);
-        sidebar.getChildren().add(profileBox);
+        Label lblLogo = new Label("🛡️ PC DES SECOURS");
+        lblLogo.setTextFill(Color.WHITE);
+        lblLogo.setFont(Font.font("System", FontWeight.BOLD, 16));
+        Label lblSub = new Label("Système de Crise Cartographique");
+        lblSub.setTextFill(Color.web("#a0b2ce"));
+        lblSub.setFont(Font.font("System", 11));
+        VBox headerBox = new VBox(3, lblLogo, lblSub);
+        headerBox.setPadding(new Insets(10, 5, 30, 5));
+        sidebar.getChildren().add(headerBox);
 
-        // Liens de Navigation Admin
-        sidebar.getChildren().addAll(
-            createSidebarButton("🎛️  Console Générale", true),
-            createSidebarButton("🗺️  Éditeur de Graphe", false),
-            createSidebarButton("👥  Gestion des Agents", false),
-            createSidebarButton("📊  Statistiques", false),
-            createSidebarButton("⚙️  Configuration", false)
-        );
+        Button btnSupervision = createMenuButton("🗺️  Carte de Supervision Live", true);
+        Button btnInscrits = createMenuButton("👥  Liste des Inscrits", false);
+        Button btnGraphe = createMenuButton("🛠️  Modifications Graphe", false);
+        Button btnMoteur = createMenuButton("⏱️  Moteur & Simulation", false);
 
-        // Bouton Déconnexion en bas (enfin là !)
+        sidebar.getChildren().addAll(btnSupervision, btnInscrits, btnGraphe, btnMoteur);
+
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
-        Button btnLogout = createSidebarButton("🚪  Déconnexion", false);
-        
-        // Action de déconnexion : vide la session et renvoie à l'accueil
-        btnLogout.setOnAction(e -> {
-            Main.currentUser = null;
-            Main.showWelcomeView();
-        });
-        sidebar.getChildren().addAll(spacer, btnLogout);
+        sidebar.getChildren().add(spacer);
+
+        Button btnLogout = createMenuButton("🚪  Déconnexion", false);
+        btnLogout.setStyle("-fx-background-color: transparent; -fx-text-fill: #e74c3c; -fx-alignment: center-left; -fx-cursor: hand;");
+        sidebar.getChildren().addAll(new Separator(), btnLogout);
 
         this.setLeft(sidebar);
 
         // ==========================================
-        // 2. CONTENU PRINCIPAL (CENTRE) - Mode Cockpit Pro
+        // 3. ZONE CENTRALE
         // ==========================================
-        VBox contentArea = new VBox(25);
-        contentArea.setPadding(new Insets(30));
-        
-        // Titre de la page
-        Label titleLabel = new Label("Simulation Control Panel");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 24));
-        titleLabel.setTextFill(Color.WHITE);
-        contentArea.getChildren().add(titleLabel);
+        centralViewContainer = new StackPane();
+        this.setCenter(centralViewContainer);
 
-        // Rangée des KPIs / Statistiques globales de crise
-        HBox kpiRow = new HBox(15);
-        kpiRow.getChildren().addAll(
-            createKpiCard("Agents Actifs", "⚡ 142", "#3498db"),
-            createKpiCard("Citoyens Secourus", "💚 89%", "#2ecc71"),
-            createKpiCard("Niveau des Eaux", "🌊 +1.45m", "#e74c3c"),
-            createKpiCard("Réseau Graphe", "📐 42 Nœuds", "#f1c40f")
-        );
-        contentArea.getChildren().add(kpiRow);
+        buildPageSupervision();
+        buildPageInscrits();
+        buildPageGraphe();
+        buildPageMoteur();
 
-        // Bloc du milieu : Moteur de simulation + Générateur de masse
-        HBox panelsRow = new HBox(20);
-        
-        // Panneau de Contrôle Temporel
-        VBox enginePanel = new VBox(15);
-        enginePanel.setPrefWidth(450);
-        enginePanel.setPadding(new Insets(20));
-        enginePanel.setStyle("-fx-background-color: #0f1c30; -fx-background-radius: 8; -fx-border-color: rgba(255,255,255,0.08);");
-        
-        Label engineTitle = new Label("⏱️ Moteur de Contrôle Temporel");
-        engineTitle.setTextFill(Color.WHITE);
-        engineTitle.setFont(Font.font("System", FontWeight.BOLD, 14));
+        centralViewContainer.getChildren().add(pageSupervision);
 
-        HBox controlButtons = new HBox(10);
-        Button btnStart = createControlButton("▶ START", "#2ecc71");
-        Button btnPause = createControlButton("⏸ PAUSE", "#f39c12");
-        Button btnStep = createControlButton("⏭ STEP", "#3498db");
-        Button btnStop = createControlButton("⏹ RESET", "#e74c3c");
-        controlButtons.getChildren().addAll(btnStart, btnPause, btnStep, btnStop);
-
-        VBox slidersBox = new VBox(12);
-        slidersBox.setPadding(new Insets(10, 0, 0, 0));
-        
-        Label lblWater = new Label("Vitesse de montée des eaux (m/h) :");
-        lblWater.setTextFill(Color.web("#a0b2ce"));
-        Slider waterSlider = new Slider(0, 5, 0.5);
-        waterSlider.setShowTickLabels(true);
-        waterSlider.setStyle("-fx-text-fill: white;");
-
-        Label lblInterval = new Label("Pas temporel du moteur (ms) :");
-        lblInterval.setTextFill(Color.web("#a0b2ce"));
-        Slider intervalSlider = new Slider(100, 2000, 500);
-        intervalSlider.setShowTickLabels(true);
-
-        slidersBox.getChildren().addAll(lblWater, waterSlider, lblInterval, intervalSlider);
-        enginePanel.getChildren().addAll(engineTitle, controlButtons, slidersBox);
-
-        // Panneau d'injection de masse (Graphe et Population)
-        VBox injectionPanel = new VBox(15);
-        injectionPanel.setPrefWidth(450);
-        injectionPanel.setPadding(new Insets(20));
-        injectionPanel.setStyle("-fx-background-color: #0f1c30; -fx-background-radius: 8; -fx-border-color: rgba(255,255,255,0.08);");
-
-        Label injectTitle = new Label("📦 Injection Réseau & Population");
-        injectTitle.setTextFill(Color.WHITE);
-        injectTitle.setFont(Font.font("System", FontWeight.BOLD, 14));
-
-        VBox injectForm = new VBox(12);
-        
-        HBox rowNodes = new HBox(10);
-        TextField tfNodes = createStyledTextField("Nombre de nœuds");
-        Button btnNodes = new Button("Générer Graphe");
-        btnNodes.setStyle("-fx-background-color: #9b59b6; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 8 15;");
-        HBox.setHgrow(tfNodes, Priority.ALWAYS);
-        rowNodes.getChildren().addAll(tfNodes, btnNodes);
-
-        HBox rowAgents = new HBox(10);
-        TextField tfAgents = createStyledTextField("Nombre d'agents");
-        Button btnAgents = new Button("Injecter Pop.");
-        btnAgents.setStyle("-fx-background-color: #16a085; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 8 15;");
-        HBox.setHgrow(tfAgents, Priority.ALWAYS);
-        rowAgents.getChildren().addAll(tfAgents, btnAgents);
-
-        injectForm.getChildren().addAll(rowNodes, rowAgents);
-        injectionPanel.getChildren().addAll(injectTitle, injectForm);
-
-        panelsRow.getChildren().addAll(enginePanel, injectionPanel);
-        contentArea.getChildren().add(panelsRow);
-
-        this.setCenter(contentArea);
+        btnSupervision.setOnAction(e -> { showPage(pageSupervision); updateActiveTabs(btnSupervision, btnInscrits, btnGraphe, btnMoteur); rafraichirCarte(); });
+        btnInscrits.setOnAction(e -> { showPage(pageInscrits); updateActiveTabs(btnInscrits, btnSupervision, btnGraphe, btnMoteur); });
+        btnGraphe.setOnAction(e -> { showPage(pageGraphe); updateActiveTabs(btnGraphe, btnSupervision, btnInscrits, btnMoteur); });
+        btnMoteur.setOnAction(e -> { showPage(pageMoteur); updateActiveTabs(btnMoteur, btnSupervision, btnInscrits, btnGraphe); });
+        btnLogout.setOnAction(e -> {
+            Main.currentUser = null;
+            Main.showWelcomeView();
+        });
     }
 
-    // Helper Boutons Sidebar
-    private Button createSidebarButton(String text, boolean active) {
+    /**
+     * PARSER MAISON : Lit directement ton fichier "user.json" sans bibliothèque externe bloquante
+     */
+    private void chargerDonneesDepuisJSON() {
+        listeInscritsGlobal = FXCollections.observableArrayList();
+        String cheminFichier = "user.json"; // Place ton fichier user.json à la racine de ton projet
+
+        try {
+            File fichier = new File(cheminFichier);
+            if (!fichier.exists()) {
+                System.out.println("⚠️ Fichier user.json introuvable à la racine. Création d'exemples.");
+                // Fallback si le fichier n'est pas encore là
+                listeInscritsGlobal.add(new AgentInscrit("admin", 1, "Chef", "Admin", "admin@test.com", 48.85, 2.35, "CALME", "Aucune"));
+                return;
+            }
+
+            String content = new String(Files.readAllBytes(Paths.get(cheminFichier)));
+
+            // Regex pour découper les blocs d'objets { ... } du JSON
+            Pattern objectPattern = Pattern.compile("\\{[^\\}]+\\}");
+            Matcher matcher = objectPattern.matcher(content);
+
+            while (matcher.find()) {
+                String bloc = matcher.group();
+
+                String type = extractJsonValue(bloc, "type");
+                int id = Integer.parseInt(extractJsonValue(bloc, "id"));
+                String firstName = extractJsonValue(bloc, "firstName");
+                String lastName = extractJsonValue(bloc, "lastName");
+                String email = extractJsonValue(bloc, "email");
+                String state = extractJsonValue(bloc, "state");
+                String destination = extractJsonValue(bloc, "destination");
+                if (destination == null || destination.equals("null")) destination = "Aucune";
+
+                // Extraction des coordonnées imbriquées dans "position"
+                double lat = 48.85; // valeurs par défaut
+                double lng = 2.35;
+                Pattern latPattern = Pattern.compile("\"lat\"\\s*:\\s*([0-9.]+)");
+                Pattern lngPattern = Pattern.compile("\"lng\"\\s*:\\s*([0-9.]+)");
+                Matcher mLat = latPattern.matcher(bloc);
+                Matcher mLng = lngPattern.matcher(bloc);
+                if (mLat.find()) lat = Double.parseDouble(mLat.group(1));
+                if (mLng.find()) lng = Double.parseDouble(mLng.group(1));
+
+                listeInscritsGlobal.add(new AgentInscrit(type, id, firstName, lastName, email, lat, lng, state, destination));
+            }
+
+        } catch (Exception e) {
+            System.err.println("Erreur lors de la lecture du JSON : " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private String extractJsonValue(String bloc, String key) {
+        Pattern pattern = Pattern.compile("\"" + key + "\"\\s*:\\s*\"?([^\",\\}]+)\"?");
+        Matcher matcher = pattern.matcher(bloc);
+        if (matcher.find()) {
+            return matcher.group(1).replace("\"", "").trim();
+        }
+        return "null";
+    }
+
+    private void buildPageSupervision() {
+        pageSupervision = new VBox(15);
+        pageSupervision.setPadding(new Insets(25));
+
+        Label title = new Label("Supervision Globale - Carte Réelle (user.json)");
+        title.setFont(Font.font("System", FontWeight.BOLD, 22));
+        title.setTextFill(Color.web("#0b1a30"));
+
+        mapWebView = new WebView();
+        VBox.setVgrow(mapWebView, Priority.ALWAYS);
+
+        rafraichirCarte();
+
+        pageSupervision.getChildren().addAll(title, mapWebView);
+    }
+
+    private void rafraichirCarte() {
+        StringBuilder htmlContent = new StringBuilder();
+        htmlContent.append("<html><head>")
+                .append("<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'/>")
+                .append("<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script>")
+                .append("<style>html, body, #map { height: 100%; margin: 0; padding: 0; }</style>")
+                .append("</head><body><div id='map'></div><script>")
+                .append("var map = L.map('map').setView([48.85, 2.35], 12);")
+                .append("L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);");
+
+        // Points d'intérêts d'infrastructure fixes
+        htmlContent.append("L.marker([48.8584, 2.3499]).addTo(map).bindPopup('<b>🏢 CASERNE DE POMPIERS CENTRALE</b>');");
+        htmlContent.append("L.marker([48.8462, 2.3427]).addTo(map).bindPopup('<b>🏠 REFUGE DE CRISE PRINCIPAL</b>');");
+
+        // Affichage de tes vrais agents sur la carte
+        for (AgentInscrit agent : listeInscritsGlobal) {
+            String color = "blue"; 
+            if (agent.getType().equals("admin")) color = "purple";
+            if (agent.getType().equals("rescueAgent")) color = "red"; // Rouge pour les secours/pompiers
+
+            htmlContent.append("L.circle([").append(agent.getLat()).append(", ").append(agent.getLng()).append("], {")
+                    .append("color: '").append(color).append("',")
+                    .append("fillColor: '").append(color).append("',")
+                    .append("fillOpacity: 0.7, radius: 150 })")
+                    .append(".addTo(map).bindPopup('")
+                    .append("<b>Rôle:</b> ").append(agent.getType())
+                    .append("<br><b>Nom:</b> ").append(agent.getFirstName()).append(" ").append(agent.getLastName())
+                    .append("<br><b>État:</b> ").append(agent.getState())
+                    .append("<br><b>Destination:</b> ").append(agent.getDestination())
+                    .append("');");
+        }
+
+        htmlContent.append("</script></body></html>");
+        mapWebView.getEngine().loadContent(htmlContent.toString());
+    }
+
+    private void buildPageInscrits() {
+        pageInscrits = new VBox(15);
+        pageInscrits.setPadding(new Insets(25));
+
+        Label title = new Label("Base de Données — Registre Matricule (user.json)");
+        title.setFont(Font.font("System", FontWeight.BOLD, 22));
+
+        TableView<AgentInscrit> table = new TableView<>();
+        table.setItems(listeInscritsGlobal);
+
+        TableColumn<AgentInscrit, Integer> colId = new TableColumn<>("ID");
+        colId.setCellValueFactory(new PropertyValueFactory<>("id"));
+        
+        TableColumn<AgentInscrit, String> colType = new TableColumn<>("Type");
+        colType.setCellValueFactory(new PropertyValueFactory<>("type"));
+
+        TableColumn<AgentInscrit, String> colFirstName = new TableColumn<>("Prénom");
+        colFirstName.setCellValueFactory(new PropertyValueFactory<>("firstName"));
+
+        TableColumn<AgentInscrit, String> colLastName = new TableColumn<>("Nom");
+        colLastName.setCellValueFactory(new PropertyValueFactory<>("lastName"));
+
+        TableColumn<AgentInscrit, String> colEmail = new TableColumn<>("Email");
+        colEmail.setCellValueFactory(new PropertyValueFactory<>("email"));
+
+        TableColumn<AgentInscrit, String> colState = new TableColumn<>("État");
+        colState.setCellValueFactory(new PropertyValueFactory<>("state"));
+
+        table.getColumns().addAll(colId, colType, colFirstName, colLastName, colEmail, colState);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        VBox.setVgrow(table, Priority.ALWAYS);
+
+        Button btnDelete = new Button("🗑️ Supprimer de la Base de Données");
+        btnDelete.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnDelete.setOnAction(e -> {
+            AgentInscrit selected = table.getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                listeInscritsGlobal.remove(selected);
+            }
+        });
+
+        pageInscrits.getChildren().addAll(title, table, btnDelete);
+    }
+
+    private void buildPageGraphe() {
+        pageGraphe = new VBox(20); pageGraphe.setPadding(new Insets(25));
+        pageGraphe.getChildren().add(new Label("🛠️ Configuration du Graphe — Gestion des goulots d'accès (Pénalité de 2 cycles)"));
+    }
+
+    private void buildPageMoteur() {
+        pageMoteur = new VBox(20); pageMoteur.setPadding(new Insets(25));
+        pageMoteur.getChildren().add(new Label("⏱️ Moteur de Temps — Exécution de la simulation Pas à Pas"));
+    }
+
+    private Button createMenuButton(String text, boolean isActive) {
         Button btn = new Button(text);
         btn.setMaxWidth(Double.MAX_VALUE);
+        btn.setPrefHeight(44);
         btn.setAlignment(Pos.CENTER_LEFT);
-        btn.setPadding(new Insets(12, 15, 12, 15));
-        if (active) {
-            btn.setStyle("-fx-background-color: #0b5cbf; -fx-text-fill: white; -fx-background-radius: 6; -fx-font-weight: bold; -fx-cursor: hand;");
+        btn.setPadding(new Insets(0, 15, 0, 15));
+        setButtonStyle(btn, isActive);
+        return btn;
+    }
+
+    private void setButtonStyle(Button btn, boolean isActive) {
+        if (isActive) {
+            btn.setStyle("-fx-background-color: #0b5cbf; -fx-text-fill: white; -fx-background-radius: 6; -fx-font-weight: bold;");
         } else {
-            btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #718096; -fx-background-radius: 6; -fx-cursor: hand;");
-            btn.setOnMouseEntered(e -> btn.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-text-fill: white; -fx-background-radius: 6;"));
-            btn.setOnMouseExited(e -> btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #718096; -fx-background-radius: 6;"));
+            btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #a0b2ce; -fx-background-radius: 6; -fx-cursor: hand;");
         }
-        return btn;
     }
 
-    // Helper KPI Cards
-    private VBox createKpiCard(String title, String value, String colorHex) {
-        VBox card = new VBox(5);
-        card.setPrefWidth(215);
-        card.setPadding(new Insets(15));
-        card.setStyle("-fx-background-color: #0f1c30; -fx-background-radius: 6; -fx-border-color: rgba(255,255,255,0.05);");
-        
-        Label lblTitle = new Label(title);
-        lblTitle.setTextFill(Color.web("#718096"));
-        lblTitle.setFont(Font.font("System", 12));
-        
-        Label lblValue = new Label(value);
-        lblValue.setTextFill(Color.web(colorHex));
-        lblValue.setFont(Font.font("System", FontWeight.BOLD, 20));
-        
-        card.getChildren().addAll(lblTitle, lblValue);
-        return card;
+    private void showPage(VBox page) {
+        centralViewContainer.getChildren().clear();
+        centralViewContainer.getChildren().add(page);
     }
 
-    // Helper Boutons d'Action Moteur
-    private Button createControlButton(String text, String colorHex) {
-        Button btn = new Button(text);
-        btn.setStyle("-fx-background-color: " + colorHex + "; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 15; -fx-background-radius: 4; -fx-cursor: hand;");
-        return btn;
+    private void updateActiveTabs(Button active, Button... others) {
+        setButtonStyle(active, true);
+        for (Button b : others) setButtonStyle(b, false);
     }
 
-    // Helper Input Text stylisé
-    private TextField createStyledTextField(String prompt) {
-        TextField tf = new TextField();
-        tf.setPromptText(prompt);
-        tf.setStyle("-fx-background-color: #14233c; -fx-text-fill: white; -fx-prompt-text-fill: #4a5568; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 8;");
-        return tf;
+    // ==========================================
+    // CLASSE MODÈLE INTERNE ADAPTÉE À TON JSON
+    // ==========================================
+    public static class AgentInscrit {
+        private final String type, firstName, lastName, email, state, destination;
+        private final int id;
+        private final double lat, lng;
+
+        public AgentInscrit(String type, int id, String firstName, String lastName, String email, double lat, double lng, String state, String destination) {
+            this.type = type; this.id = id; this.firstName = firstName; this.lastName = lastName; this.email = email;
+            this.lat = lat; this.lng = lng; this.state = state; this.destination = destination;
+        }
+
+        public String getType() { return type; }
+        public int getId() { return id; }
+        public String getFirstName() { return firstName; }
+        public String getLastName() { return lastName; }
+        public String getEmail() { return email; }
+        public double getLat() { return lat; }
+        public double getLng() { return lng; }
+        public String getState() { return state; }
+        public String getDestination() { return destination; }
     }
 }
