@@ -5,6 +5,10 @@ import java.util.List;
 
 import model.alert.Alert;
 import model.alert.AlertSystem;
+import model.agent.Agent;
+import model.observer.Observer;
+import model.observer.Subject;
+import model.strategy.Strategy;
 import model.zone.Zone;
 import model.zone.ZoneManager;
 import model.zone.ZoneUpdateListener;
@@ -40,6 +44,7 @@ public class SimulationInondation {
     private final List<Zone> zones;
     private final AlertSystem alertSystem;
     private final List<ZoneUpdateListener> listeners;
+    private final Subject<Zone> zoneObservers;
     private final ZoneManager zoneManager;
 
     public SimulationInondation() {
@@ -50,6 +55,7 @@ public class SimulationInondation {
         this.agentsActifs = DEFAULT_AGENTS_ACTIFS;
         this.agentsEvacues = 0;
         this.listeners = new ArrayList<>();
+        this.zoneObservers = new Subject<>();
         this.zoneManager = new ZoneManager();
         this.zones = zoneManager.getZones();
         this.alertSystem = new AlertSystem();
@@ -63,16 +69,41 @@ public class SimulationInondation {
         listeners.remove(listener);
     }
 
+    public void addZoneObserver(Observer<Zone> observer) {
+        zoneObservers.addObserver(observer);
+    }
+
+    public void removeZoneObserver(Observer<Zone> observer) {
+        zoneObservers.removeObserver(observer);
+    }
+
+    public void assignStrategyToAgent(Agent agent, Strategy strategy) {
+        if (agent != null) {
+            agent.setStrategy(strategy);
+        }
+    }
+
+    public void planAgentRoutes(List<Agent> agents) {
+        if (agents == null || agents.isEmpty()) {
+            return;
+        }
+        for (Agent agent : agents) {
+            agent.decideDestination(zones);
+        }
+    }
+
     private void notifyZoneFlooded(Zone zone) {
         for (ZoneUpdateListener listener : listeners) {
             listener.onZoneFlooded(zone);
         }
+        zoneObservers.notifyObservers(zone);
     }
 
     private void notifyZoneEvacuated(Zone zone) {
         for (ZoneUpdateListener listener : listeners) {
             listener.onZoneEvacuated(zone);
         }
+        zoneObservers.notifyObservers(zone);
     }
 
     private void notifySimulationUpdated() {

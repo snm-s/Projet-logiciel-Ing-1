@@ -2,11 +2,14 @@
 package model.agent;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 import model.graph.Node;
+import model.strategy.Strategy;
+import model.zone.Zone;
 
 
 @JsonTypeInfo(
@@ -36,6 +39,7 @@ public abstract class Agent {
     private Node destination;
     private double maxSpeed;
     private double congestionTolerance;
+    private Strategy strategy;
 
 
 
@@ -103,13 +107,18 @@ public abstract class Agent {
         this.country = country;
     }
 
-    public Agent() {}
+    public Agent() {
+        this.maxSpeed = 3.0;
+        this.congestionTolerance = 1.0;
+    }
 
     public Agent(int id, String firstName, String lastName, Node position) {
         this.id = id;
         this.firstName = firstName;
         this.lastName = lastName;
         this.position = position;
+        this.maxSpeed = 3.0;
+        this.congestionTolerance = 1.0;
     }
 
     // Getters et Setters basiques pour que le code compile
@@ -122,6 +131,24 @@ public abstract class Agent {
     public void setPosition(Node position) { this.position = position; }
     public Node getDestination() { return destination; }
     public void setDestination(Node destination) { this.destination = destination; }
+
+    public Strategy getStrategy() {
+        return strategy;
+    }
+
+    public void setStrategy(Strategy strategy) {
+        this.strategy = strategy;
+    }
+
+    public void decideDestination(List<Zone> zones) {
+        if (strategy != null) {
+            strategy.apply(this, zones);
+        }
+    }
+
+    public boolean hasStrategy() {
+        return strategy != null;
+    }
     
     public boolean isSaved() {
         // Un agent est sauvé s'il est arrivé sur un nœud de type REFUGE (on complétera après)

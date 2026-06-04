@@ -1,7 +1,9 @@
 package view;
 
+import javafx.scene.layout.Region;
 import javafx.scene.web.WebView;
 import javafx.scene.web.WebEngine;
+import model.observer.Observer;
 import model.zone.Zone;
 import model.zone.ZoneUpdateListener;
 import java.util.List;
@@ -12,7 +14,7 @@ import java.util.Map;
  * Vue carte interactive avec Leaflet.js montrant les zones de Lyon
  * Colore dynamiquement les zones selon leur état d'inondation
  */
-public class MapView implements ZoneUpdateListener {
+public class MapView implements ZoneUpdateListener, Observer<Zone> {
     private WebView webView;
     private WebEngine webEngine;
     private List<Zone> zones;
@@ -25,6 +27,9 @@ public class MapView implements ZoneUpdateListener {
         this.zones = zones;
         this.zoneColors = new HashMap<>();
         this.webView = new WebView();
+        this.webView.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        this.webView.setPrefSize(Region.USE_COMPUTED_SIZE, Region.USE_COMPUTED_SIZE);
+        this.webView.setMinSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         this.webEngine = webView.getEngine();
 
         // Initialiser les couleurs par défaut
@@ -37,6 +42,17 @@ public class MapView implements ZoneUpdateListener {
 
     public WebView getWebView() {
         return webView;
+    }
+
+    private String escapeForJs(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        return raw.replace("\\", "\\\\")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("'", "\\'")
+                .replace("\"", "\\\"");
     }
 
     private void initializeMap() {
@@ -67,6 +83,11 @@ public class MapView implements ZoneUpdateListener {
         // Ajouter les cercles pour chaque zone
         for (Zone zone : zones) {
             String color = getColorForZone(zone);
+            String popupText = "<b>" + escapeForJs(zone.getName()) + "</b><br/>"
+                    + "Population: " + zone.getPopulation() + "<br/>"
+                    + "Altitude: " + String.format("%.1f", zone.getAltitude()) + "m<br/>"
+                    + escapeForJs(zone.getDescription());
+
             html.append("var circle_").append(zone.getId()).append(" = L.circle([")
                     .append(zone.getLatitude()).append(", ").append(zone.getLongitude()).append("], {")
                     .append("color: '").append(color).append("',")
@@ -76,10 +97,7 @@ public class MapView implements ZoneUpdateListener {
                     .append("weight: 2")
                     .append("}).addTo(map);")
                     .append("circle_").append(zone.getId()).append(".bindPopup('")
-                    .append("<b>").append(zone.getName()).append("</b><br/>")
-                    .append("Population: ").append(zone.getPopulation()).append("<br/>")
-                    .append("Altitude: ").append(String.format("%.1f", zone.getAltitude())).append("m<br/>")
-                    .append(zone.getDescription())
+                    .append(popupText)
                     .append("');")
                     .append("window.zones[").append(zone.getId()).append("] = circle_").append(zone.getId())
                     .append(";");
@@ -102,6 +120,13 @@ public class MapView implements ZoneUpdateListener {
                 "if (window.zones && window.zones[%d]) { window.zones[%d].setStyle({color: '%s', fillColor: '%s'}); }",
                 zone.getId(), zone.getId(), color, color);
         webEngine.executeScript(script);
+    }
+
+    @Override
+    public void update(Zone zone) {
+        if (zone != null) {
+            updateZoneColor(zone);
+        }
     }
 
     @Override

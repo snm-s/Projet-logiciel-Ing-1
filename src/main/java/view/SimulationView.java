@@ -219,6 +219,8 @@ public class SimulationView extends BorderPane {
     private StackPane buildCarteContainer() {
         StackPane pane = new StackPane();
         pane.setStyle("-fx-background-color: #eef2f7;");
+        pane.setMinHeight(420);
+        pane.setPrefHeight(520);
 
         // Initialiser la carte avec les zones du modèle
         if (modele != null) {

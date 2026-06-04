@@ -61,7 +61,7 @@ public class AlertsView extends BorderPane {
     private ObservableList<Alert> getAlertsMock() {
         ObservableList<Alert> mockList = FXCollections.observableArrayList();
         
-        // Utilise exactement la signature (int, String, int) de ton modèle !
+        // Utilise exactement la signature (int, String, int)
         mockList.add(new Alert(1, "Crue subite détectée - Secteur Nord", 5));
         mockList.add(new Alert(2, "Pluies torrentielles - Évacuation préventive Zone B", 4));
         mockList.add(new Alert(3, "Vigilance météo orange activée", 2));
