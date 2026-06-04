@@ -3,6 +3,8 @@ package app;
 import controller.ForgotPasswordController;
 import javafx.application.Application;
 import javafx.scene.Scene;
+import javafx.scene.control.ListView;
+import javafx.scene.control.TextArea;
 import javafx.stage.Stage;
 import model.agent.Agent;
 import view.AdminDashboardView;
@@ -12,12 +14,16 @@ import view.LoginView;
 import view.RegisterView;
 import view.RescueDashboardView;
 import view.WelcomeView;
+import view.SimulationView;
+import controller.SimulationController;
 
 public class Main extends Application {
 
     private static Stage mainStage;
     // 🔥 Variable globale pour stocker l'agent connecté (Session)
-    public static Agent currentUser; 
+    public static Agent currentUser;
+    public static ListView<String> alertesListView;
+    public static TextArea logArea;
 
     @Override
     public void start(Stage stage) {
@@ -55,8 +61,18 @@ public class Main extends Application {
     public static void showForgotPasswordView(String email) {
         ForgotPasswordView view = new ForgotPasswordView();
         new ForgotPasswordController(view, mainStage, email);
-        
+
         Scene scene = new Scene(view, 1000, 650);
+        mainStage.setScene(scene);
+    }
+
+    public static void showSimulationView() {
+        // Initialisez le contrôleur et la vue
+        SimulationController simulationController = new SimulationController();
+        SimulationView simulationView = new SimulationView(simulationController);
+
+        Scene scene = new Scene(simulationView, 1100, 700);
+        mainStage.setTitle("Flood Simulation - Administration");
         mainStage.setScene(scene);
     }
 
@@ -65,22 +81,27 @@ public class Main extends Application {
         if (role == null) {
             role = "citizen";
         }
-        
+
         String cleanRole = role.trim().toLowerCase();
         Scene scene;
-        
+
         switch (cleanRole) {
             case "admin":
                 scene = new Scene(new AdminDashboardView(), 1000, 650);
                 mainStage.setTitle("Flood Simulation - Admin Panel");
                 break;
-                
+
             case "rescue":
             case "rescueagent":
-                scene = new Scene(new RescueDashboardView(), 1000, 650);
-                mainStage.setTitle("Flood Simulation - Rescue Command");
-                break;
-                
+                /*
+                 * scene = new Scene(new RescueDashboardView(), 1000, 650);
+                 * mainStage.setTitle("Flood Simulation - Rescue Command");
+                 * break;
+                 */
+
+                showSimulationView();
+                return;
+
             case "citizen":
             default:
                 scene = new Scene(new CitizenDashboardView(), 1000, 650);

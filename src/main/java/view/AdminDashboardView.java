@@ -8,6 +8,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import app.Main;
+import controller.SimulationController;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -38,10 +39,12 @@ public class AdminDashboardView extends BorderPane {
     private VBox pageGraphe;
     private VBox pageMoteur;
     private WebView mapWebView;
+    private final SimulationController simulationController;
 
     public AdminDashboardView() {
         this.setPrefSize(1280, 750);
         this.setStyle("-fx-background-color: #f4f7fc;");
+        this.simulationController = new SimulationController();
 
         // 1. CHARGEMENT DEPUIS TON VRAI FICHIER USER.JSON VIA GSON
         chargerDonneesDepuisJSON();
@@ -76,7 +79,8 @@ public class AdminDashboardView extends BorderPane {
         sidebar.getChildren().add(spacer);
 
         Button btnLogout = createMenuButton("🚪   Déconnexion", false);
-        btnLogout.setStyle("-fx-background-color: transparent; -fx-text-fill: #e74c3c; -fx-alignment: center-left; -fx-cursor: hand;");
+        btnLogout.setStyle(
+                "-fx-background-color: transparent; -fx-text-fill: #e74c3c; -fx-alignment: center-left; -fx-cursor: hand;");
         sidebar.getChildren().addAll(new Separator(), btnLogout);
 
         this.setLeft(sidebar);
@@ -94,10 +98,23 @@ public class AdminDashboardView extends BorderPane {
 
         centralViewContainer.getChildren().add(pageSupervision);
 
-        btnSupervision.setOnAction(e -> { showPage(pageSupervision); updateActiveTabs(btnSupervision, btnInscrits, btnGraphe, btnMoteur); rafraichirCarte(); });
-        btnInscrits.setOnAction(e -> { showPage(pageInscrits); updateActiveTabs(btnInscrits, btnSupervision, btnGraphe, btnMoteur); });
-        btnGraphe.setOnAction(e -> { showPage(pageGraphe); updateActiveTabs(btnGraphe, btnSupervision, btnInscrits, btnMoteur); });
-        btnMoteur.setOnAction(e -> { showPage(pageMoteur); updateActiveTabs(btnMoteur, btnSupervision, btnInscrits, btnGraphe); });
+        btnSupervision.setOnAction(e -> {
+            showPage(pageSupervision);
+            updateActiveTabs(btnSupervision, btnInscrits, btnGraphe, btnMoteur);
+            rafraichirCarte();
+        });
+        btnInscrits.setOnAction(e -> {
+            showPage(pageInscrits);
+            updateActiveTabs(btnInscrits, btnSupervision, btnGraphe, btnMoteur);
+        });
+        btnGraphe.setOnAction(e -> {
+            showPage(pageGraphe);
+            updateActiveTabs(btnGraphe, btnSupervision, btnInscrits, btnMoteur);
+        });
+        btnMoteur.setOnAction(e -> {
+            showPage(pageMoteur);
+            updateActiveTabs(btnMoteur, btnSupervision, btnInscrits, btnGraphe);
+        });
         btnLogout.setOnAction(e -> {
             Main.currentUser = null;
             Main.showWelcomeView();
@@ -105,7 +122,8 @@ public class AdminDashboardView extends BorderPane {
     }
 
     /**
-     * CHARGEMENT ROBUSTE : Utilise Gson pour mapper directement ton fichier user.json
+     * CHARGEMENT ROBUSTE : Utilise Gson pour mapper directement ton fichier
+     * user.json
      */
     private void chargerDonneesDepuisJSON() {
         listeInscritsGlobal = FXCollections.observableArrayList();
@@ -115,20 +133,23 @@ public class AdminDashboardView extends BorderPane {
             File fichier = new File(cheminFichier);
             if (!fichier.exists()) {
                 System.out.println("⚠️ Fichier user.json introuvable. Création de données par défaut.");
-                listeInscritsGlobal.add(new AgentInscrit("admin", 1, "Chef", "Admin", "admin@test.com", "CALME", null, new Position(48.85, 2.35)));
+                listeInscritsGlobal.add(new AgentInscrit("admin", 1, "Chef", "Admin", "admin@test.com", "CALME", null,
+                        new Position(48.85, 2.35)));
                 return;
             }
 
             Gson gson = new Gson();
             FileReader reader = new FileReader(fichier);
-            
+
             // On convertit le tableau JSON directement en Liste d'objets Java
-            List<AgentInscrit> listeJson = gson.fromJson(reader, new TypeToken<List<AgentInscrit>>(){}.getType());
+            List<AgentInscrit> listeJson = gson.fromJson(reader, new TypeToken<List<AgentInscrit>>() {
+            }.getType());
             reader.close();
 
             if (listeJson != null) {
                 listeInscritsGlobal.addAll(listeJson);
-                System.out.println("✅ " + listeInscritsGlobal.size() + " utilisateurs chargés avec succès depuis le JSON !");
+                System.out.println(
+                        "✅ " + listeInscritsGlobal.size() + " utilisateurs chargés avec succès depuis le JSON !");
             }
 
         } catch (Exception e) {
@@ -164,24 +185,30 @@ public class AdminDashboardView extends BorderPane {
                 .append("L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);");
 
         // Points d'intérêts d'infrastructure fixes
-        htmlContent.append("L.marker([48.8584, 2.3499]).addTo(map).bindPopup('<b>🏢 CASERNE DE POMPIERS CENTRALE</b>');");
+        htmlContent
+                .append("L.marker([48.8584, 2.3499]).addTo(map).bindPopup('<b>🏢 CASERNE DE POMPIERS CENTRALE</b>');");
         htmlContent.append("L.marker([48.8462, 2.3427]).addTo(map).bindPopup('<b>🏠 REFUGE DE CRISE PRINCIPAL</b>');");
 
         // Affichage dynamique des vrais agents chargés du fichier JSON
         for (AgentInscrit agent : listeInscritsGlobal) {
-            if (agent.getPosition() == null) continue; // Sécurité si un agent n'a pas de coordonnées
+            if (agent.getPosition() == null)
+                continue; // Sécurité si un agent n'a pas de coordonnées
 
-            String color = "blue"; 
-            if ("admin".equals(agent.getType())) color = "purple";
-            if ("rescueAgent".equals(agent.getType())) color = "red"; 
+            String color = "blue";
+            if ("admin".equals(agent.getType()))
+                color = "purple";
+            if ("rescueAgent".equals(agent.getType()))
+                color = "red";
 
             String dest = agent.getDestination() != null ? agent.getDestination() : "Aucune";
 
-            // Nettoyage des chaînes pour éviter les crashs de chaînes de caractères en JavaScript
+            // Nettoyage des chaînes pour éviter les crashs de chaînes de caractères en
+            // JavaScript
             String prenom = agent.getFirstName().replace("'", "\\'");
             String nom = agent.getLastName().replace("'", "\\'");
 
-            htmlContent.append("L.circle([").append(agent.getPosition().getLat()).append(", ").append(agent.getPosition().getLng()).append("], {")
+            htmlContent.append("L.circle([").append(agent.getPosition().getLat()).append(", ")
+                    .append(agent.getPosition().getLng()).append("], {")
                     .append("color: '").append(color).append("',")
                     .append("fillColor: '").append(color).append("',")
                     .append("fillOpacity: 0.7, radius: 250 })")
@@ -209,7 +236,7 @@ public class AdminDashboardView extends BorderPane {
 
         TableColumn<AgentInscrit, Integer> colId = new TableColumn<>("ID");
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
-        
+
         TableColumn<AgentInscrit, String> colType = new TableColumn<>("Type");
         colType.setCellValueFactory(new PropertyValueFactory<>("type"));
 
@@ -242,13 +269,20 @@ public class AdminDashboardView extends BorderPane {
     }
 
     private void buildPageGraphe() {
-        pageGraphe = new VBox(20); pageGraphe.setPadding(new Insets(25));
-        pageGraphe.getChildren().add(new Label("🛠️ Configuration du Graphe — Gestion des goulots d'accès (Pénalité de 2 cycles)"));
+        pageGraphe = new VBox(20);
+        pageGraphe.setPadding(new Insets(25));
+        pageGraphe.getChildren()
+                .add(new Label("🛠️ Configuration du Graphe — Gestion des goulots d'accès (Pénalité de 2 cycles)"));
     }
 
     private void buildPageMoteur() {
-        pageMoteur = new VBox(20); pageMoteur.setPadding(new Insets(25));
-        pageMoteur.getChildren().add(new Label("⏱️ Moteur de Temps — Exécution de la simulation Pas à Pas"));
+        pageMoteur = new VBox(0);
+        pageMoteur.setPadding(new Insets(0));
+        pageMoteur.setStyle("-fx-background-color: #f4f7fc;");
+
+        SimulationView simulationView = new SimulationView(simulationController);
+        VBox.setVgrow(simulationView, Priority.ALWAYS);
+        pageMoteur.getChildren().add(simulationView);
     }
 
     private Button createMenuButton(String text, boolean isActive) {
@@ -263,9 +297,11 @@ public class AdminDashboardView extends BorderPane {
 
     private void setButtonStyle(Button btn, boolean isActive) {
         if (isActive) {
-            btn.setStyle("-fx-background-color: #0b5cbf; -fx-text-fill: white; -fx-background-radius: 6; -fx-font-weight: bold;");
+            btn.setStyle(
+                    "-fx-background-color: #0b5cbf; -fx-text-fill: white; -fx-background-radius: 6; -fx-font-weight: bold;");
         } else {
-            btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #a0b2ce; -fx-background-radius: 6; -fx-cursor: hand;");
+            btn.setStyle(
+                    "-fx-background-color: transparent; -fx-text-fill: #a0b2ce; -fx-background-radius: 6; -fx-cursor: hand;");
         }
     }
 
@@ -276,7 +312,8 @@ public class AdminDashboardView extends BorderPane {
 
     private void updateActiveTabs(Button active, Button... others) {
         setButtonStyle(active, true);
-        for (Button b : others) setButtonStyle(b, false);
+        for (Button b : others)
+            setButtonStyle(b, false);
     }
 
     // ========================================================
@@ -292,19 +329,49 @@ public class AdminDashboardView extends BorderPane {
         private String destination;
         private Position position; // Objet imbriqué comme dans ton fichier JSON
 
-        public AgentInscrit(String type, int id, String firstName, String lastName, String email, String state, String destination, Position position) {
-            this.type = type; this.id = id; this.firstName = firstName; this.lastName = lastName;
-            this.email = email; this.state = state; this.destination = destination; this.position = position;
+        public AgentInscrit(String type, int id, String firstName, String lastName, String email, String state,
+                String destination, Position position) {
+            this.type = type;
+            this.id = id;
+            this.firstName = firstName;
+            this.lastName = lastName;
+            this.email = email;
+            this.state = state;
+            this.destination = destination;
+            this.position = position;
         }
 
-        public String getType() { return type; }
-        public int getId() { return id; }
-        public String getFirstName() { return firstName; }
-        public String getLastName() { return lastName; }
-        public String getEmail() { return email; }
-        public String getState() { return state; }
-        public String getDestination() { return destination; }
-        public Position getPosition() { return position; }
+        public String getType() {
+            return type;
+        }
+
+        public int getId() {
+            return id;
+        }
+
+        public String getFirstName() {
+            return firstName;
+        }
+
+        public String getLastName() {
+            return lastName;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public String getState() {
+            return state;
+        }
+
+        public String getDestination() {
+            return destination;
+        }
+
+        public Position getPosition() {
+            return position;
+        }
     }
 
     public static class Position {
@@ -316,7 +383,12 @@ public class AdminDashboardView extends BorderPane {
             this.lng = lng;
         }
 
-        public double getLat() { return lat; }
-        public double getLng() { return lng; }
+        public double getLat() {
+            return lat;
+        }
+
+        public double getLng() {
+            return lng;
+        }
     }
 }
