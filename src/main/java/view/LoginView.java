@@ -46,7 +46,7 @@ public class LoginView extends StackPane {
             var resource = getClass().getResource(imagePath);
             if (resource != null) {
                 String imageUrl = resource.toExternalForm();
-                backgroundFiller.setStyle("-fx-background-image: url('" + imageUrl + "'); -fx-background-repeat: no-repeat; -fx-background-size: cover; -fx-background-position: center right;");
+                backgroundFiller.setStyle("-fx-background-image: url('" + imageUrl + "'); -fx-background-repeat: no-repeat; -fx-background-size: cover; -fx-background-position: center;");
             } else {
                 backgroundFiller.setStyle("-fx-background-color: #0d1e3d;");
             }

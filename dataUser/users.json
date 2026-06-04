@@ -10,8 +10,8 @@
       "lat": 48.8566,
       "lng": 2.3522
     },
-    "state": "CALME",
-    "destination": "Aucune"
+    "state": null,
+    "destination": null
   },
   {
     "type": "rescueAgent",
@@ -24,8 +24,8 @@
       "lat": 48.8615,
       "lng": 2.3375
     },
-    "destination": "Aucune",
-    "state": "CALME"
+    "destination": null,
+    "state": "DISPONIBLE"
   },
   {
     "type": "citizen",
@@ -38,7 +38,7 @@
       "lat": 48.8738,
       "lng": 2.2950
     },
-    "destination": "Aucune",
+    "destination": null,
     "state": "CALME"
   },
   {
@@ -52,7 +52,7 @@
       "lat": 48.8421,
       "lng": 2.3220
     },
-    "destination": "Aucune",
+    "destination": null,
     "state": "EN_INTERVENTION"
   },
   {
@@ -66,7 +66,7 @@
       "lat": 48.8520,
       "lng": 2.3698
     },
-    "destination": "Aucune",
+    "destination": null,
     "state": "PANIQUE"
   },
   {
@@ -80,7 +80,7 @@
       "lat": 48.8385,
       "lng": 2.3821
     },
-    "destination": "Aucune",
+    "destination": null,
     "state": "CALME"
   },
   {
@@ -94,8 +94,8 @@
       "lat": 48.8830,
       "lng": 2.3425
     },
-    "destination": "Aucune",
-    "state": "CALME"
+    "destination": null,
+    "state": "EN_ROUTE"
   },
   {
     "type": "citizen",
@@ -108,7 +108,7 @@
       "lat": 48.8692,
       "lng": 2.3601
     },
-    "destination": "Aucune",
+    "destination": null,
     "state": "BLESSE"
   },
   {
@@ -122,7 +122,7 @@
       "lat": 48.8299,
       "lng": 2.3480
     },
-    "destination": "Aucune",
+    "destination": null,
     "state": "CALME"
   },
   {
@@ -136,7 +136,7 @@
       "lat": 48.8590,
       "lng": 2.2890
     },
-    "destination": "Aucune",
+    "destination": null,
     "state": "EN_ROUTE"
   }
 ]

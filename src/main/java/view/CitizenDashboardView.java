@@ -16,6 +16,8 @@ import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import model.agent.Agent;
+import model.agent.Citizen;
+import model.agent.RescueAgent;
 
 public class CitizenDashboardView extends BorderPane {
 
@@ -54,8 +56,14 @@ public class CitizenDashboardView extends BorderPane {
             }
         }
 
-        String stateStr = (user != null && user.getState() != null) ? user.getState().toString() : "CALME";
+        String stateStr;
 
+        if (user instanceof Citizen c) {
+            stateStr = (c.getState() != null) ? c.getState().name() : "CALME";
+        } else {
+            throw new IllegalStateException("L'utilisateur connecté n'est pas un citoyen !");
+        }
+        
         // ==========================================
         // SIDEBAR (GAUCHE) - Adaptée à l'état de l'User
         // ==========================================

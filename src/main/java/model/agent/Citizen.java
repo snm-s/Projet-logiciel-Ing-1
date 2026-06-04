@@ -3,10 +3,13 @@ package model.agent;
 import java.time.LocalDate;
 import java.time.Period;
 
+import model.enums.CitizenState;
 import model.graph.Node;
 
 @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
 public class Citizen extends Agent {
+    private CitizenState state;
+
     private boolean hasPhone;
     private String mobilityStatus;
     private HouseType houseType;
@@ -17,15 +20,55 @@ public class Citizen extends Agent {
     private String emergencyContact;
 
     
+    public CitizenState getState() {
+        return state;
+    }
+
+    public boolean isHasPhone() {
+        return hasPhone;
+    }
+
+    public String getMobilityStatus() {
+        return mobilityStatus;
+    }
+
+    public HouseType getHouseType() {
+        return houseType;
+    }
+
+    public int getFloor() {
+        return floor;
+    }
+
+    public int getHouseholdSize() {
+        return householdSize;
+    }
+
+    public boolean isHasPets() {
+        return hasPets;
+    }
+
+    public String getMedicalNeeds() {
+        return medicalNeeds;
+    }
+
+    public String getEmergencyContact() {
+        return emergencyContact;
+    }
+
+
+    // Constructeur vide nécessaire pour Jackson
     public Citizen() {
         super(); // Appelle le constructeur par défaut de Agent
+        this.state = CitizenState.CALME; // État par défaut
     }
     
     public Citizen(int id, String firstName, String lastName, Node position) {
         super(id, firstName, lastName, position);
+        this.state = CitizenState.CALME; // État par défaut
     }
 
-    // --- setters corrigés (suppression du TODO et du throw) ---
+    // --- setters
 
     public void setHasPets(boolean hasPets) {
         this.hasPets = hasPets;
@@ -49,6 +92,10 @@ public class Citizen extends Agent {
 
     public void setHouseType(HouseType houseType) {
         this.houseType = houseType;
+    }
+
+    public void setState(CitizenState state) {
+        this.state = state;
     }
 
     // --- Méthodes existantes ---

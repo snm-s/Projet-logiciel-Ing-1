@@ -1,6 +1,6 @@
 package model.enums;
 
-public enum AgentState {
+public enum CitizenState {
     CALME,
     STRESSE,
     PANIQUE,
