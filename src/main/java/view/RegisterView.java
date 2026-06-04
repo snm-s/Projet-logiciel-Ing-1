@@ -4,6 +4,7 @@ import java.time.LocalDate;
 
 import app.Main;
 import controller.RegisterController;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -25,6 +26,7 @@ import javafx.scene.shape.SVGPath;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+import service.CityService;
 
 public class RegisterView extends StackPane {
 
@@ -46,7 +48,9 @@ public class RegisterView extends StackPane {
     private Label ruleLength = new Label("• At least 8 characters"),
                   ruleUpper  = new Label("• At least 1 uppercase letter"),
                   ruleDigit  = new Label("• At least 1 number");
-    private TextField address = new TextField(), city = new TextField(), country = new TextField();
+    private TextField address = new TextField(), country = new TextField();
+    private ComboBox<String> city = new ComboBox<>();
+    private boolean citySelectionInProgress = false;
     private ComboBox<String> houseType = new ComboBox<>();
     private TextField floor = new TextField();
     private Label gpsLabel = new Label("GPS not set");
@@ -207,11 +211,60 @@ root.getChildren().addAll(
 
         // --- ADDRESS ---
         address.setPromptText("Address"); applyTextFieldStyle(address);
-        city.setPromptText("City"); applyTextFieldStyle(city);
+        city.setPromptText("City");
+city.setEditable(true);
+city.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
+
+    if (citySelectionInProgress) {
+        return;
+    }
+
+    if (newValue == null || newValue.trim().length() < 2) {
+        city.getItems().clear();
+        city.hide();
+        return;
+    }
+
+    new Thread(() -> {
+        var results = CityService.searchCities(newValue);
+
+        Platform.runLater(() -> {
+            if (!city.getEditor().getText().equals(newValue)) {
+                return;
+            }
+
+            city.getItems().setAll(results);
+
+            if (!results.isEmpty() && city.isFocused()) {
+                city.show();
+            } else {
+                city.hide();
+            }
+        });
+    }).start();
+});
+
+city.valueProperty().addListener((obs, oldValue, selected) -> {
+    if (selected != null) {
+        citySelectionInProgress = true;
+        city.getEditor().setText(selected);
+        citySelectionInProgress = false;
+        city.hide();
+        country.requestFocus();
+    }
+});
+
+applyEditableComboBoxStyle(city);
         country.setPromptText("Country"); applyTextFieldStyle(country);
-        setupLiveValidation(address, errAddress, f -> !f.getText().trim().isEmpty());
-        setupLiveValidation(city, errCity, f -> !f.getText().trim().isEmpty());
-        setupLiveValidation(country, errCountry, f -> !f.getText().trim().isEmpty());
+        setupLiveValidation(address, errAddress, f ->
+            f.getText().matches(".*\\d+.*") &&
+            f.getText().matches(".*[a-zA-ZÀ-ÿ]+.*")
+        );
+        
+        
+        setupLiveValidation(country, errCountry, f ->
+            f.getText().equalsIgnoreCase("France")
+        );
         root.getChildren().addAll(createSectionLabel("Address"),
             fieldRow(address, errAddress), fieldRow(city, errCity), fieldRow(country, errCountry));
 
@@ -314,7 +367,13 @@ root.getChildren().addAll(
 
     private void applyComboBoxStyle(ComboBox<String> combo) {
         combo.setMaxWidth(Double.MAX_VALUE); combo.setPrefHeight(42);
-        combo.setStyle("-fx-background-color: rgba(255,255,255,0.05); -fx-border-color: rgba(255,255,255,0.25); -fx-border-radius: 6; -fx-background-radius: 6; -fx-text-fill: white;");
+        combo.setStyle(
+            "-fx-background-color: rgba(255,255,255,0.05);" +
+            "-fx-border-color: rgba(255,255,255,0.25);" +
+            "-fx-border-radius: 6;" +
+            "-fx-background-radius: 6;" +
+            "-fx-text-fill: white;"
+        );
         combo.setButtonCell(new ListCell<>() {
             @Override protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
@@ -332,6 +391,17 @@ root.getChildren().addAll(
         combo.setOnShowing(e -> combo.getScene().getRoot()
             .lookupAll(".combo-box-popup .list-view .list-cell")
             .forEach(n -> n.setStyle("-fx-background-color: #0b1a30; -fx-text-fill: white;")));
+    }
+
+    private void applyEditableComboBoxStyle(ComboBox<String> combo) {
+        applyComboBoxStyle(combo);
+    
+        combo.getEditor().setStyle(
+            "-fx-background-color: rgba(255,255,255,0.05);" +
+            "-fx-text-fill: white;" +
+            "-fx-prompt-text-fill: #a0b2ce;" +
+            "-fx-border-color: transparent;"
+        );
     }
 
     private void applyPasswordColorStyle(PasswordField field, String text, boolean isValid) {
@@ -440,9 +510,8 @@ root.getChildren().addAll(
         if (tf == phone)            return "Phone must be exactly 10 digits";
         if (tf == firstName)        return "First name must contain only letters";
         if (tf == lastName)         return "Last name must contain only letters";
-        if (tf == address)          return "Address is required";
-        if (tf == city)             return "City is required";
-        if (tf == country)          return "Country is required";
+        if (tf == address)          return "Address must contain a street number and a street name";
+        if (tf == country)          return "Country must be France";
         if (tf == floor)            return "Floor is required";
         if (tf == householdSize)    return "Household size is required";
         if (tf == emergencyContact) return "Emergency contact is required";
@@ -557,9 +626,22 @@ root.getChildren().addAll(
         if (!email.getText().contains("@") || email.getText().trim().isEmpty()) { showError(errEmail, email, true, getFieldError(email)); valid = false; }
         if (!phone.getText().matches("\\d{10}")) { showError(errPhone, phone, true, getFieldError(phone)); valid = false; }
         // Address
-        if (address.getText().trim().isEmpty()) { showError(errAddress, address, true, getFieldError(address)); valid = false; }
-        if (city.getText().trim().isEmpty())    { showError(errCity, city, true, getFieldError(city)); valid = false; }
-        if (country.getText().trim().isEmpty()) { showError(errCountry, country, true, getFieldError(country)); valid = false; }
+        if (!address.getText().matches(".*\\d+.*") || !address.getText().matches(".*[a-zA-ZÀ-ÿ]+.*")) {
+            showError(errAddress, address, true, getFieldError(address));
+            valid = false;
+        }
+        
+        String cityValue = city.getEditor().getText().trim();
+
+if (cityValue.isEmpty() || !city.getItems().contains(cityValue)) {
+    showError(errCity, city, true, "Select a city from the list");
+    valid = false;
+}
+        
+        if (!country.getText().equalsIgnoreCase("France")) {
+            showError(errCountry, country, true, getFieldError(country));
+            valid = false;
+        }
         // Role
         if (role.getValue() == null) { showError(errRole, role, true, "Role is required"); valid = false; }
         // Citizen fields
@@ -640,7 +722,7 @@ root.getChildren().addAll(
         visibleConfirmPassword.setOnAction(e -> address.requestFocus());
     
         address.setOnAction(e -> city.requestFocus());
-        city.setOnAction(e -> country.requestFocus());
+        city.getEditor().setOnAction(e -> country.requestFocus());
     
         country.setOnAction(e -> gpsButton.requestFocus());
     
@@ -674,7 +756,7 @@ root.getChildren().addAll(
 
         firstName.getText(), lastName.getText(), getBirthDateValue(),
         email.getText(), phone.getText(), pwd,
-        address.getText(), city.getText(), country.getText(),
+        address.getText(), city.getEditor().getText(), country.getText(),
         houseType.getValue(), floorNum, this.detectedLat, this.detectedLng, role.getValue(), // <-- CORRIGÉ ICI
         size, pets.isSelected(), medicalNeeds.getText(),
         emergencyContact.getText(), pmrCheckBox.isSelected());
@@ -694,7 +776,7 @@ root.getChildren().addAll(
    public void fillLocationFields(double lat, double lng, String cityValue, String countryValue) {
     this.detectedLat = lat;
     this.detectedLng = lng;
-    city.setText(cityValue);
+    city.getEditor().setText(cityValue);
     country.setText(countryValue);
     gpsLabel.setText(cityValue.isEmpty()
     ? "❌ Location detection failed"
