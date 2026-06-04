@@ -93,14 +93,11 @@ public class Main extends Application {
 
             case "rescue":
             case "rescueagent":
-                /*
-                 * scene = new Scene(new RescueDashboardView(), 1000, 650);
-                 * mainStage.setTitle("Flood Simulation - Rescue Command");
-                 * break;
-                 */
-
-                showSimulationView();
-                return;
+                
+                 scene = new Scene(new RescueDashboardView(), 1000, 650);
+                 mainStage.setTitle("Flood Simulation - Rescue Command");
+                 break;
+                 
 
             case "citizen":
             default:

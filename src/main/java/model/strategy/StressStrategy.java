@@ -1,5 +1,5 @@
 package model.strategy;
 
-public class StresseStrategy {
+public class StressStrategy {
     
 }
