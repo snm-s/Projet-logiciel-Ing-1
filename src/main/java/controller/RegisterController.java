@@ -1,8 +1,9 @@
 package controller;
 
-import javafx.stage.Stage;
-import view.RegisterView;
+import java.time.LocalDate;
+
 import app.Main;
+import javafx.stage.Stage;
 import model.agent.Agent;
 import model.agent.Citizen;
 import model.agent.HouseType;
@@ -10,8 +11,7 @@ import model.agent.PMRAgent;
 import model.agent.RescueAgent;
 import model.auth.UserService;
 import model.graph.Node;
-
-import java.time.LocalDate;
+import view.RegisterView;
 
 public class RegisterController {
 
@@ -47,7 +47,6 @@ public class RegisterController {
             boolean isPmr
     ) {
 
-
         // 1. Sécurité : Vérifier si l'utilisateur existe déjà
         if (UserService.findByEmail(email) != null) {
             System.out.println("[RegisterController] Erreur : Cet email est déjà utilisé !");
@@ -75,7 +74,6 @@ public class RegisterController {
         }
 
         // 3. Remplissage des données communes à tous les agents
-        // (Note : Ces setters doivent exister dans la classe parente Agent)
         newAgent.setBirthDate(birthDate);
         newAgent.setEmail(email);
         newAgent.setPhone(phone);
@@ -95,7 +93,7 @@ public class RegisterController {
                 cit.setHouseType(houseType);
             } catch (Exception e) {
                 System.err.println("[RegisterController] Type de maison invalide : " + houseTypeString);
-                return false; // Stoppe l'enregistrement si le type de maison est invalide
+                return false; 
             }
             
             cit.setFloor(floor);
@@ -145,27 +143,37 @@ public class RegisterController {
                 && passwordsMatch(password, confirmPassword);
     }
 
+    // ==========================================
+    // DÉTECTION GPS PAR IP
+    // ==========================================
 
     public void handleDetectGps() {
         javafx.concurrent.Task<Void> task = new javafx.concurrent.Task<>() {
             @Override
             protected Void call() throws Exception {
-                java.net.URL url = new java.net.URL("http://ip-api.com/json?fields=city,regionName,country,query");
+                // Ajout des champs lat et lon à l'URL pour récupérer la position géographique
+                java.net.URL url = new java.net.URL("http://ip-api.com/json?fields=city,country,lat,lon");
                 java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
                 conn.setConnectTimeout(4000);
                 conn.setReadTimeout(4000);
                 String json = new String(conn.getInputStream().readAllBytes());
 
-                String city    = parseJsonString(json, "city");
+                String city = parseJsonString(json, "city");
                 String country = parseJsonString(json, "country");
-                // address = région (meilleure approximation sans GPS réel)
-                javafx.application.Platform.runLater(() -> view.fillLocationFields("", city, country));
+                
+                // Parsing de la latitude et de la longitude (valeurs numériques)
+                double lat = parseJsonDouble(json, "lat", 48.8566);
+                double lng = parseJsonDouble(json, "lon", 2.3522);
+
+                // Envoi des 4 arguments à la vue mise à jour
+                javafx.application.Platform.runLater(() -> view.fillLocationFields(lat, lng, city, country));
                 return null;
             }
             @Override
             protected void failed() {
+                // En cas d'échec de la requête, valeurs par défaut (Paris)
                 javafx.application.Platform.runLater(() ->
-                    view.fillLocationFields("", "", ""));
+                    view.fillLocationFields(48.8566, 2.3522, "", ""));
             }
         };
         new Thread(task).start();
@@ -177,5 +185,21 @@ public class RegisterController {
         int start = json.indexOf('"', i + key.length() + 3) + 1;
         int end   = json.indexOf('"', start);
         return json.substring(start, end);
+    }
+
+    private double parseJsonDouble(String json, String key, double defaultValue) {
+        try {
+            int i = json.indexOf("\"" + key + "\":");
+            if (i == -1) return defaultValue;
+            int start = i + key.length() + 3;
+            int end = json.indexOf(",", start);
+            if (end == -1 || end > json.indexOf("}", start)) {
+                end = json.indexOf("}", start);
+            }
+            String valStr = json.substring(start, end).trim();
+            return Double.parseDouble(valStr);
+        } catch (Exception e) {
+            return defaultValue;
+        }
     }
 }

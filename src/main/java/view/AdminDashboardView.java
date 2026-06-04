@@ -1,23 +1,32 @@
 package view;
 
+import java.io.File;
+import java.io.FileReader;
+import java.util.List;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
 import app.Main;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.Separator;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.*;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.web.WebView;
-
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class AdminDashboardView extends BorderPane {
 
@@ -34,7 +43,7 @@ public class AdminDashboardView extends BorderPane {
         this.setPrefSize(1280, 750);
         this.setStyle("-fx-background-color: #f4f7fc;");
 
-        // 1. CHARGEMENT DEPUIS TON VRAI FICHIER USER.JSON
+        // 1. CHARGEMENT DEPUIS TON VRAI FICHIER USER.JSON VIA GSON
         chargerDonneesDepuisJSON();
 
         // ==========================================
@@ -55,18 +64,18 @@ public class AdminDashboardView extends BorderPane {
         headerBox.setPadding(new Insets(10, 5, 30, 5));
         sidebar.getChildren().add(headerBox);
 
-        Button btnSupervision = createMenuButton("🗺️  Carte de Supervision Live", true);
-        Button btnInscrits = createMenuButton("👥  Liste des Inscrits", false);
-        Button btnGraphe = createMenuButton("🛠️  Modifications Graphe", false);
-        Button btnMoteur = createMenuButton("⏱️  Moteur & Simulation", false);
+        Button btnSupervision = createMenuButton("🗺️   Carte de Supervision Live", true);
+        Button btnInscrits = createMenuButton("👥   Liste des Inscrits", false);
+        Button btnGraphe = createMenuButton("🛠️   Modifications Graphe", false);
+        Button btnMoteur = createMenuButton("⏱️   Moteur & Simulation", false);
 
         sidebar.getChildren().addAll(btnSupervision, btnInscrits, btnGraphe, btnMoteur);
 
         Region spacer = new Region();
-        VBox.setVgrow(spacer, Priority.ALWAYS);
+        VBox.setVgrow(spacer, Priority.ALWAYS); // CORRIGÉ : C'est bien Vgrow ici !
         sidebar.getChildren().add(spacer);
 
-        Button btnLogout = createMenuButton("🚪  Déconnexion", false);
+        Button btnLogout = createMenuButton("🚪   Déconnexion", false);
         btnLogout.setStyle("-fx-background-color: transparent; -fx-text-fill: #e74c3c; -fx-alignment: center-left; -fx-cursor: hand;");
         sidebar.getChildren().addAll(new Separator(), btnLogout);
 
@@ -96,65 +105,36 @@ public class AdminDashboardView extends BorderPane {
     }
 
     /**
-     * PARSER MAISON : Lit directement ton fichier "user.json" sans bibliothèque externe bloquante
+     * CHARGEMENT ROBUSTE : Utilise Gson pour mapper directement ton fichier user.json
      */
     private void chargerDonneesDepuisJSON() {
         listeInscritsGlobal = FXCollections.observableArrayList();
-        String cheminFichier = "user.json"; // Place ton fichier user.json à la racine de ton projet
+        String cheminFichier = "user.json";
 
         try {
             File fichier = new File(cheminFichier);
             if (!fichier.exists()) {
-                System.out.println("⚠️ Fichier user.json introuvable à la racine. Création d'exemples.");
-                // Fallback si le fichier n'est pas encore là
-                listeInscritsGlobal.add(new AgentInscrit("admin", 1, "Chef", "Admin", "admin@test.com", 48.85, 2.35, "CALME", "Aucune"));
+                System.out.println("⚠️ Fichier user.json introuvable. Création de données par défaut.");
+                listeInscritsGlobal.add(new AgentInscrit("admin", 1, "Chef", "Admin", "admin@test.com", "CALME", null, new Position(48.85, 2.35)));
                 return;
             }
 
-            String content = new String(Files.readAllBytes(Paths.get(cheminFichier)));
+            Gson gson = new Gson();
+            FileReader reader = new FileReader(fichier);
+            
+            // On convertit le tableau JSON directement en Liste d'objets Java
+            List<AgentInscrit> listeJson = gson.fromJson(reader, new TypeToken<List<AgentInscrit>>(){}.getType());
+            reader.close();
 
-            // Regex pour découper les blocs d'objets { ... } du JSON
-            Pattern objectPattern = Pattern.compile("\\{[^\\}]+\\}");
-            Matcher matcher = objectPattern.matcher(content);
-
-            while (matcher.find()) {
-                String bloc = matcher.group();
-
-                String type = extractJsonValue(bloc, "type");
-                int id = Integer.parseInt(extractJsonValue(bloc, "id"));
-                String firstName = extractJsonValue(bloc, "firstName");
-                String lastName = extractJsonValue(bloc, "lastName");
-                String email = extractJsonValue(bloc, "email");
-                String state = extractJsonValue(bloc, "state");
-                String destination = extractJsonValue(bloc, "destination");
-                if (destination == null || destination.equals("null")) destination = "Aucune";
-
-                // Extraction des coordonnées imbriquées dans "position"
-                double lat = 48.85; // valeurs par défaut
-                double lng = 2.35;
-                Pattern latPattern = Pattern.compile("\"lat\"\\s*:\\s*([0-9.]+)");
-                Pattern lngPattern = Pattern.compile("\"lng\"\\s*:\\s*([0-9.]+)");
-                Matcher mLat = latPattern.matcher(bloc);
-                Matcher mLng = lngPattern.matcher(bloc);
-                if (mLat.find()) lat = Double.parseDouble(mLat.group(1));
-                if (mLng.find()) lng = Double.parseDouble(mLng.group(1));
-
-                listeInscritsGlobal.add(new AgentInscrit(type, id, firstName, lastName, email, lat, lng, state, destination));
+            if (listeJson != null) {
+                listeInscritsGlobal.addAll(listeJson);
+                System.out.println("✅ " + listeInscritsGlobal.size() + " utilisateurs chargés avec succès depuis le JSON !");
             }
 
         } catch (Exception e) {
-            System.err.println("Erreur lors de la lecture du JSON : " + e.getMessage());
+            System.err.println("❌ Erreur critique lors de la lecture du JSON via GSON : " + e.getMessage());
             e.printStackTrace();
         }
-    }
-
-    private String extractJsonValue(String bloc, String key) {
-        Pattern pattern = Pattern.compile("\"" + key + "\"\\s*:\\s*\"?([^\",\\}]+)\"?");
-        Matcher matcher = pattern.matcher(bloc);
-        if (matcher.find()) {
-            return matcher.group(1).replace("\"", "").trim();
-        }
-        return "null";
     }
 
     private void buildPageSupervision() {
@@ -187,21 +167,29 @@ public class AdminDashboardView extends BorderPane {
         htmlContent.append("L.marker([48.8584, 2.3499]).addTo(map).bindPopup('<b>🏢 CASERNE DE POMPIERS CENTRALE</b>');");
         htmlContent.append("L.marker([48.8462, 2.3427]).addTo(map).bindPopup('<b>🏠 REFUGE DE CRISE PRINCIPAL</b>');");
 
-        // Affichage de tes vrais agents sur la carte
+        // Affichage dynamique des vrais agents chargés du fichier JSON
         for (AgentInscrit agent : listeInscritsGlobal) {
-            String color = "blue"; 
-            if (agent.getType().equals("admin")) color = "purple";
-            if (agent.getType().equals("rescueAgent")) color = "red"; // Rouge pour les secours/pompiers
+            if (agent.getPosition() == null) continue; // Sécurité si un agent n'a pas de coordonnées
 
-            htmlContent.append("L.circle([").append(agent.getLat()).append(", ").append(agent.getLng()).append("], {")
+            String color = "blue"; 
+            if ("admin".equals(agent.getType())) color = "purple";
+            if ("rescueAgent".equals(agent.getType())) color = "red"; 
+
+            String dest = agent.getDestination() != null ? agent.getDestination() : "Aucune";
+
+            // Nettoyage des chaînes pour éviter les crashs de chaînes de caractères en JavaScript
+            String prenom = agent.getFirstName().replace("'", "\\'");
+            String nom = agent.getLastName().replace("'", "\\'");
+
+            htmlContent.append("L.circle([").append(agent.getPosition().getLat()).append(", ").append(agent.getPosition().getLng()).append("], {")
                     .append("color: '").append(color).append("',")
                     .append("fillColor: '").append(color).append("',")
-                    .append("fillOpacity: 0.7, radius: 150 })")
+                    .append("fillOpacity: 0.7, radius: 250 })")
                     .append(".addTo(map).bindPopup('")
                     .append("<b>Rôle:</b> ").append(agent.getType())
-                    .append("<br><b>Nom:</b> ").append(agent.getFirstName()).append(" ").append(agent.getLastName())
+                    .append("<br><b>Nom:</b> ").append(prenom).append(" ").append(nom)
                     .append("<br><b>État:</b> ").append(agent.getState())
-                    .append("<br><b>Destination:</b> ").append(agent.getDestination())
+                    .append("<br><b>Destination:</b> ").append(dest)
                     .append("');");
         }
 
@@ -291,17 +279,22 @@ public class AdminDashboardView extends BorderPane {
         for (Button b : others) setButtonStyle(b, false);
     }
 
-    // ==========================================
-    // CLASSE MODÈLE INTERNE ADAPTÉE À TON JSON
-    // ==========================================
+    // ========================================================
+    // CLASSES MODÈLES ADAPTÉES STRICTEMENT À TON FICHIER JSON
+    // ========================================================
     public static class AgentInscrit {
-        private final String type, firstName, lastName, email, state, destination;
-        private final int id;
-        private final double lat, lng;
+        private String type;
+        private int id;
+        private String firstName;
+        private String lastName;
+        private String email;
+        private String state;
+        private String destination;
+        private Position position; // Objet imbriqué comme dans ton fichier JSON
 
-        public AgentInscrit(String type, int id, String firstName, String lastName, String email, double lat, double lng, String state, String destination) {
-            this.type = type; this.id = id; this.firstName = firstName; this.lastName = lastName; this.email = email;
-            this.lat = lat; this.lng = lng; this.state = state; this.destination = destination;
+        public AgentInscrit(String type, int id, String firstName, String lastName, String email, String state, String destination, Position position) {
+            this.type = type; this.id = id; this.firstName = firstName; this.lastName = lastName;
+            this.email = email; this.state = state; this.destination = destination; this.position = position;
         }
 
         public String getType() { return type; }
@@ -309,9 +302,21 @@ public class AdminDashboardView extends BorderPane {
         public String getFirstName() { return firstName; }
         public String getLastName() { return lastName; }
         public String getEmail() { return email; }
-        public double getLat() { return lat; }
-        public double getLng() { return lng; }
         public String getState() { return state; }
         public String getDestination() { return destination; }
+        public Position getPosition() { return position; }
+    }
+
+    public static class Position {
+        private double lat;
+        private double lng;
+
+        public Position(double lat, double lng) {
+            this.lat = lat;
+            this.lng = lng;
+        }
+
+        public double getLat() { return lat; }
+        public double getLng() { return lng; }
     }
 }

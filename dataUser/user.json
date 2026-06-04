@@ -1,0 +1,142 @@
+[
+  {
+    "type": "admin",
+    "id": 1,
+    "firstName": "Chef",
+    "lastName": "Admin",
+    "email": "admin@test.com",
+    "passwordHash": "admin123",
+    "position": {
+      "lat": 48.8566,
+      "lng": 2.3522
+    },
+    "state": "CALME",
+    "destination": "Aucune"
+  },
+  {
+    "type": "rescueAgent",
+    "id": 2,
+    "firstName": "Capitaine",
+    "lastName": "Secours",
+    "email": "secours@test.com",
+    "passwordHash": "secours123",
+    "position": {
+      "lat": 48.8615,
+      "lng": 2.3375
+    },
+    "destination": "Aucune",
+    "state": "CALME"
+  },
+  {
+    "type": "citizen",
+    "id": 3,
+    "firstName": "Jean",
+    "lastName": "Dupont",
+    "email": "citoyen@test.com",
+    "passwordHash": "citoyen123",
+    "position": {
+      "lat": 48.8738,
+      "lng": 2.2950
+    },
+    "destination": "Aucune",
+    "state": "CALME"
+  },
+  {
+    "type": "rescueAgent",
+    "id": 4,
+    "firstName": "Lieutenant",
+    "lastName": "Gérard",
+    "email": "gerard@test.com",
+    "passwordHash": "pompie123",
+    "position": {
+      "lat": 48.8421,
+      "lng": 2.3220
+    },
+    "destination": "Aucune",
+    "state": "EN_INTERVENTION"
+  },
+  {
+    "type": "citizen",
+    "id": 5,
+    "firstName": "Sophie",
+    "lastName": "Martin",
+    "email": "sophie@test.com",
+    "passwordHash": "sophie123",
+    "position": {
+      "lat": 48.8520,
+      "lng": 2.3698
+    },
+    "destination": "Aucune",
+    "state": "PANIQUE"
+  },
+  {
+    "type": "citizen",
+    "id": 6,
+    "firstName": "Lucas",
+    "lastName": "Bernard",
+    "email": "lucas@test.com",
+    "passwordHash": "lucas123",
+    "position": {
+      "lat": 48.8385,
+      "lng": 2.3821
+    },
+    "destination": "Aucune",
+    "state": "CALME"
+  },
+  {
+    "type": "rescueAgent",
+    "id": 7,
+    "firstName": "Major",
+    "lastName": "Bastien",
+    "email": "bastien@test.com",
+    "passwordHash": "major123",
+    "position": {
+      "lat": 48.8830,
+      "lng": 2.3425
+    },
+    "destination": "Aucune",
+    "state": "CALME"
+  },
+  {
+    "type": "citizen",
+    "id": 8,
+    "firstName": "Chloé",
+    "lastName": "Petit",
+    "email": "chloe@test.com",
+    "passwordHash": "chloe123",
+    "position": {
+      "lat": 48.8692,
+      "lng": 2.3601
+    },
+    "destination": "Aucune",
+    "state": "BLESSE"
+  },
+  {
+    "type": "citizen",
+    "id": 9,
+    "firstName": "Thomas",
+    "lastName": "Rousseau",
+    "email": "thomas@test.com",
+    "passwordHash": "thomas123",
+    "position": {
+      "lat": 48.8299,
+      "lng": 2.3480
+    },
+    "destination": "Aucune",
+    "state": "CALME"
+  },
+  {
+    "type": "rescueAgent",
+    "id": 10,
+    "firstName": "Sergent",
+    "lastName": "Dumas",
+    "email": "dumas@test.com",
+    "passwordHash": "dumas123",
+    "position": {
+      "lat": 48.8590,
+      "lng": 2.2890
+    },
+    "destination": "Aucune",
+    "state": "EN_ROUTE"
+  }
+]

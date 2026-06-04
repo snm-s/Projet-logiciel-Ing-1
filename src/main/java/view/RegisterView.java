@@ -1,17 +1,31 @@
 package view;
 
+import java.time.LocalDate;
+
+import app.Main;
+import controller.RegisterController;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Control;
+import javafx.scene.control.DatePicker;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.SVGPath;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
-import app.Main;
-import controller.RegisterController;
-import java.time.LocalDate;
 
 public class RegisterView extends StackPane {
 
@@ -39,6 +53,8 @@ public class RegisterView extends StackPane {
     private ComboBox<String> role = new ComboBox<>();
     private VBox citizenBox = new VBox(15);
     private TextField householdSize = new TextField();
+    private double detectedLat = 48.8566; // Valeur par défaut (Paris)
+private double detectedLng = 2.3522;
     private CheckBox pets = new CheckBox("Has pets");
     private CheckBox pmrCheckBox = new CheckBox("PMR (Person with reduced mobility)");
     private TextArea medicalNeeds = new TextArea();
@@ -469,12 +485,12 @@ public class RegisterView extends StackPane {
         catch (NumberFormatException e) { System.out.println("[Register] Erreur : Étage invalide"); }
 
         boolean writeSuccess = controller.handleUserRegistration(
-            firstName.getText(), lastName.getText(), birthDate.getValue(),
-            email.getText(), phone.getText(), pwd,
-            address.getText(), city.getText(), country.getText(),
-            houseType.getValue(), floorNum, 48.85, 2.35, role.getValue(),
-            size, pets.isSelected(), medicalNeeds.getText(),
-            emergencyContact.getText(), pmrCheckBox.isSelected());
+    firstName.getText(), lastName.getText(), birthDate.getValue(),
+    email.getText(), phone.getText(), pwd,
+    address.getText(), city.getText(), country.getText(),
+    houseType.getValue(), floorNum, this.detectedLat, this.detectedLng, role.getValue(), // <-- CORRIGÉ ICI
+    size, pets.isSelected(), medicalNeeds.getText(),
+    emergencyContact.getText(), pmrCheckBox.isSelected());
 
         if (writeSuccess) { System.out.println("[Register] INSCRIPTION RÉUSSIE ET ENREGISTRÉE !"); Main.showWelcomeView(); }
         else              { System.out.println("[Register] L'inscription a échoué (Email déjà utilisé ou erreur JSON)"); }
@@ -485,10 +501,11 @@ public class RegisterView extends StackPane {
     // ==========================================
     public Button getBackButton() { return backButton; }
 
-   public void fillLocationFields(String addressValue, String cityValue, String countryValue) {
-        address.setText(addressValue); // reste vide, user remplit manuellement
-        city.setText(cityValue);
-        country.setText(countryValue);
-        gpsLabel.setText(cityValue.isEmpty() ? "❌ Detection failed" : "✅ City & country detected — enter your street manually");
-    }
+   public void fillLocationFields(double lat, double lng, String cityValue, String countryValue) {
+    this.detectedLat = lat;
+    this.detectedLng = lng;
+    city.setText(cityValue);
+    country.setText(countryValue);
+    gpsLabel.setText(cityValue.isEmpty() ? "❌ Detection failed" : "✅ GPS Set — enter your street manually");
+}
 }
