@@ -50,7 +50,7 @@ public class RegisterView extends StackPane {
     private ComboBox<String> houseType = new ComboBox<>();
     private TextField floor = new TextField();
     private Label gpsLabel = new Label("GPS not set");
-    private Button gpsButton = new Button("Detect GPS");
+    private Button gpsButton = new Button("Detect location");
     private ComboBox<String> role = new ComboBox<>();
     private VBox citizenBox = new VBox(15);
     private TextField householdSize = new TextField();
@@ -696,6 +696,8 @@ root.getChildren().addAll(
     this.detectedLng = lng;
     city.setText(cityValue);
     country.setText(countryValue);
-    gpsLabel.setText(cityValue.isEmpty() ? "❌ Detection failed" : "✅ GPS Set — enter your street manually");
+    gpsLabel.setText(cityValue.isEmpty()
+    ? "❌ Location detection failed"
+    : "✅ Approximate location detected — enter your street manually");
 }
 }
