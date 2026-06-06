@@ -23,4 +23,8 @@ public class PasswordHasher {
             throw new RuntimeException(e);
         }
     }
+
+    public static boolean verify(String password, String hash) {
+        return hash(password).equals(hash);
+    }
 }
