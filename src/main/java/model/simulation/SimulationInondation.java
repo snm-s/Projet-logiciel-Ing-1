@@ -5,6 +5,7 @@ import java.util.List;
 
 import model.alert.Alert;
 import model.alert.AlertSystem;
+import model.enums.AlertType;
 import model.agent.Agent;
 import model.observer.Observer;
 import model.observer.Subject;
@@ -192,15 +193,23 @@ public class SimulationInondation {
     }
 
     private void propagateFlood() {
+        // Format pour l'heure actuelle
+        String time = java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+
         for (Zone zone : zones) {
             if (!zone.isFlooded() && niveauEau >= zone.getAltitude()) {
                 zone.setFlooded(true);
                 notifyZoneFlooded(zone);
+                
+                // Création de l'alerte avec le nouveau constructeur
                 alertSystem.addAlert(new Alert(
-                        alertSystem.getActiveAlerts().size() + 1,
-                        "Zone inond?e : " + zone.getName() + " (altitude " + String.format("%.1f", zone.getAltitude())
-                                + " m)",
-                        ALERT_URGENCY_FLOOD));
+                    AlertType.INONDATION,                                     // Type
+                    "Zone inondée : " + zone.getName(),                // Description
+                    zone.getName(),                                   // Localisation
+                    "Élevée",                                         // Sévérité (remplace ALERT_URGENCY_FLOOD)
+                    time,                                             // Heure
+                    "Active"                                          // Statut
+                ));
             }
         }
     }
@@ -212,10 +221,15 @@ public class SimulationInondation {
                 zone.setEvacuated(true);
                 agentsEvacues += rescued;
                 notifyZoneEvacuated(zone);
+                String time = java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
                 alertSystem.addAlert(new Alert(
-                        alertSystem.getActiveAlerts().size() + 1,
-                        "?vacuation r?ussie dans " + zone.getName() + " : " + rescued + " personnes",
-                        ALERT_URGENCY_EVACUATION));
+                    AlertType.EVACUATION,                                        // Type
+                    "Évacuation réussie dans " + zone.getName(),          // Description
+                    zone.getName(),                                       // Localisation
+                    "Faible",                                             // Sévérité (remplace l'ancien niveau numérique)
+                    time,                                                 // Heure actuelle
+                    "Résolue"                                             // Statut
+                ));
             }
         }
     }

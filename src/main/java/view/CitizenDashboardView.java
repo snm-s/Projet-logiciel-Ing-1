@@ -94,11 +94,23 @@ public class CitizenDashboardView extends BorderPane {
         profileBox.getChildren().addAll(avatar, profileTexts);
         sidebar.getChildren().add(profileBox);
 
+
+        
+        
+        
+        Button btnAlerts = createSidebarButton("⚠️  Alertes", false);
+        btnAlerts.setOnAction(e -> {
+            // On met à jour le centre du BorderPane principal avec votre vue
+            this.setCenter(new CitizenAlertsView());
+        });
+        
+        
+        
         sidebar.getChildren().addAll(
             createSidebarButton("🏠  Tableau de bord", true),
             createSidebarButton("🗺️  Carte", false),
             createSidebarButton("🔀  Mes trajets", false),
-            createSidebarButton("⚠️  Alertes", false),
+            btnAlerts,
             createSidebarButton("🏫  Refuges", false)
         );
 
