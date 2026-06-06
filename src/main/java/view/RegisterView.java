@@ -45,26 +45,26 @@ public class RegisterView extends StackPane {
     private TextField email = new TextField(), phone = new TextField();
     private PasswordField password = new PasswordField(), confirmPassword = new PasswordField();
     private TextField visiblePassword = new TextField(), visibleConfirmPassword = new TextField();
-    private Label ruleLength = new Label("• At least 8 characters"),
-                  ruleUpper  = new Label("• At least 1 uppercase letter"),
-                  ruleDigit  = new Label("• At least 1 number");
+    private Label ruleLength = new Label("• Au moins 8 charactères"),
+                  ruleUpper  = new Label("• Au moins 1 lettre majuscule"),
+                  ruleDigit  = new Label("• Au moins 1 chiffre");
     private TextField address = new TextField(), country = new TextField();
     private ComboBox<String> city = new ComboBox<>();
     private boolean citySelectionInProgress = false;
     private ComboBox<String> houseType = new ComboBox<>();
     private TextField floor = new TextField();
-    private Label gpsLabel = new Label("GPS not set");
-    private Button gpsButton = new Button("Detect location");
+    private Label gpsLabel = new Label("GPS non configuré");
+    private Button gpsButton = new Button("Détecter ma localisation GPS");
     private ComboBox<String> role = new ComboBox<>();
     private VBox citizenBox = new VBox(15);
     private TextField householdSize = new TextField();
     private double detectedLat = 48.8566; // Valeur par défaut (Paris)
 private double detectedLng = 2.3522;
-    private CheckBox pets = new CheckBox("Has pets");
-    private CheckBox pmrCheckBox = new CheckBox("PMR (Person with reduced mobility)");
+    private CheckBox pets = new CheckBox("Je possède des animaux de compagnie");
+    private CheckBox pmrCheckBox = new CheckBox("Je suis une personne à mobilité réduite (PMR)");
     private TextArea medicalNeeds = new TextArea();
     private TextField emergencyContact = new TextField();
-    private Button registerBtn = new Button("Register");
+    private Button registerBtn = new Button("Créer mon compte");
 
     // Validation labels
     private Label errFirstName = errLabel(), errLastName = errLabel(), errBirthDate = errLabel(),
@@ -158,22 +158,22 @@ private double detectedLng = 2.3522;
 
         Text brandTitle = new Text("Inondation");
         brandTitle.setFont(Font.font("System", FontWeight.BOLD, 30)); brandTitle.setFill(Color.WHITE);
-        Text brandSubtitle = new Text("Simulation & emergency management");
+        Text brandSubtitle = new Text("Simulation & Gestion des urgences");
         brandSubtitle.setFont(Font.font("System", FontWeight.LIGHT, 12)); brandSubtitle.setFill(Color.web("#a0b2ce"));
 
         HBox brandHeader = new HBox(15, backButton, logoContainer, new VBox(2, brandTitle, brandSubtitle));
         brandHeader.setAlignment(Pos.CENTER_LEFT);
 
-        Text pageTitle = new Text("Sign up");
+        Text pageTitle = new Text("Créer un compte");
         pageTitle.setFont(Font.font("System", FontWeight.BOLD, 28)); pageTitle.setFill(Color.WHITE);
-        Text pageSubtitle = new Text("Join the flood emergency and simulation system");
+        Text pageSubtitle = new Text("Rejoignez le système de simulation et de gestion des urgences");
         pageSubtitle.setFont(Font.font("System", FontWeight.LIGHT, 12)); pageSubtitle.setFill(Color.web("#a0b2ce"));
         VBox headerBox = new VBox(5, pageTitle, pageSubtitle);
         headerBox.setPadding(new Insets(20, 0, 10, 0));
         root.getChildren().addAll(brandHeader, headerBox);
 
         // --- IDENTITY ---
-        firstName.setPromptText("First name"); lastName.setPromptText("Last name");
+        firstName.setPromptText("Prénom"); lastName.setPromptText("Nom");
         applyTextFieldStyle(firstName); applyTextFieldStyle(lastName);
         setupBirthDateComboBoxes();
 
@@ -184,7 +184,7 @@ HBox birthBox = new HBox(10, birthDay, birthMonth, birthYear);
 birthBox.setMaxWidth(Double.MAX_VALUE);
 
 root.getChildren().addAll(
-    createSectionLabel("Identity"),
+    createSectionLabel("Identité"),
     fieldRow(firstName, errFirstName),
     fieldRow(lastName, errLastName),
     new VBox(3, birthBox, errBirthDate)
@@ -192,7 +192,7 @@ root.getChildren().addAll(
 
         // --- CONTACT ---
         email.setPromptText("Email"); applyTextFieldStyle(email);
-        phone.setPromptText("Phone number"); applyTextFieldStyle(phone);
+        phone.setPromptText("Numéro de téléphone"); applyTextFieldStyle(phone);
         setupLiveValidation(email, errEmail, f -> f.getText().contains("@") && !f.getText().trim().isEmpty());
         setupLiveValidation(phone, errPhone, f -> f.getText().matches("\\d{10}"));
         root.getChildren().addAll(createSectionLabel("Contact"),
@@ -204,16 +204,16 @@ root.getChildren().addAll(
         applyRuleLabelErrorStyle(ruleLength); applyRuleLabelErrorStyle(ruleUpper); applyRuleLabelErrorStyle(ruleDigit);
         VBox rulesBox = new VBox(4, ruleLength, ruleUpper, ruleDigit);
         rulesBox.setPadding(new Insets(0, 0, 10, 5));
-        root.getChildren().addAll(createSectionLabel("Password"),
-            createPasswordFieldWithEye(password, visiblePassword, "Password"),
-            createPasswordFieldWithEye(confirmPassword, visibleConfirmPassword, "Confirm password"),
+        root.getChildren().addAll(createSectionLabel("Mot de passe"),
+            createPasswordFieldWithEye(password, visiblePassword, "Mot de passe"),
+            createPasswordFieldWithEye(confirmPassword, visibleConfirmPassword, "Confirmer le mot de passe"),
             rulesBox);
 
         // --- ADDRESS ---
-        address.setPromptText("Address"); applyTextFieldStyle(address);
-        city.setPromptText("City");
-city.setEditable(true);
-city.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
+        address.setPromptText("Addresse"); applyTextFieldStyle(address);
+        city.setPromptText("Ville");
+        city.setEditable(true);
+        city.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
 
     if (citySelectionInProgress) {
         return;
@@ -255,7 +255,7 @@ city.valueProperty().addListener((obs, oldValue, selected) -> {
 });
 
 applyEditableComboBoxStyle(city);
-        country.setPromptText("Country"); applyTextFieldStyle(country);
+        country.setPromptText("Pays"); applyTextFieldStyle(country);
         setupLiveValidation(address, errAddress, f ->
             f.getText().matches(".*\\d+.*") &&
             f.getText().matches(".*[a-zA-ZÀ-ÿ]+.*")
@@ -265,7 +265,7 @@ applyEditableComboBoxStyle(city);
         setupLiveValidation(country, errCountry, f ->
             f.getText().equalsIgnoreCase("France")
         );
-        root.getChildren().addAll(createSectionLabel("Address"),
+        root.getChildren().addAll(createSectionLabel("Addresse"),
             fieldRow(address, errAddress), fieldRow(city, errCity), fieldRow(country, errCountry));
 
         // --- LOCATION ---
@@ -276,24 +276,24 @@ applyEditableComboBoxStyle(city);
         gpsLabel.setFont(Font.font("System", 13)); gpsLabel.setTextFill(Color.web("#a0b2ce"));
   
         gpsButton.setOnAction(e -> {
-        gpsLabel.setText("⏳ Detecting...");
+        gpsLabel.setText("⏳ Détection...");
         controller.handleDetectGps();
         });
-        root.getChildren().addAll(createSectionLabel("Location"), gpsButton, gpsLabel);
+        root.getChildren().addAll(createSectionLabel("Localisation"), gpsButton, gpsLabel);
 
         // --- ROLE ---
-        role.getItems().addAll("citizen", "rescue");
-        role.setPromptText("Select your role"); applyComboBoxStyle(role);
-        role.valueProperty().addListener((obs, o, n) -> showError(errRole, role, n == null || n.trim().isEmpty(), "Role is required"));
-        root.getChildren().addAll(createSectionLabel("Role"), fieldRow(role, errRole));
+        role.getItems().addAll("Citoyen", "Sauveteur");
+        role.setPromptText("Selectionnez votre rôle"); applyComboBoxStyle(role);
+        role.valueProperty().addListener((obs, o, n) -> showError(errRole, role, n == null || n.trim().isEmpty(), "Veuillez sélectionner un rôle"));
+        root.getChildren().addAll(createSectionLabel("Rôle"), fieldRow(role, errRole));
 
         // --- CITIZEN BOX ---
-        houseType.getItems().addAll("APARTMENT", "HOUSE");
-        houseType.setPromptText("Select House Type"); applyComboBoxStyle(houseType);
-        floor.setPromptText("Floor"); applyTextFieldStyle(floor);
-        householdSize.setPromptText("Household size"); applyTextFieldStyle(householdSize);
-        emergencyContact.setPromptText("Emergency contact"); applyTextFieldStyle(emergencyContact);
-        medicalNeeds.setPromptText("Medical needs"); medicalNeeds.setPrefHeight(80);
+        houseType.getItems().addAll("Appartement", "Maison");
+        houseType.setPromptText("Selectionnez votre type de logement"); applyComboBoxStyle(houseType);
+        floor.setPromptText("Etage"); applyTextFieldStyle(floor);
+        householdSize.setPromptText("Nombre de membres du foyer"); applyTextFieldStyle(householdSize);
+        emergencyContact.setPromptText("Contact d'urgence"); applyTextFieldStyle(emergencyContact);
+        medicalNeeds.setPromptText("Besoins médicaux"); medicalNeeds.setPrefHeight(80);
         medicalNeeds.setStyle(
             "-fx-control-inner-background: rgba(255,255,255,0.05); -fx-text-fill: white;" +
             "-fx-prompt-text-fill: #a0b2ce; -fx-background-color: transparent;" +
@@ -304,10 +304,10 @@ applyEditableComboBoxStyle(city);
         setupLiveValidation(emergencyContact, errEmergencyContact, f -> !f.getText().trim().isEmpty());
         houseType.valueProperty().addListener((obs, o, n) -> showError(errHouseType, houseType, n == null || n.trim().isEmpty(), "House type is required"));
         citizenBox.getChildren().addAll(
-            createSectionLabel("Citizen Information"),
+            createSectionLabel("Informations sur le citoyen"),
             fieldRow(houseType, errHouseType), fieldRow(floor, errFloor),
             fieldRow(householdSize, errHouseholdSize), pets, pmrCheckBox, medicalNeeds,
-            createSectionLabel("Emergency Contact"), fieldRow(emergencyContact, errEmergencyContact));
+            createSectionLabel("Contact d'urgence"), fieldRow(emergencyContact, errEmergencyContact));
         citizenBox.setVisible(false); citizenBox.setManaged(false);
         root.getChildren().add(citizenBox);
 
@@ -506,22 +506,22 @@ applyEditableComboBoxStyle(city);
     }
 
     private String getFieldError(TextField tf) {
-        if (tf == email)            return "Valid email required (must contain @)";
-        if (tf == phone)            return "Phone must be exactly 10 digits";
-        if (tf == firstName)        return "First name must contain only letters";
-        if (tf == lastName)         return "Last name must contain only letters";
-        if (tf == address)          return "Address must contain a street number and a street name";
-        if (tf == country)          return "Country must be France";
-        if (tf == floor)            return "Floor is required";
-        if (tf == householdSize)    return "Household size is required";
-        if (tf == emergencyContact) return "Emergency contact is required";
-        return "This field is required";
+        if (tf == email)            return "E-mail valide requis (doit contenir @)";
+        if (tf == phone)            return "Le numéro de téléphone doit comporter exactement 10 chiffres";
+        if (tf == firstName)        return "Le prénom doit contenir uniquement des lettres";
+        if (tf == lastName)         return "Le nom doit contenir uniquement des lettres";
+        if (tf == address)          return "L'adresse doit contenir un numéro de rue et un nom de rue";
+        if (tf == country)          return "Le pays doit être la France";
+        if (tf == floor)            return "L'étage est requis";
+        if (tf == householdSize)    return "La taille du foyer est requise";
+        if (tf == emergencyContact) return "Le contact d'urgence est requis";
+        return "Ce champ est requis";
     }
     
     private void setupBirthDateComboBoxes() {
-        birthDay.setPromptText("Day");
-        birthMonth.setPromptText("Month");
-        birthYear.setPromptText("Year");
+        birthDay.setPromptText("Jour");
+        birthMonth.setPromptText("Mois");
+        birthYear.setPromptText("Année");
     
         for (int i = 1; i <= 31; i++) {
             birthDay.getItems().add(i);
@@ -600,7 +600,7 @@ applyEditableComboBoxStyle(city);
 
     boolean hasError = date == null || date.isAfter(LocalDate.now());
 
-    errBirthDate.setText(date == null ? "Birth date is required" : "Birth date cannot be in the future");
+    errBirthDate.setText(date == null ? "La date de naissance est requise" : "La date de naissance ne peut pas être dans le futur");
     errBirthDate.setVisible(hasError);
     errBirthDate.setManaged(hasError);
 
@@ -634,7 +634,7 @@ applyEditableComboBoxStyle(city);
         String cityValue = city.getEditor().getText().trim();
 
 if (cityValue.isEmpty() || !city.getItems().contains(cityValue)) {
-    showError(errCity, city, true, "Select a city from the list");
+    showError(errCity, city, true, "Sélectionnez une ville de la liste");
     valid = false;
 }
         
@@ -643,10 +643,10 @@ if (cityValue.isEmpty() || !city.getItems().contains(cityValue)) {
             valid = false;
         }
         // Role
-        if (role.getValue() == null) { showError(errRole, role, true, "Role is required"); valid = false; }
+        if (role.getValue() == null) { showError(errRole, role, true, "Le rôle est requis"); valid = false; }
         // Citizen fields
         if (citizenBox.isVisible()) {
-            if (houseType.getValue() == null) { showError(errHouseType, houseType, true, "House type is required"); valid = false; }
+            if (houseType.getValue() == null) { showError(errHouseType, houseType, true, "Le type de logement est requis"); valid = false; }
             if (floor.getText().trim().isEmpty())           { showError(errFloor, floor, true, getFieldError(floor)); valid = false; }
             if (householdSize.getText().trim().isEmpty())   { showError(errHouseholdSize, householdSize, true, getFieldError(householdSize)); valid = false; }
             if (emergencyContact.getText().trim().isEmpty()){ showError(errEmergencyContact, emergencyContact, true, getFieldError(emergencyContact)); valid = false; }
@@ -685,12 +685,14 @@ if (cityValue.isEmpty() || !city.getItems().contains(cityValue)) {
 
     private void setupRoleVisibility() {
         role.valueProperty().addListener((obs, o, n) -> {
-            boolean isCitizen = "citizen".equalsIgnoreCase(n);
+            String technicalValue = (n != null && n.equals("Citoyen")) ? "citizen" : "rescue";
+            boolean isCitizen = "citizen".equalsIgnoreCase(technicalValue);
             citizenBox.setVisible(isCitizen); citizenBox.setManaged(isCitizen);
         });
         houseType.valueProperty().addListener((obs, o, n) -> {
-            if ("Apartment".equalsIgnoreCase(n))  floor.setPromptText("Floor number");
-            else if ("House".equalsIgnoreCase(n)) floor.setPromptText("Number of floors in the house");
+            String technicalValue = (n != null && n.equals("Appartement")) ? "Apartment" : "House";
+            if ("Apartment".equalsIgnoreCase(technicalValue))  floor.setPromptText("Etage");
+            else if ("House".equalsIgnoreCase(technicalValue)) floor.setPromptText("Nombre d'étages dans la maison");
         });
     }
 
@@ -736,21 +738,21 @@ if (cityValue.isEmpty() || !city.getItems().contains(cityValue)) {
     // ==========================================
     private void handleRegister() {
         if (controller == null) return;
-        if (!validateAll()) { System.out.println("[Register] FORMULAIRE INVALIDE"); return; }
+        if (!validateAll()) { System.out.println("[Créer un compte] FORMULAIRE INVALIDE"); return; }
 
         String pwd     = password.isVisible() ? password.getText() : visiblePassword.getText();
         String confirm = confirmPassword.isVisible() ? confirmPassword.getText() : visibleConfirmPassword.getText();
         if (!controller.canRegister(pwd, confirm)) {
-            System.out.println("[Register] FORMULAIRE INVALIDE (Mots de passe incorrects)");
+            System.out.println("[Créer FORMULAIRE INVALIDE (Mots de passe incorrects)");
             applyPasswordColorStyle(confirmPassword, confirm, false);
             return;
         }
 
         int size = 0, floorNum = 0;
         try { size     = householdSize.getText() != null && !householdSize.getText().isEmpty() ? Integer.parseInt(householdSize.getText()) : 0; }
-        catch (NumberFormatException e) { System.out.println("[Register] Erreur : Taille du foyer invalide"); }
+        catch (NumberFormatException e) { System.out.println("[Créer un compte] Erreur : Taille du foyer invalide"); }
         try { floorNum = floor.getText() != null && !floor.getText().isEmpty() ? Integer.parseInt(floor.getText()) : 0; }
-        catch (NumberFormatException e) { System.out.println("[Register] Erreur : Étage invalide"); }
+        catch (NumberFormatException e) { System.out.println("[Créer un compte] Erreur : Étage invalide"); }
 
         boolean writeSuccess = controller.handleUserRegistration(
 
@@ -761,8 +763,8 @@ if (cityValue.isEmpty() || !city.getItems().contains(cityValue)) {
         size, pets.isSelected(), medicalNeeds.getText(),
         emergencyContact.getText(), pmrCheckBox.isSelected());
 
-        if (writeSuccess) { System.out.println("[Register] INSCRIPTION RÉUSSIE ET ENREGISTRÉE !"); Main.showWelcomeView(); }
-        else              { System.out.println("[Register] L'inscription a échoué (Email déjà utilisé ou erreur JSON)"); }
+        if (writeSuccess) { System.out.println("[Créer un compte] INSCRIPTION RÉUSSIE ET ENREGISTRÉE !"); Main.showWelcomeView(); }
+        else              { System.out.println("[Créer un compte] L'inscription a échoué (Email déjà utilisé ou erreur JSON)"); }
 
 
     }
@@ -779,7 +781,7 @@ if (cityValue.isEmpty() || !city.getItems().contains(cityValue)) {
     city.getEditor().setText(cityValue);
     country.setText(countryValue);
     gpsLabel.setText(cityValue.isEmpty()
-    ? "❌ Location detection failed"
-    : "✅ Approximate location detected — enter your street manually");
+    ? "❌ Détection échouée — veuillez entrer votre adresse manuellement"
+    : "✅ Localisation approximative détectée — veuillez entrer votre rue");
 }
 }

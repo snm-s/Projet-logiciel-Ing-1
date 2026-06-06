@@ -68,11 +68,11 @@ public class WelcomeView extends StackPane {
         StackPane logo = createLogo();
 
         // --- TEXTES ---
-        Text title = new Text("FLOOD SIMULATION");
+        Text title = new Text("SIMULATION D'INONDATION");
         title.setFont(Font.font("System", FontWeight.BOLD, 42));
         title.setFill(Color.WHITE);
 
-        Text subtitle = new Text("Agents & Graphs Emergency System");
+        Text subtitle = new Text("Système de gestion des urgences");
         subtitle.setFont(Font.font("System", FontWeight.LIGHT, 20));
         subtitle.setFill(Color.web("#a0b2ce"));
 
@@ -80,8 +80,8 @@ public class WelcomeView extends StackPane {
         texts.setAlignment(Pos.CENTER); // Centrage horizontal des textes
 
         // --- BOUTONS INTERACTIFS ---
-        Button loginButton = createMainButton("LOG IN");
-        Button signUpButton = createSecondaryButton("SIGN UP");
+        Button loginButton = createMainButton("Se connecter");
+        Button signUpButton = createSecondaryButton("S'inscrire");
 
         loginButton.setOnAction(e -> Main.showLoginView());
         signUpButton.setOnAction(e -> Main.showRegisterView());
