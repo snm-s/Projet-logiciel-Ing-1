@@ -56,10 +56,17 @@ public class RegisterController {
         // 2. Création de l'objet via polymorphisme
         Agent newAgent;
 
-        if ("rescue".equalsIgnoreCase(role)) {
+        String roleKey = role.equalsIgnoreCase("Citoyen") ? "citizen" : "rescue";
+    
+        // 2. Traduction du type de logement (UI "Appartement" -> Logic "APARTMENT")
+        //String houseTypeKey = houseTypeString.equalsIgnoreCase("Appartement") ? "APARTMENT" : "HOUSE";
+
+
+
+        if ("rescue".equalsIgnoreCase(roleKey)) {
             newAgent = new RescueAgent(0, firstName, lastName, null);
         } 
-        else if ("citizen".equalsIgnoreCase(role)) {
+        else if ("citizen".equalsIgnoreCase(roleKey)) {
             if (isPmr) {
                 newAgent = new PMRAgent(0, firstName, lastName, null);
             } else {
