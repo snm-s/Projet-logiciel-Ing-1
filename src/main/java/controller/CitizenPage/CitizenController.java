@@ -17,8 +17,8 @@ public class CitizenController {
     }
 
     public List<model.zone.Zone> getZones() {
-        // Si votre CitizenController utilise SimulationInondation :
-        return simulation.getZones(); 
+        // Charger les zones depuis zones.json via ZoneManager (plus fiable que la simulation)
+        return new model.zone.ZoneManager().getZones();
     }
 
     // ── Identité ────────────────────────────────────────────────────────────────

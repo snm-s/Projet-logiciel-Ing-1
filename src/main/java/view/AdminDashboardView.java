@@ -38,6 +38,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.util.Duration;
 import model.agent.Agent;
+import model.zone.ZoneManager;
 
 /**
  * AdminDashboardView extends BorderPane
@@ -46,18 +47,18 @@ import model.agent.Agent;
 public class AdminDashboardView extends BorderPane {
 
     // ── Palette ────────────────────────────────────────────────────────────────
-    private static final String BG_DARK       = "#0d1b2a";
-    private static final String BG_PANEL      = "#132337";
-    private static final String BG_CARD       = "#1a2f45";
-    private static final String BG_SIDEBAR    = "#0f1e30";
-    private static final String ACCENT_BLUE   = "#1e88e5";
-    private static final String ACCENT_CYAN   = "#26c6da";
-    private static final String ACCENT_GREEN  = "#43a047";
+    private static final String BG_DARK = "#0d1b2a";
+    private static final String BG_PANEL = "#132337";
+    private static final String BG_CARD = "#1a2f45";
+    private static final String BG_SIDEBAR = "#0f1e30";
+    private static final String ACCENT_BLUE = "#1e88e5";
+    private static final String ACCENT_CYAN = "#26c6da";
+    private static final String ACCENT_GREEN = "#43a047";
     private static final String ACCENT_ORANGE = "#fb8c00";
-    private static final String ACCENT_RED    = "#e53935";
-    private static final String TEXT_PRIMARY  = "#e8f0fe";
-    private static final String TEXT_MUTED    = "#8eaabf";
-    private static final String BORDER        = "#1e3a52";
+    private static final String ACCENT_RED = "#e53935";
+    private static final String TEXT_PRIMARY = "#e8f0fe";
+    private static final String TEXT_MUTED = "#8eaabf";
+    private static final String BORDER = "#1e3a52";
 
     // ── État ──────────────────────────────────────────────────────────────────
     private final AdminController ctrl;
@@ -90,7 +91,8 @@ public class AdminDashboardView extends BorderPane {
                 + "; -fx-border-color: " + BORDER + "; -fx-border-width: 0 0 1 0;");
 
         Rectangle logo = new Rectangle(32, 32);
-        logo.setArcWidth(8); logo.setArcHeight(8);
+        logo.setArcWidth(8);
+        logo.setArcHeight(8);
         logo.setFill(Color.web(ACCENT_BLUE));
 
         Label title = new Label("Inondation");
@@ -127,7 +129,10 @@ public class AdminDashboardView extends BorderPane {
 
         // Bouton Actualiser
         Button refreshBtn = btn("↻  Actualiser", ACCENT_BLUE);
-        refreshBtn.setOnAction(e -> { ctrl.loadAgents(); refreshAll(); });
+        refreshBtn.setOnAction(e -> {
+            ctrl.loadAgents();
+            refreshAll();
+        });
 
         bar.getChildren().addAll(logo, titles, spacer, timerLbl, simBtn, refreshBtn, logoutBtn);
         return bar;
@@ -145,11 +150,10 @@ public class AdminDashboardView extends BorderPane {
 
         sidebarBox.getChildren().addAll(
                 navBtn("🗺", "Tableau de bord", "dashboard"),
-                navBtn("🏠", "Citoyens",         "citizens"),
-                navBtn("🚒", "Agents secours",   "rescue"),
-                navBtn("🛡", "Admins",           "admins"),
-                navBtn("📊", "Statistiques",     "stats")
-        );
+                navBtn("🏠", "Citoyens", "citizens"),
+                navBtn("🚒", "Agents secours", "rescue"),
+                navBtn("🛡", "Admins", "admins"),
+                navBtn("📊", "Statistiques", "stats"));
         return sidebarBox;
     }
 
@@ -165,10 +169,10 @@ public class AdminDashboardView extends BorderPane {
             refreshNavStyles();
             switch (section) {
                 case "dashboard" -> showDashboard();
-                case "citizens"  -> showAgentList("citizen",    "Citoyens");
-                case "rescue"    -> showAgentList("rescueAgent", "Agents de Secours");
-                case "admins"    -> showAgentList("admin",       "Administrateurs");
-                case "stats"     -> showStats();
+                case "citizens" -> showAgentList("citizen", "Citoyens");
+                case "rescue" -> showAgentList("rescueAgent", "Agents de Secours");
+                case "admins" -> showAgentList("admin", "Administrateurs");
+                case "stats" -> showStats();
             }
         });
         return b;
@@ -177,21 +181,20 @@ public class AdminDashboardView extends BorderPane {
     private String navStyle(boolean active) {
         return active
                 ? "-fx-background-color: " + ACCENT_BLUE + "22; -fx-text-fill: " + ACCENT_CYAN
-                  + "; -fx-background-radius: 6; -fx-cursor: hand;"
+                        + "; -fx-background-radius: 6; -fx-cursor: hand;"
                 : "-fx-background-color: transparent; -fx-text-fill: " + TEXT_MUTED
-                  + "; -fx-background-radius: 6; -fx-cursor: hand;";
+                        + "; -fx-background-radius: 6; -fx-cursor: hand;";
     }
 
     private void refreshNavStyles() {
         for (Node n : sidebarBox.getChildren()) {
             if (n instanceof Button b) {
                 String txt = b.getText();
-                boolean active =
-                        (currentSection.equals("dashboard") && txt.contains("Tableau"))
-                        || (currentSection.equals("citizens")  && txt.contains("Citoyens"))
-                        || (currentSection.equals("rescue")    && txt.contains("secours"))
-                        || (currentSection.equals("admins")    && txt.contains("Admins"))
-                        || (currentSection.equals("stats")     && txt.contains("Statistiques"));
+                boolean active = (currentSection.equals("dashboard") && txt.contains("Tableau"))
+                        || (currentSection.equals("citizens") && txt.contains("Citoyens"))
+                        || (currentSection.equals("rescue") && txt.contains("secours"))
+                        || (currentSection.equals("admins") && txt.contains("Admins"))
+                        || (currentSection.equals("stats") && txt.contains("Statistiques"));
                 b.setStyle(navStyle(active));
             }
         }
@@ -222,14 +225,14 @@ public class AdminDashboardView extends BorderPane {
         // KPI cards
         HBox kpis = new HBox(16);
         kpis.getChildren().addAll(
-                kpiCard("Total agents",     String.valueOf(ctrl.getTotalAgents()),       ACCENT_CYAN,   "👥"),
-                kpiCard("Citoyens",         String.valueOf(ctrl.getTotalCitizens()),     ACCENT_BLUE,   "🏠"),
-                kpiCard("Agents secours",   String.valueOf(ctrl.getTotalRescueAgents()), ACCENT_GREEN,  "🚒"),
-                kpiCard("À risque",         String.valueOf(ctrl.getAtRiskCount()),        ACCENT_ORANGE, "⚠"),
-                kpiCard("Sauvés",           String.valueOf(ctrl.getSavedCount()),         ACCENT_GREEN,  "✅"),
-                kpiCard("En intervention",  String.valueOf(ctrl.getActiveRescueCount()),  ACCENT_RED,    "🔴")
-        );
-        for (Node n : kpis.getChildren()) HBox.setHgrow(n, Priority.ALWAYS);
+                kpiCard("Total agents", String.valueOf(ctrl.getTotalAgents()), ACCENT_CYAN, "👥"),
+                kpiCard("Citoyens", String.valueOf(ctrl.getTotalCitizens()), ACCENT_BLUE, "🏠"),
+                kpiCard("Agents secours", String.valueOf(ctrl.getTotalRescueAgents()), ACCENT_GREEN, "🚒"),
+                kpiCard("À risque", String.valueOf(ctrl.getAtRiskCount()), ACCENT_ORANGE, "⚠"),
+                kpiCard("Sauvés", String.valueOf(ctrl.getSavedCount()), ACCENT_GREEN, "✅"),
+                kpiCard("En intervention", String.valueOf(ctrl.getActiveRescueCount()), ACCENT_RED, "🔴"));
+        for (Node n : kpis.getChildren())
+            HBox.setHgrow(n, Priority.ALWAYS);
 
         // Graphique + panneaux état
         HBox bottomRow = new HBox(16);
@@ -238,8 +241,23 @@ public class AdminDashboardView extends BorderPane {
         bottomRow.getChildren().addAll(
                 chart,
                 statusPanel("Statut Agents Secours", ctrl.getRescueStateBreakdown(), ACCENT_GREEN),
-                statusPanel("Statut Citoyens",        ctrl.getCitizenStateBreakdown(), ACCENT_BLUE)
-        );
+                statusPanel("Statut Citoyens", ctrl.getCitizenStateBreakdown(), ACCENT_BLUE));
+
+        // Carte (zones.json)
+        MapView mapView = new MapView(new ZoneManager().getZones());
+        mapView.getWebView().setPrefSize(1000, 380);
+
+        // Lier un détecteur de niveau d'eau qui alimente le système d'alertes
+        model.simulation.FloodSimulation localSim = new model.simulation.FloodSimulation();
+        model.sensor.WaterLevelDetector detector = new model.sensor.WaterLevelDetector(localSim.getAlertSystem());
+        // Polling initial pour démonstration : met à jour la carte et crée des alertes
+        // si nécessaire
+        detector.pollRandom((zone, lvl) -> {
+            try {
+                mapView.updateZoneWithWaterLevel(zone, lvl);
+            } catch (Exception ignored) {
+            }
+        });
 
         // Tableau des derniers agents
         VBox tableBox = new VBox(10);
@@ -250,7 +268,7 @@ public class AdminDashboardView extends BorderPane {
         recentLbl.setTextFill(Color.web(TEXT_PRIMARY));
         tableBox.getChildren().addAll(recentLbl, buildTable(ctrl.getAllAgents(), true));
 
-        root.getChildren().addAll(titleRow, kpis, bottomRow, tableBox);
+        root.getChildren().addAll(titleRow, kpis, bottomRow, mapView.getWebView(), tableBox);
 
         fadeIn(root);
         contentArea.getChildren().setAll(scrollWrap(root));
@@ -265,7 +283,8 @@ public class AdminDashboardView extends BorderPane {
 
         HBox header = new HBox(8);
         header.setAlignment(Pos.CENTER_LEFT);
-        Label iconLbl = new Label(icon); iconLbl.setFont(Font.font(18));
+        Label iconLbl = new Label(icon);
+        iconLbl.setFont(Font.font(18));
         Label lbl = new Label(label);
         lbl.setFont(Font.font("Segoe UI", 11));
         lbl.setTextFill(Color.web(TEXT_MUTED));
@@ -276,7 +295,8 @@ public class AdminDashboardView extends BorderPane {
         val.setTextFill(Color.web(accent));
 
         Rectangle bar = new Rectangle(40, 3);
-        bar.setArcWidth(3); bar.setArcHeight(3);
+        bar.setArcWidth(3);
+        bar.setArcHeight(3);
         bar.setFill(Color.web(accent));
 
         card.getChildren().addAll(header, val, bar);
@@ -305,8 +325,8 @@ public class AdminDashboardView extends BorderPane {
         chart.setPrefHeight(200);
 
         XYChart.Series<String, Number> series = new XYChart.Series<>();
-        ctrl.getCitizenStateBreakdown().forEach((state, count) ->
-                series.getData().add(new XYChart.Data<>(state, count)));
+        ctrl.getCitizenStateBreakdown()
+                .forEach((state, count) -> series.getData().add(new XYChart.Data<>(state, count)));
         chart.getData().add(series);
 
         box.getChildren().addAll(title, chart);
@@ -366,10 +386,10 @@ public class AdminDashboardView extends BorderPane {
     // ══════════════════════════════════════════════════════════════════════════
     private void showAgentList(String type, String sectionTitle) {
         ObservableList<Agent> source = switch (type) {
-            case "citizen"     -> ctrl.getCitizens();
+            case "citizen" -> ctrl.getCitizens();
             case "rescueAgent" -> ctrl.getRescueAgents();
-            case "admin"       -> ctrl.getAdmins();
-            default            -> ctrl.getAllAgents();
+            case "admin" -> ctrl.getAdmins();
+            default -> ctrl.getAllAgents();
         };
 
         VBox root = new VBox(16);
@@ -411,10 +431,9 @@ public class AdminDashboardView extends BorderPane {
             filtered.setPredicate(a -> lq.isBlank()
                     || String.valueOf(a.getId()).contains(lq)
                     || (a.getFirstName() != null && a.getFirstName().toLowerCase().contains(lq))
-                    || (a.getLastName()  != null && a.getLastName() .toLowerCase().contains(lq))
-                    || (a.getEmail()     != null && a.getEmail()    .toLowerCase().contains(lq))
-                    || AdminController.stateOf(a).toLowerCase().contains(lq)
-            );
+                    || (a.getLastName() != null && a.getLastName().toLowerCase().contains(lq))
+                    || (a.getEmail() != null && a.getEmail().toLowerCase().contains(lq))
+                    || AdminController.stateOf(a).toLowerCase().contains(lq));
         });
 
         // Toolbar
@@ -422,12 +441,14 @@ public class AdminDashboardView extends BorderPane {
         Button delBtn = btn("🗑  Supprimer la sélection", ACCENT_RED);
         delBtn.setOnAction(e -> {
             Agent sel = table.getSelectionModel().getSelectedItem();
-            if (sel == null) return;
+            if (sel == null)
+                return;
             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
                     "Supprimer " + sel.getFirstName() + " " + sel.getLastName() + " ?",
                     ButtonType.YES, ButtonType.NO);
             confirm.showAndWait().ifPresent(bt -> {
-                if (bt == ButtonType.YES) ctrl.deleteAgent(sel);
+                if (bt == ButtonType.YES)
+                    ctrl.deleteAgent(sel);
             });
         });
         toolbar.getChildren().add(delBtn);
@@ -453,31 +474,36 @@ public class AdminDashboardView extends BorderPane {
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPrefHeight(limitRows ? 240 : 520);
 
-        TableColumn<Agent, String> colId    = strCol("ID",     a -> String.valueOf(a.getId()),    60);
-        TableColumn<Agent, String> colType  = strCol("Type",   a -> AdminController.typeOf(a),   110);
-        TableColumn<Agent, String> colFirst = strCol("Prénom", Agent::getFirstName,              120);
-        TableColumn<Agent, String> colLast  = strCol("Nom",    Agent::getLastName,               120);
-        TableColumn<Agent, String> colEmail = strCol("Email",  Agent::getEmail,                  200);
-        TableColumn<Agent, String> colPhone = strCol("Tél.",   Agent::getPhone,                  120);
-        TableColumn<Agent, String> colCity  = strCol("Ville",  Agent::getCity,                   110);
+        TableColumn<Agent, String> colId = strCol("ID", a -> String.valueOf(a.getId()), 60);
+        TableColumn<Agent, String> colType = strCol("Type", a -> AdminController.typeOf(a), 110);
+        TableColumn<Agent, String> colFirst = strCol("Prénom", Agent::getFirstName, 120);
+        TableColumn<Agent, String> colLast = strCol("Nom", Agent::getLastName, 120);
+        TableColumn<Agent, String> colEmail = strCol("Email", Agent::getEmail, 200);
+        TableColumn<Agent, String> colPhone = strCol("Tél.", Agent::getPhone, 120);
+        TableColumn<Agent, String> colCity = strCol("Ville", Agent::getCity, 110);
 
         // État (badge coloré)
         TableColumn<Agent, String> colState = new TableColumn<>("État");
         colState.setPrefWidth(130);
-        colState.setCellValueFactory(c ->
-                new javafx.beans.property.SimpleStringProperty(
-                        AdminController.stateOf(c.getValue())));
+        colState.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(
+                AdminController.stateOf(c.getValue())));
         colState.setCellFactory(tc -> new TableCell<>() {
-            @Override protected void updateItem(String state, boolean empty) {
+            @Override
+            protected void updateItem(String state, boolean empty) {
                 super.updateItem(state, empty);
-                if (empty || state == null || state.isBlank()) { setText(null); setGraphic(null); return; }
+                if (empty || state == null || state.isBlank()) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
                 Label badge = new Label(state);
                 badge.setPadding(new Insets(2, 8, 2, 8));
                 badge.setFont(Font.font("Segoe UI", FontWeight.BOLD, 11));
                 badge.setTextFill(Color.WHITE);
                 badge.setStyle("-fx-background-color: " + stateColor(state)
                         + "; -fx-background-radius: 10;");
-                setGraphic(badge); setText(null);
+                setGraphic(badge);
+                setText(null);
             }
         });
 
@@ -500,10 +526,9 @@ public class AdminDashboardView extends BorderPane {
         table.setRowFactory(tv -> {
             TableRow<Agent> row = new TableRow<>();
             row.setStyle("-fx-background-color: transparent;");
-            row.hoverProperty().addListener((obs, old, hover) ->
-                    row.setStyle(hover
-                            ? "-fx-background-color: " + ACCENT_BLUE + "22;"
-                            : "-fx-background-color: transparent;"));
+            row.hoverProperty().addListener((obs, old, hover) -> row.setStyle(hover
+                    ? "-fx-background-color: " + ACCENT_BLUE + "22;"
+                    : "-fx-background-color: transparent;"));
             return row;
         });
 
@@ -514,11 +539,11 @@ public class AdminDashboardView extends BorderPane {
             java.util.function.Function<Agent, String> fn, double width) {
         TableColumn<Agent, String> col = new TableColumn<>(title);
         col.setPrefWidth(width);
-        col.setCellValueFactory(c ->
-                new javafx.beans.property.SimpleStringProperty(
-                        fn.apply(c.getValue())));
+        col.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(
+                fn.apply(c.getValue())));
         col.setCellFactory(tc -> new TableCell<>() {
-            @Override protected void updateItem(String item, boolean empty) {
+            @Override
+            protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty || item == null ? null : item);
                 setTextFill(Color.web(TEXT_PRIMARY));
@@ -541,22 +566,22 @@ public class AdminDashboardView extends BorderPane {
         titleLbl.setTextFill(Color.web(TEXT_PRIMARY));
 
         HBox panels = new HBox(16,
-                statusPanel("États Citoyens",        ctrl.getCitizenStateBreakdown(), ACCENT_BLUE),
-                statusPanel("États Agents Secours",   ctrl.getRescueStateBreakdown(),  ACCENT_GREEN)
-        );
+                statusPanel("États Citoyens", ctrl.getCitizenStateBreakdown(), ACCENT_BLUE),
+                statusPanel("États Agents Secours", ctrl.getRescueStateBreakdown(), ACCENT_GREEN));
 
         GridPane grid = new GridPane();
-        grid.setHgap(16); grid.setVgap(12);
+        grid.setHgap(16);
+        grid.setVgap(12);
         grid.setPadding(new Insets(16));
         grid.setStyle("-fx-background-color: " + BG_PANEL + "; -fx-background-radius: 10;");
 
-        addStatRow(grid, 0, "Total agents",           String.valueOf(ctrl.getTotalAgents()),        TEXT_PRIMARY);
-        addStatRow(grid, 1, "Citoyens",               String.valueOf(ctrl.getTotalCitizens()),       ACCENT_BLUE);
-        addStatRow(grid, 2, "Agents de secours",      String.valueOf(ctrl.getTotalRescueAgents()),   ACCENT_GREEN);
-        addStatRow(grid, 3, "Citoyens à risque",      String.valueOf(ctrl.getAtRiskCount()),          ACCENT_ORANGE);
-        addStatRow(grid, 4, "Citoyens sauvés",        String.valueOf(ctrl.getSavedCount()),           ACCENT_GREEN);
-        addStatRow(grid, 5, "Agents en intervention", String.valueOf(ctrl.getActiveRescueCount()),    ACCENT_RED);
-        addStatRow(grid, 6, "Agents disponibles",     String.valueOf(ctrl.getAvailableRescueCount()), ACCENT_CYAN);
+        addStatRow(grid, 0, "Total agents", String.valueOf(ctrl.getTotalAgents()), TEXT_PRIMARY);
+        addStatRow(grid, 1, "Citoyens", String.valueOf(ctrl.getTotalCitizens()), ACCENT_BLUE);
+        addStatRow(grid, 2, "Agents de secours", String.valueOf(ctrl.getTotalRescueAgents()), ACCENT_GREEN);
+        addStatRow(grid, 3, "Citoyens à risque", String.valueOf(ctrl.getAtRiskCount()), ACCENT_ORANGE);
+        addStatRow(grid, 4, "Citoyens sauvés", String.valueOf(ctrl.getSavedCount()), ACCENT_GREEN);
+        addStatRow(grid, 5, "Agents en intervention", String.valueOf(ctrl.getActiveRescueCount()), ACCENT_RED);
+        addStatRow(grid, 6, "Agents disponibles", String.valueOf(ctrl.getAvailableRescueCount()), ACCENT_CYAN);
 
         root.getChildren().addAll(titleLbl, panels, grid);
 
@@ -582,10 +607,10 @@ public class AdminDashboardView extends BorderPane {
     private void refreshAll() {
         switch (currentSection) {
             case "dashboard" -> showDashboard();
-            case "citizens"  -> showAgentList("citizen",    "Citoyens");
-            case "rescue"    -> showAgentList("rescueAgent","Agents de Secours");
-            case "admins"    -> showAgentList("admin",      "Administrateurs");
-            case "stats"     -> showStats();
+            case "citizens" -> showAgentList("citizen", "Citoyens");
+            case "rescue" -> showAgentList("rescueAgent", "Agents de Secours");
+            case "admins" -> showAgentList("admin", "Administrateurs");
+            case "stats" -> showStats();
         }
     }
 
@@ -597,7 +622,7 @@ public class AdminDashboardView extends BorderPane {
         b.setStyle("-fx-background-color: " + color + "; -fx-background-radius: 6; -fx-cursor: hand;");
         b.setOnMouseEntered(e -> b.setStyle(
                 "-fx-background-color: derive(" + color + ", 20%);"
-                + " -fx-background-radius: 6; -fx-cursor: hand;"));
+                        + " -fx-background-radius: 6; -fx-cursor: hand;"));
         b.setOnMouseExited(e -> b.setStyle(
                 "-fx-background-color: " + color + "; -fx-background-radius: 6; -fx-cursor: hand;"));
         return b;
@@ -612,19 +637,22 @@ public class AdminDashboardView extends BorderPane {
 
     private void fadeIn(Node node) {
         FadeTransition ft = new FadeTransition(Duration.millis(200), node);
-        ft.setFromValue(0); ft.setToValue(1); ft.play();
+        ft.setFromValue(0);
+        ft.setToValue(1);
+        ft.play();
     }
 
     private String stateColor(String state) {
-        if (state == null) return TEXT_MUTED;
+        if (state == null)
+            return TEXT_MUTED;
         return switch (state.toUpperCase()) {
-            case "CALME"           -> ACCENT_GREEN;
-            case "PANIQUE"         -> ACCENT_ORANGE;
-            case "BLESSE"          -> ACCENT_RED;
-            case "DISPONIBLE"      -> ACCENT_CYAN;
+            case "CALME" -> ACCENT_GREEN;
+            case "PANIQUE" -> ACCENT_ORANGE;
+            case "BLESSE" -> ACCENT_RED;
+            case "DISPONIBLE" -> ACCENT_CYAN;
             case "EN_INTERVENTION" -> ACCENT_RED;
-            case "EN_ROUTE"        -> ACCENT_BLUE;
-            default                -> TEXT_MUTED;
+            case "EN_ROUTE" -> ACCENT_BLUE;
+            default -> TEXT_MUTED;
         };
     }
 }

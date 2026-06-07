@@ -1,6 +1,7 @@
 package view;
 
 import app.Main;
+import model.zone.ZoneManager;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -18,8 +19,13 @@ import javafx.scene.text.FontWeight;
 
 public class RescueDashboardView extends BorderPane {
 
+    private VBox dashboardContent;
+    private MapView mapComponent;
+    
     public RescueDashboardView() {
         this.setStyle("-fx-background-color: #f4f6f9;");
+        // Construire la carte depuis zones.json
+        this.mapComponent = new MapView(new ZoneManager().getZones());
 
         // 🔥 Lecture du nom de l'agent de secours connecté
         String name = (Main.currentUser != null && Main.currentUser.getFirstName() != null) ? Main.currentUser.getFirstName() : "Coordinateur";
@@ -49,11 +55,20 @@ public class RescueDashboardView extends BorderPane {
         profileBox.getChildren().addAll(avatar, profileTexts);
         sidebar.getChildren().add(profileBox);
 
+        
+        Button btnAlerts = createSidebarButton("⚠️  Alertes", false);
+        btnAlerts.setOnAction(e -> this.setCenter(new AdminAlertsView()));
+        
+        Button btnMapView = createSidebarButton("🗺️  Carte", false);
+        btnMapView.setOnAction(e -> this.setCenter(mapComponent.getWebView()));
+        
+        
+        
         sidebar.getChildren().addAll(
             createSidebarButton("🏠   Tableau de bord", true),
-            createSidebarButton("🗺️   Carte", false),
+            btnMapView,
             createSidebarButton("👥   Agents", false),
-            createSidebarButton("⚠️   Alertes", false),
+            btnAlerts,
             createSidebarButton("📦   Ressources", false),
             createSidebarButton("📋   Missions", false),
             createSidebarButton("👤  Profil", false),
