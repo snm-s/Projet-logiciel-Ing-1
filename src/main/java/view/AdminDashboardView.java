@@ -3,7 +3,7 @@ package view;
 import java.util.Map;
 
 import app.Main;
-import controller.AdminController;
+import controller.AdminPage.AdminController;
 import javafx.animation.FadeTransition;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
