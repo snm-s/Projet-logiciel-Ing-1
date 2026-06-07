@@ -1,158 +1,194 @@
 package view;
 
-import javafx.scene.layout.Region;
-import javafx.scene.web.WebView;
+import controller.MapController;
+import javafx.application.Platform;
 import javafx.scene.web.WebEngine;
+import javafx.scene.web.WebView;
 import model.observer.Observer;
 import model.zone.Zone;
 import model.zone.ZoneUpdateListener;
+
 import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
- * Vue carte interactive avec Leaflet.js montrant les zones de Lyon
- * Colore dynamiquement les zones selon leur état d'inondation
+ * Vue carte interactive Leaflet.js — thème dark, zones colorées selon le niveau d'eau.
+ * 
+ * MISE À JOUR : expose getWebEngine() pour MapController,
+ * et intègre refreshRouteColors() après chaque mise à jour de zone.
  */
 public class MapView implements ZoneUpdateListener, Observer<Zone> {
-    private WebView webView;
-    private WebEngine webEngine;
-    private List<Zone> zones;
-    private Map<Integer, String> zoneColors;
-    private static final double LYON_LAT = 45.7640;
-    private static final double LYON_LNG = 4.8357;
-    private static final int DEFAULT_ZOOM = 12;
 
+    private final WebView   webView;
+    private final WebEngine webEngine;
+    private List<Zone> zones;
+
+    // MapController optionnel (injecté après création)
+    private MapController mapController;
+
+    // Centre Lyon
+    private static final double LYON_LAT    = 45.7640;
+    private static final double LYON_LNG    = 4.8357;
+    private static final int    DEFAULT_ZOOM = 13;
+
+    // ─────────────────────────────────────────────────────────────────────
     public MapView(List<Zone> zones) {
-        this.zones = zones;
-        this.zoneColors = new HashMap<>();
+        this.zones   = zones;
         this.webView = new WebView();
         this.webView.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
-        this.webView.setPrefSize(Region.USE_COMPUTED_SIZE, Region.USE_COMPUTED_SIZE);
-        this.webView.setMinSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        this.webView.setPrefSize(800, 600);
+        this.webView.setMinWidth(400);
+        this.webView.setMinHeight(300);
         this.webEngine = webView.getEngine();
-
-        // Initialiser les couleurs par défaut
-        for (Zone zone : zones) {
-            zoneColors.put(zone.getId(), "#2ecc71"); // Vert par défaut
-        }
-
         initializeMap();
     }
 
-    public WebView getWebView() {
-        return webView;
+    public WebView   getWebView()   { return webView; }
+    public WebEngine getWebEngine() { return webEngine; }
+
+    /** Injecte le MapController après construction (évite la dépendance circulaire). */
+    public void setMapController(MapController controller) {
+        this.mapController = controller;
     }
 
-    private String escapeForJs(String raw) {
-        if (raw == null) {
-            return "";
-        }
-        return raw.replace("\\", "\\\\")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("'", "\\'")
-                .replace("\"", "\\\"");
-    }
-
+    // ─────────────────────────────────────────────────────────────────────
+    // INITIALISATION
+    // ─────────────────────────────────────────────────────────────────────
     private void initializeMap() {
-        String html = buildMapHtml();
-        webEngine.loadContent(html);
+        webEngine.getLoadWorker().stateProperty().addListener((obs, oldState, newState) -> {
+            if (newState == javafx.concurrent.Worker.State.SUCCEEDED) {
+                System.out.println("Carte chargée ! Injection des zones...");
+                String jsonData = zonesToJson();
+                // Remplacer les apostrophes qui cassent le JS
+                String safeJson = jsonData.replace("'", "\\'");
+                String script = "window.loadAllZones('" + safeJson + "');";
+                webEngine.executeScript(script);
+            }
+        });
+
+        String url = getClass().getResource("/map/map.html").toExternalForm();
+        webEngine.load(url);
     }
 
-    private String buildMapHtml() {
-        StringBuilder html = new StringBuilder();
-        html.append("<html><head>")
-                .append("<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'/>")
-                .append("<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script>")
-                .append("<style>")
-                .append("html, body, #map { height: 100%; margin: 0; padding: 0; font-family: Arial, sans-serif; }")
-                .append(".zone-label { font-size: 11px; font-weight: bold; color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.7); }")
-                .append(".info { padding: 6px 8px; background: white; box-shadow: 0 0 15px rgba(0,0,0,0.2); border-radius: 5px; font-size: 12px; }")
-                .append("</style>")
-                .append("</head><body><div id='map'></div>")
-                .append("<script>")
-                .append("var map = L.map('map').setView([").append(LYON_LAT).append(", ").append(LYON_LNG).append("], ")
-                .append(DEFAULT_ZOOM).append(");")
-                .append("L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {")
-                .append("  attribution: '© OpenStreetMap',")
-                .append("  maxZoom: 19")
-                .append("}).addTo(map);")
-                .append("window.zones = {};");
-
-        // Ajouter les cercles pour chaque zone
-        for (Zone zone : zones) {
-            String color = getColorForZone(zone);
-            String popupText = "<b>" + escapeForJs(zone.getName()) + "</b><br/>"
-                    + "Population: " + zone.getPopulation() + "<br/>"
-                    + "Altitude: " + String.format("%.1f", zone.getAltitude()) + "m<br/>"
-                    + escapeForJs(zone.getDescription());
-
-            html.append("var circle_").append(zone.getId()).append(" = L.circle([")
-                    .append(zone.getLatitude()).append(", ").append(zone.getLongitude()).append("], {")
-                    .append("color: '").append(color).append("',")
-                    .append("fillColor: '").append(color).append("',")
-                    .append("fillOpacity: 0.6,")
-                    .append("radius: 500,")
-                    .append("weight: 2")
-                    .append("}).addTo(map);")
-                    .append("circle_").append(zone.getId()).append(".bindPopup('")
-                    .append(popupText)
-                    .append("');")
-                    .append("window.zones[").append(zone.getId()).append("] = circle_").append(zone.getId())
-                    .append(";");
-        }
-
-        html.append("</script></body></html>");
-        return html.toString();
-    }
-
-    private String getColorForZone(Zone zone) {
-        if (zone.isFlooded()) {
-            return zone.isEvacuated() ? "#e74c3c" : "#f39c12"; // Rouge si inondé, orange si en cours d'évacuation
-        }
-        return "#2ecc71"; // Vert sinon
-    }
+    // ─────────────────────────────────────────────────────────────────────
+    // MISE À JOUR DYNAMIQUE
+    // ─────────────────────────────────────────────────────────────────────
 
     public void updateZoneColor(Zone zone) {
-        String color = getColorForZone(zone);
-        String script = String.format(
-                "if (window.zones && window.zones[%d]) { window.zones[%d].setStyle({color: '%s', fillColor: '%s'}); }",
-                zone.getId(), zone.getId(), color, color);
-        webEngine.executeScript(script);
+        Platform.runLater(() -> {
+            String script = String.format(
+                "window.updateZone(%d, %b, %b, %.2f);",
+                zone.getId(), zone.isFlooded(), zone.isEvacuated(),
+                zone.isFlooded() ? 1.5 : 0.0);
+            try { webEngine.executeScript(script); } catch (Exception ignored) {}
+        });
     }
 
-    @Override
-    public void update(Zone zone) {
-        if (zone != null) {
-            updateZoneColor(zone);
-        }
+    /** Mise à jour avec niveau d'eau réel + rafraîchissement des routes. */
+    public void updateZoneWithWaterLevel(Zone zone, double niveauEau) {
+        Platform.runLater(() -> {
+            String script = String.format(
+                "window.updateZone(%d,%b,%b,%.2f);",
+                zone.getId(), zone.isFlooded(), zone.isEvacuated(), niveauEau);
+            try {
+                webEngine.executeScript(script);
+                // Rafraîchir les routes après mise à jour
+                refreshRouteColors();
+            } catch (Exception ignored) {}
+        });
     }
 
-    @Override
-    public void onZoneFlooded(Zone zone) {
-        updateZoneColor(zone);
-    }
-
-    @Override
-    public void onZoneEvacuated(Zone zone) {
-        updateZoneColor(zone);
-    }
-
-    @Override
-    public void onZoneReset(Zone zone) {
-        updateZoneColor(zone);
-    }
-
-    @Override
-    public void onSimulationUpdated() {
-        for (Zone zone : zones) {
-            updateZoneColor(zone);
-        }
+    /** Rafraîchit les couleurs des routes selon l'état actuel des zones. */
+    public void refreshRouteColors() {
+        String json = zonesToJsonForRoutes();
+        String safe = json.replace("'", "\\'");
+        try {
+            webEngine.executeScript("window.refreshRouteColors('" + safe + "');");
+        } catch (Exception ignored) {}
     }
 
     public void updateAllZones(List<Zone> updatedZones) {
         this.zones = updatedZones;
-        onSimulationUpdated();
+        Platform.runLater(() -> {
+            for (Zone zone : zones) {
+                String script = String.format(
+                    "window.updateZone(%d,%b,%b,%.2f);",
+                    zone.getId(), zone.isFlooded(), zone.isEvacuated(),
+                    zone.isFlooded() ? 1.5 : 0.0);
+                try { webEngine.executeScript(script); } catch (Exception ignored) {}
+            }
+            refreshRouteColors();
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // INTERFACES
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Override
+    public void update(Zone zone) {
+        if (zone != null) updateZoneColor(zone);
+    }
+
+    @Override
+    public void onZoneFlooded(Zone zone)   { updateZoneColor(zone); }
+
+    @Override
+    public void onZoneEvacuated(Zone zone) { updateZoneColor(zone); }
+
+    @Override
+    public void onZoneReset(Zone zone)     { updateZoneColor(zone); }
+
+    @Override
+    public void onSimulationUpdated() {
+        for (Zone zone : zones) updateZoneColor(zone);
+        Platform.runLater(this::refreshRouteColors);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SÉRIALISATION JSON
+    // ─────────────────────────────────────────────────────────────────────
+
+    private String zonesToJson() {
+        StringBuilder json = new StringBuilder("[");
+        for (int i = 0; i < zones.size(); i++) {
+            Zone z = zones.get(i);
+            String name = z.getName().replaceAll("[^a-zA-Z0-9 ]", "");
+            String desc = z.getDescription().replaceAll("[^a-zA-Z0-9 ]", "");
+            json.append(String.format(
+                "{\"id\":%d,\"lat\":%f,\"lng\":%f,\"name\":\"%s\"," +
+                "\"pop\":%d,\"alt\":%f,\"desc\":\"%s\",\"flooded\":%b}",
+                z.getId(), z.getLatitude(), z.getLongitude(), name,
+                z.getPopulation(), z.getAltitude(), desc, z.isFlooded()));
+            if (i < zones.size() - 1) json.append(",");
+        }
+        json.append("]");
+        return json.toString();
+    }
+
+    /** JSON allégé pour le rafraîchissement des routes. */
+    private String zonesToJsonForRoutes() {
+        StringBuilder json = new StringBuilder("[");
+        for (int i = 0; i < zones.size(); i++) {
+            Zone z = zones.get(i);
+            json.append(String.format(
+                "{\"id\":%d,\"lat\":%f,\"lng\":%f,\"alt\":%f,\"flooded\":%b}",
+                z.getId(), z.getLatitude(), z.getLongitude(),
+                z.getAltitude(), z.isFlooded()));
+            if (i < zones.size() - 1) json.append(",");
+        }
+        json.append("]");
+        return json.toString();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // UTILITAIRE
+    // ─────────────────────────────────────────────────────────────────────
+    private String escapeJs(String raw) {
+        if (raw == null) return "";
+        return raw.replace("\\", "\\\\")
+                  .replace("\n", "\\n")
+                  .replace("\r", "\\r")
+                  .replace("'",  "\\'")
+                  .replace("\"", "\\\"");
     }
 }
