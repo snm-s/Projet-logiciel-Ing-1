@@ -6,6 +6,7 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
 import javafx.stage.Stage;
 import model.agent.Agent;
+import model.simulation.FloodSimulation;
 import view.AdminDashboardView;
 import view.CitizenDashboardView;
 import view.ForgotPasswordView;
@@ -104,7 +105,8 @@ public class Main extends Application {
 
             case "citizen":
             default:
-                scene = new Scene(new CitizenDashboardView(new CitizenController(null)), 1000, 650);
+                FloodSimulation mySimulation = new FloodSimulation();
+                scene = new Scene(new CitizenDashboardView(new CitizenController(mySimulation)), 1000, 650);
                 mainStage.setTitle("Flood Simulation - Citizen Portal");
                 break;
         }

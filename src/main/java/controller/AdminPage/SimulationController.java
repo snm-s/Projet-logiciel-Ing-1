@@ -1,6 +1,6 @@
 package controller.AdminPage;
 
-import model.simulation.SimulationInondation;
+import model.simulation.FloodSimulation;
 import model.zone.Zone;
 import view.SimulationView;
 
@@ -15,7 +15,7 @@ import java.util.function.Consumer;
  */
 public class SimulationController {
 
-    private final SimulationInondation modele;
+    private final FloodSimulation modele;
     private double vitesseSimulationMs;
 
     // Callbacks optionnels pour notifier la vue de changements d'état
@@ -28,7 +28,7 @@ public class SimulationController {
 
     // ─────────────────────────────────────────────────────────────────────
     public SimulationController() {
-        this.modele = new SimulationInondation();
+        this.modele = new FloodSimulation();
         this.vitesseSimulationMs = 500.0;
     }
 
@@ -36,7 +36,7 @@ public class SimulationController {
     // ACCÈS AU MODÈLE
     // ─────────────────────────────────────────────────────────────────────
 
-    public SimulationInondation getModele() {
+    public FloodSimulation getModele() {
         return modele;
     }
 
@@ -147,8 +147,8 @@ public class SimulationController {
     public void setModeAleatoire(boolean aleatoire) {
         this.modeAleatoire = aleatoire;
         // Informer le modèle si besoin
-        if (modele instanceof SimulationInondation) {
-            // À étendre si SimulationInondation expose un setMode(...)
+        if (modele instanceof FloodSimulation) {
+            // À étendre si FloodSimulation expose un setMode(...)
         }
     }
 

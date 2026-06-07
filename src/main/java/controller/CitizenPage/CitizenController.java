@@ -1,5 +1,7 @@
 package controller.CitizenPage;
 
+import java.util.List;
+
 import model.agent.Agent;
 import model.agent.Citizen;
 import model.alert.Alert;
@@ -12,6 +14,11 @@ public class CitizenController {
 
     public CitizenController(FloodSimulation simulation) {
         this.simulation = simulation;
+    }
+
+    public List<model.zone.Zone> getZones() {
+        // Si votre CitizenController utilise SimulationInondation :
+        return simulation.getZones(); 
     }
 
     // ── Identité ────────────────────────────────────────────────────────────────

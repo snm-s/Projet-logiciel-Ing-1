@@ -13,7 +13,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.util.Duration;
-import model.simulation.SimulationInondation;
+import model.simulation.FloodSimulation;
 import model.zone.Zone;
 
 import java.util.List;
@@ -40,7 +40,7 @@ public class SimulationView extends BorderPane {
 
     // ── Contrôleur & modèle ───────────────────────────────────────────────
     private final SimulationController controller;
-    private final SimulationInondation  modele;
+    private final FloodSimulation  modele;
     private MapController mapController;
 
     // ── Composants carte ──────────────────────────────────────────────────

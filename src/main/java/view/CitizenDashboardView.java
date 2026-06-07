@@ -20,6 +20,10 @@ import model.agent.Agent;
 
 public class CitizenDashboardView extends BorderPane {
 
+    
+    private VBox dashboardContent;
+    private MapView mapComponent;
+
     public CitizenDashboardView(CitizenController controller) {
         this.setStyle("-fx-background-color: #f4f6f9;");
 
@@ -37,6 +41,7 @@ public class CitizenDashboardView extends BorderPane {
         String etaStr       = controller.getEtaLabel(user);
         String routeStatus  = controller.getRouteStatusLabel(user);
 
+        this.mapComponent = new MapView(controller.getZones());
         // ==========================================
         // SIDEBAR (GAUCHE)
         // ==========================================
@@ -67,10 +72,16 @@ public class CitizenDashboardView extends BorderPane {
 
         Button btnAlerts = createSidebarButton("⚠️  Alertes", false);
         btnAlerts.setOnAction(e -> this.setCenter(new CitizenAlertsView()));
+        
+        Button btnMapView = createSidebarButton("🗺️  Carte", false);
+        btnMapView.setOnAction(e -> this.setCenter(mapComponent.getWebView()));
+
+        Button btnDashboard = createSidebarButton("🏠  Tableau de bord", true);
+        btnDashboard.setOnAction(e -> this.setCenter(dashboardContent));
 
         sidebar.getChildren().addAll(
-            createSidebarButton("🏠  Tableau de bord", true),
-            createSidebarButton("🗺️  Carte", false),
+            btnDashboard,
+            btnMapView,
             createSidebarButton("🔀  Mes trajets", false),
             btnAlerts,
             createSidebarButton("🏫  Refuges", false),
