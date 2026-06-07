@@ -36,7 +36,7 @@ public class AdminController {
         return instance;
     }
 
-    private AdminController() {
+    public AdminController() {
         mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);

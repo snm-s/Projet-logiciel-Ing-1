@@ -60,13 +60,14 @@ public class AdminDashboardView extends BorderPane {
     private static final String BORDER        = "#1e3a52";
 
     // ── État ──────────────────────────────────────────────────────────────────
-    private final AdminController ctrl = AdminController.getInstance();
+    private final AdminController ctrl;
     private String currentSection = "dashboard";
     private VBox sidebarBox;
     private StackPane contentArea;
 
     // ── Constructeur (appelé par Main : new AdminDashboardView()) ─────────────
-    public AdminDashboardView() {
+    public AdminDashboardView(AdminController controller) {
+        this.ctrl = controller;
         this.setStyle("-fx-background-color: " + BG_DARK + ";");
         this.setTop(buildTopBar());
         this.setLeft(buildSidebar());
