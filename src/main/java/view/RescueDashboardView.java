@@ -56,7 +56,7 @@ public class RescueDashboardView extends BorderPane {
             createSidebarButton("⚠️   Alertes", false),
             createSidebarButton("📦   Ressources", false),
             createSidebarButton("📋   Missions", false),
-            createSidebarButton("📊   Statistiques", false),
+            createSidebarButton("👤  Profil", false),
             createSidebarButton("⚙️   Paramètres", false)
         );
 

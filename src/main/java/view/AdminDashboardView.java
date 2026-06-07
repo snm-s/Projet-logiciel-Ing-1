@@ -59,12 +59,16 @@ public class AdminDashboardView extends BorderPane {
         headerBox.setPadding(new Insets(10, 5, 30, 5));
         sidebar.getChildren().add(headerBox);
 
+        Button btnHome = createMenuButton("🏠  Tableau de bord", false);
         Button btnSupervision = createMenuButton("🗺️   Carte de Supervision Live", true);
-        Button btnAgents      = createMenuButton("👥   Liste des Inscrits",         false);
         Button btnGraph       = createMenuButton("🛠️   Modifications Graphe",       false);
+        Button btnAgents      = createMenuButton("👥   Liste des Inscrits",         false);
+        Button btnAlerts      = createMenuButton("⚠️   Liste des Alertes",         false);
         Button btnSimulation  = createMenuButton("⏱️   Moteur & Simulation",         false);
+        Button btnStatistics  = createMenuButton("📊  Statistiques",         false);
+        Button btnSettings    = createMenuButton("⚙️  Paramètres",         false);
 
-        sidebar.getChildren().addAll(btnSupervision, btnAgents, btnGraph, btnSimulation);
+        sidebar.getChildren().addAll(btnHome, btnSupervision, btnAgents, btnGraph,btnAlerts, btnSimulation, btnStatistics, btnSettings);
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);

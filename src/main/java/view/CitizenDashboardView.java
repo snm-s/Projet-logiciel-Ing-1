@@ -73,13 +73,15 @@ public class CitizenDashboardView extends BorderPane {
             createSidebarButton("🗺️  Carte", false),
             createSidebarButton("🔀  Mes trajets", false),
             btnAlerts,
-            createSidebarButton("🏫  Refuges", false)
+            createSidebarButton("🏫  Refuges", false),
+            createSidebarButton("👤  Profil", false),
+            createSidebarButton("⚙️  Paramètres", false)
         );
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
-        sidebar.getChildren().add(createSidebarButton("⚙️  Paramètres", false));
+        
         Button btnLogout = createSidebarButton("🚪  Déconnexion", false);
         btnLogout.setOnAction(e -> Main.showWelcomeView());
         sidebar.getChildren().addAll(spacer, btnLogout);
