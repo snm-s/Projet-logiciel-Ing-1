@@ -1,6 +1,9 @@
 package app;
 
+import controller.AdminController;
+import controller.CitizenController;
 import controller.ForgotPasswordController;
+import controller.RescueController;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.ListView;
@@ -87,7 +90,7 @@ public class Main extends Application {
 
         switch (cleanRole) {
             case "admin":
-                scene = new Scene(new AdminDashboardView(), 1000, 650);
+                scene = new Scene(new AdminDashboardView(new AdminController()), 1000, 650);
                 mainStage.setTitle("Flood Simulation - Admin Panel");
                 break;
 
@@ -101,7 +104,7 @@ public class Main extends Application {
 
             case "citizen":
             default:
-                scene = new Scene(new CitizenDashboardView(), 1000, 650);
+                scene = new Scene(new CitizenDashboardView(new CitizenController(null)), 1000, 650);
                 mainStage.setTitle("Flood Simulation - Citizen Portal");
                 break;
         }

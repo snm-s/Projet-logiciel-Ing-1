@@ -1,16 +1,8 @@
 package view;
 
-import java.io.File;
-import java.io.FileReader;
-import java.util.List;
-
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
 import app.Main;
+import controller.AdminController;
 import controller.SimulationController;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -32,25 +24,25 @@ import javafx.scene.web.WebView;
 public class AdminDashboardView extends BorderPane {
 
     private final StackPane centralViewContainer;
-    private ObservableList<AgentInscrit> listeInscritsGlobal;
 
-    private VBox pageSupervision;
-    private VBox pageInscrits;
-    private VBox pageGraphe;
-    private VBox pageMoteur;
+    private VBox supervisionPage;
+    private VBox registeredAgentsPage;
+    private VBox graphPage;
+    private VBox simulationPage;
     private WebView mapWebView;
+
+    private final AdminController adminController;
     private final SimulationController simulationController;
 
-    public AdminDashboardView() {
-        this.setPrefSize(1280, 750);
-        this.setStyle("-fx-background-color: #f4f7fc;");
+    public AdminDashboardView(AdminController adminController) {
+        this.adminController      = adminController;
         this.simulationController = new SimulationController();
 
-        // 1. CHARGEMENT DEPUIS TON VRAI FICHIER USER.JSON VIA GSON
-        chargerDonneesDepuisJSON();
+        this.setPrefSize(1280, 750);
+        this.setStyle("-fx-background-color: #f4f7fc;");
 
         // ==========================================
-        // 2. SIDEBAR DE NAVIGATION
+        // SIDEBAR
         // ==========================================
         VBox sidebar = new VBox(5);
         sidebar.setPrefWidth(260);
@@ -68,14 +60,14 @@ public class AdminDashboardView extends BorderPane {
         sidebar.getChildren().add(headerBox);
 
         Button btnSupervision = createMenuButton("🗺️   Carte de Supervision Live", true);
-        Button btnInscrits = createMenuButton("👥   Liste des Inscrits", false);
-        Button btnGraphe = createMenuButton("🛠️   Modifications Graphe", false);
-        Button btnMoteur = createMenuButton("⏱️   Moteur & Simulation", false);
+        Button btnAgents      = createMenuButton("👥   Liste des Inscrits",         false);
+        Button btnGraph       = createMenuButton("🛠️   Modifications Graphe",       false);
+        Button btnSimulation  = createMenuButton("⏱️   Moteur & Simulation",         false);
 
-        sidebar.getChildren().addAll(btnSupervision, btnInscrits, btnGraphe, btnMoteur);
+        sidebar.getChildren().addAll(btnSupervision, btnAgents, btnGraph, btnSimulation);
 
         Region spacer = new Region();
-        VBox.setVgrow(spacer, Priority.ALWAYS); // CORRIGÉ : C'est bien Vgrow ici !
+        VBox.setVgrow(spacer, Priority.ALWAYS);
         sidebar.getChildren().add(spacer);
 
         Button btnLogout = createMenuButton("🚪   Déconnexion", false);
@@ -86,34 +78,34 @@ public class AdminDashboardView extends BorderPane {
         this.setLeft(sidebar);
 
         // ==========================================
-        // 3. ZONE CENTRALE
+        // CENTRAL AREA
         // ==========================================
         centralViewContainer = new StackPane();
         this.setCenter(centralViewContainer);
 
-        buildPageSupervision();
-        buildPageInscrits();
-        buildPageGraphe();
-        buildPageMoteur();
+        buildSupervisionPage();
+        buildRegisteredAgentsPage();
+        buildGraphPage();
+        buildSimulationPage();
 
-        centralViewContainer.getChildren().add(pageSupervision);
+        centralViewContainer.getChildren().add(supervisionPage);
 
         btnSupervision.setOnAction(e -> {
-            showPage(pageSupervision);
-            updateActiveTabs(btnSupervision, btnInscrits, btnGraphe, btnMoteur);
-            rafraichirCarte();
+            showPage(supervisionPage);
+            updateActiveTabs(btnSupervision, btnAgents, btnGraph, btnSimulation);
+            refreshMap();
         });
-        btnInscrits.setOnAction(e -> {
-            showPage(pageInscrits);
-            updateActiveTabs(btnInscrits, btnSupervision, btnGraphe, btnMoteur);
+        btnAgents.setOnAction(e -> {
+            showPage(registeredAgentsPage);
+            updateActiveTabs(btnAgents, btnSupervision, btnGraph, btnSimulation);
         });
-        btnGraphe.setOnAction(e -> {
-            showPage(pageGraphe);
-            updateActiveTabs(btnGraphe, btnSupervision, btnInscrits, btnMoteur);
+        btnGraph.setOnAction(e -> {
+            showPage(graphPage);
+            updateActiveTabs(btnGraph, btnSupervision, btnAgents, btnSimulation);
         });
-        btnMoteur.setOnAction(e -> {
-            showPage(pageMoteur);
-            updateActiveTabs(btnMoteur, btnSupervision, btnInscrits, btnGraphe);
+        btnSimulation.setOnAction(e -> {
+            showPage(simulationPage);
+            updateActiveTabs(btnSimulation, btnSupervision, btnAgents, btnGraph);
         });
         btnLogout.setOnAction(e -> {
             Main.currentUser = null;
@@ -121,46 +113,11 @@ public class AdminDashboardView extends BorderPane {
         });
     }
 
-    /**
-     * CHARGEMENT ROBUSTE : Utilise Gson pour mapper directement ton fichier
-     * user.json
-     */
-    private void chargerDonneesDepuisJSON() {
-        listeInscritsGlobal = FXCollections.observableArrayList();
-        String cheminFichier = "user.json";
+    // ── Page builders ───────────────────────────────────────────────────────────
 
-        try {
-            File fichier = new File(cheminFichier);
-            if (!fichier.exists()) {
-                System.out.println("⚠️ Fichier user.json introuvable. Création de données par défaut.");
-                listeInscritsGlobal.add(new AgentInscrit("admin", 1, "Chef", "Admin", "admin@test.com", "CALME", null,
-                        new Position(48.85, 2.35)));
-                return;
-            }
-
-            Gson gson = new Gson();
-            FileReader reader = new FileReader(fichier);
-
-            // On convertit le tableau JSON directement en Liste d'objets Java
-            List<AgentInscrit> listeJson = gson.fromJson(reader, new TypeToken<List<AgentInscrit>>() {
-            }.getType());
-            reader.close();
-
-            if (listeJson != null) {
-                listeInscritsGlobal.addAll(listeJson);
-                System.out.println(
-                        "✅ " + listeInscritsGlobal.size() + " utilisateurs chargés avec succès depuis le JSON !");
-            }
-
-        } catch (Exception e) {
-            System.err.println("❌ Erreur critique lors de la lecture du JSON via GSON : " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    private void buildPageSupervision() {
-        pageSupervision = new VBox(15);
-        pageSupervision.setPadding(new Insets(25));
+    private void buildSupervisionPage() {
+        supervisionPage = new VBox(15);
+        supervisionPage.setPadding(new Insets(25));
 
         Label title = new Label("Supervision Globale - Carte Réelle (user.json)");
         title.setFont(Font.font("System", FontWeight.BOLD, 22));
@@ -169,87 +126,37 @@ public class AdminDashboardView extends BorderPane {
         mapWebView = new WebView();
         VBox.setVgrow(mapWebView, Priority.ALWAYS);
 
-        rafraichirCarte();
+        refreshMap();
 
-        pageSupervision.getChildren().addAll(title, mapWebView);
+        supervisionPage.getChildren().addAll(title, mapWebView);
     }
 
-    private void rafraichirCarte() {
-        StringBuilder htmlContent = new StringBuilder();
-        htmlContent.append("<html><head>")
-                .append("<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'/>")
-                .append("<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script>")
-                .append("<style>html, body, #map { height: 100%; margin: 0; padding: 0; }</style>")
-                .append("</head><body><div id='map'></div><script>")
-                .append("var map = L.map('map').setView([48.85, 2.35], 12);")
-                .append("L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);");
-
-        // Points d'intérêts d'infrastructure fixes
-        htmlContent
-                .append("L.marker([48.8584, 2.3499]).addTo(map).bindPopup('<b>🏢 CASERNE DE POMPIERS CENTRALE</b>');");
-        htmlContent.append("L.marker([48.8462, 2.3427]).addTo(map).bindPopup('<b>🏠 REFUGE DE CRISE PRINCIPAL</b>');");
-
-        // Affichage dynamique des vrais agents chargés du fichier JSON
-        for (AgentInscrit agent : listeInscritsGlobal) {
-            if (agent.getPosition() == null)
-                continue; // Sécurité si un agent n'a pas de coordonnées
-
-            String color = "blue";
-            if ("admin".equals(agent.getType()))
-                color = "purple";
-            if ("rescueAgent".equals(agent.getType()))
-                color = "red";
-
-            String dest = agent.getDestination() != null ? agent.getDestination() : "Aucune";
-
-            // Nettoyage des chaînes pour éviter les crashs de chaînes de caractères en
-            // JavaScript
-            String prenom = agent.getFirstName().replace("'", "\\'");
-            String nom = agent.getLastName().replace("'", "\\'");
-
-            htmlContent.append("L.circle([").append(agent.getPosition().getLat()).append(", ")
-                    .append(agent.getPosition().getLng()).append("], {")
-                    .append("color: '").append(color).append("',")
-                    .append("fillColor: '").append(color).append("',")
-                    .append("fillOpacity: 0.7, radius: 250 })")
-                    .append(".addTo(map).bindPopup('")
-                    .append("<b>Rôle:</b> ").append(agent.getType())
-                    .append("<br><b>Nom:</b> ").append(prenom).append(" ").append(nom)
-                    .append("<br><b>État:</b> ").append(agent.getState())
-                    .append("<br><b>Destination:</b> ").append(dest)
-                    .append("');");
-        }
-
-        htmlContent.append("</script></body></html>");
-        mapWebView.getEngine().loadContent(htmlContent.toString());
+    private void refreshMap() {
+        mapWebView.getEngine().loadContent(adminController.generateMapHtml());
     }
 
-    private void buildPageInscrits() {
-        pageInscrits = new VBox(15);
-        pageInscrits.setPadding(new Insets(25));
+    private void buildRegisteredAgentsPage() {
+        registeredAgentsPage = new VBox(15);
+        registeredAgentsPage.setPadding(new Insets(25));
 
         Label title = new Label("Base de Données — Registre Matricule (user.json)");
         title.setFont(Font.font("System", FontWeight.BOLD, 22));
 
         TableView<AgentInscrit> table = new TableView<>();
-        table.setItems(listeInscritsGlobal);
+        table.setItems(adminController.getRegisteredAgents());
 
-        TableColumn<AgentInscrit, Integer> colId = new TableColumn<>("ID");
+        TableColumn<AgentInscrit, Integer> colId        = new TableColumn<>("ID");
+        TableColumn<AgentInscrit, String>  colType      = new TableColumn<>("Type");
+        TableColumn<AgentInscrit, String>  colFirstName = new TableColumn<>("Prénom");
+        TableColumn<AgentInscrit, String>  colLastName  = new TableColumn<>("Nom");
+        TableColumn<AgentInscrit, String>  colEmail     = new TableColumn<>("Email");
+        TableColumn<AgentInscrit, String>  colState     = new TableColumn<>("État");
+
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
-
-        TableColumn<AgentInscrit, String> colType = new TableColumn<>("Type");
         colType.setCellValueFactory(new PropertyValueFactory<>("type"));
-
-        TableColumn<AgentInscrit, String> colFirstName = new TableColumn<>("Prénom");
         colFirstName.setCellValueFactory(new PropertyValueFactory<>("firstName"));
-
-        TableColumn<AgentInscrit, String> colLastName = new TableColumn<>("Nom");
         colLastName.setCellValueFactory(new PropertyValueFactory<>("lastName"));
-
-        TableColumn<AgentInscrit, String> colEmail = new TableColumn<>("Email");
         colEmail.setCellValueFactory(new PropertyValueFactory<>("email"));
-
-        TableColumn<AgentInscrit, String> colState = new TableColumn<>("État");
         colState.setCellValueFactory(new PropertyValueFactory<>("state"));
 
         table.getColumns().addAll(colId, colType, colFirstName, colLastName, colEmail, colState);
@@ -260,30 +167,30 @@ public class AdminDashboardView extends BorderPane {
         btnDelete.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold;");
         btnDelete.setOnAction(e -> {
             AgentInscrit selected = table.getSelectionModel().getSelectedItem();
-            if (selected != null) {
-                listeInscritsGlobal.remove(selected);
-            }
+            adminController.deleteAgent(selected);
         });
 
-        pageInscrits.getChildren().addAll(title, table, btnDelete);
+        registeredAgentsPage.getChildren().addAll(title, table, btnDelete);
     }
 
-    private void buildPageGraphe() {
-        pageGraphe = new VBox(20);
-        pageGraphe.setPadding(new Insets(25));
-        pageGraphe.getChildren()
+    private void buildGraphPage() {
+        graphPage = new VBox(20);
+        graphPage.setPadding(new Insets(25));
+        graphPage.getChildren()
                 .add(new Label("🛠️ Configuration du Graphe — Gestion des goulots d'accès (Pénalité de 2 cycles)"));
     }
 
-    private void buildPageMoteur() {
-        pageMoteur = new VBox(0);
-        pageMoteur.setPadding(new Insets(0));
-        pageMoteur.setStyle("-fx-background-color: #f4f7fc;");
+    private void buildSimulationPage() {
+        simulationPage = new VBox(0);
+        simulationPage.setPadding(new Insets(0));
+        simulationPage.setStyle("-fx-background-color: #f4f7fc;");
 
         SimulationView simulationView = new SimulationView(simulationController);
         VBox.setVgrow(simulationView, Priority.ALWAYS);
-        pageMoteur.getChildren().add(simulationView);
+        simulationPage.getChildren().add(simulationView);
     }
+
+    // ── UI helpers ──────────────────────────────────────────────────────────────
 
     private Button createMenuButton(String text, boolean isActive) {
         Button btn = new Button(text);
@@ -317,7 +224,7 @@ public class AdminDashboardView extends BorderPane {
     }
 
     // ========================================================
-    // CLASSES MODÈLES ADAPTÉES STRICTEMENT À TON FICHIER JSON
+    // INNER MODEL CLASSES (JSON mapping for admin user list)
     // ========================================================
     public static class AgentInscrit {
         private String type;
@@ -327,51 +234,28 @@ public class AdminDashboardView extends BorderPane {
         private String email;
         private String state;
         private String destination;
-        private Position position; // Objet imbriqué comme dans ton fichier JSON
+        private Position position;
 
         public AgentInscrit(String type, int id, String firstName, String lastName, String email, String state,
                 String destination, Position position) {
-            this.type = type;
-            this.id = id;
-            this.firstName = firstName;
-            this.lastName = lastName;
-            this.email = email;
-            this.state = state;
+            this.type        = type;
+            this.id          = id;
+            this.firstName   = firstName;
+            this.lastName    = lastName;
+            this.email       = email;
+            this.state       = state;
             this.destination = destination;
-            this.position = position;
+            this.position    = position;
         }
 
-        public String getType() {
-            return type;
-        }
-
-        public int getId() {
-            return id;
-        }
-
-        public String getFirstName() {
-            return firstName;
-        }
-
-        public String getLastName() {
-            return lastName;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public String getState() {
-            return state;
-        }
-
-        public String getDestination() {
-            return destination;
-        }
-
-        public Position getPosition() {
-            return position;
-        }
+        public String   getType()        { return type; }
+        public int      getId()          { return id; }
+        public String   getFirstName()   { return firstName; }
+        public String   getLastName()    { return lastName; }
+        public String   getEmail()       { return email; }
+        public String   getState()       { return state; }
+        public String   getDestination() { return destination; }
+        public Position getPosition()    { return position; }
     }
 
     public static class Position {
@@ -383,12 +267,7 @@ public class AdminDashboardView extends BorderPane {
             this.lng = lng;
         }
 
-        public double getLat() {
-            return lat;
-        }
-
-        public double getLng() {
-            return lng;
-        }
+        public double getLat() { return lat; }
+        public double getLng() { return lng; }
     }
 }
