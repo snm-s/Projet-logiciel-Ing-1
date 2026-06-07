@@ -3,7 +3,7 @@ package view;
 import java.time.LocalDate;
 
 import app.Main;
-import controller.RegisterController;
+import controller.AuthPage.RegisterController;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;

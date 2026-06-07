@@ -1,4 +1,4 @@
-package controller;
+package controller.AdminPage;
 
 import javafx.collections.ObservableList;
 import model.alert.Alert;

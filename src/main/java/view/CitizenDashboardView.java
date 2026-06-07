@@ -1,7 +1,7 @@
 package view;
 
 import app.Main;
-import controller.CitizenController;
+import controller.CitizenPage.CitizenController;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;

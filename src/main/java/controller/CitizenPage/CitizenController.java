@@ -1,4 +1,4 @@
-package controller;
+package controller.CitizenPage;
 
 import model.agent.Agent;
 import model.agent.Citizen;

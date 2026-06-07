@@ -1,4 +1,4 @@
-package controller;
+package controller.RescuePage;
 
 import java.util.List;
 

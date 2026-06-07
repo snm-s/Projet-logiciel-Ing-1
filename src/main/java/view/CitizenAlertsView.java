@@ -37,7 +37,7 @@ public class CitizenAlertsView extends BorderPane {
     private final TableView<Alert>      table     = new TableView<>();
     private String currentTab = "Toutes";
     private Label  tabToutes, tabActives, tabResolues;
-    private controller.CitizenAlertsController controller;
+    private controller.CitizenPage.CitizenAlertsController controller;
 
     public CitizenAlertsView() {
         this.setStyle("-fx-background-color:" + CONTENT_BG + ";");
@@ -403,5 +403,5 @@ public class CitizenAlertsView extends BorderPane {
     // ── Public API ────────────────────────────────────────────────────────
     public ObservableList<Alert> getAllAlerts() { return allAlerts; }
     public TableView<Alert>      getTable()     { return table; }
-    public void setController(controller.CitizenAlertsController c) { this.controller = c; }
+    public void setController(controller.CitizenPage.CitizenAlertsController c) { this.controller = c; }
 }

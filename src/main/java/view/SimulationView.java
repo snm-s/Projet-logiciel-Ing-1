@@ -1,6 +1,6 @@
 package view;
 
-import controller.SimulationController;
+import controller.AdminPage.SimulationController;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.geometry.Insets;

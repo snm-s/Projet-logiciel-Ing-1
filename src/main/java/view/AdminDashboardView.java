@@ -1,8 +1,8 @@
 package view;
 
 import app.Main;
-import controller.AdminController;
-import controller.SimulationController;
+import controller.AdminPage.AdminController;
+import controller.AdminPage.SimulationController;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;

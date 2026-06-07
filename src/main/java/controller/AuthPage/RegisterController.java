@@ -1,4 +1,4 @@
-package controller;
+package controller.AuthPage;
 
 import java.time.LocalDate;
 

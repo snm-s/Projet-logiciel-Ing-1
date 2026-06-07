@@ -1,4 +1,4 @@
-package controller;
+package controller.CitizenPage;
 
 import javafx.collections.ObservableList;
 import model.alert.Alert;

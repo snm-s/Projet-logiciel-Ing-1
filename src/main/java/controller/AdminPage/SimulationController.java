@@ -1,4 +1,4 @@
-package controller;
+package controller.AdminPage;
 
 import model.simulation.SimulationInondation;
 

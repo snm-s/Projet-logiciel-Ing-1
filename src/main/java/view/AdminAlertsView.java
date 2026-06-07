@@ -44,7 +44,7 @@ public class AdminAlertsView extends BorderPane {
     private final TableView<Alert>      table       = new TableView<>();
     private String currentTab = "Toutes";
     private Label  tabToutes, tabActives, tabResolues, tabSuggestions;
-    private controller.AdminAlertsController controller;
+    private controller.AdminPage.AdminAlertsController controller;
 
     public AdminAlertsView() {
         this.setStyle("-fx-background-color:" + CONTENT_BG + ";");
@@ -495,5 +495,5 @@ public class AdminAlertsView extends BorderPane {
     public ObservableList<Alert> getAllAlerts()    { return allAlerts; }
     public ObservableList<Alert> getSuggestions()  { return suggestions; }
     public TableView<Alert>      getTable()        { return table; }
-    public void setController(controller.AdminAlertsController c) { this.controller = c; }
+    public void setController(controller.AdminPage.AdminAlertsController c) { this.controller = c; }
 }

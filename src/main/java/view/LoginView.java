@@ -1,6 +1,6 @@
 package view;
 
-import controller.LoginController;
+import controller.AuthPage.LoginController;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;

@@ -1,9 +1,5 @@
 package app;
 
-import controller.AdminController;
-import controller.CitizenController;
-import controller.ForgotPasswordController;
-import controller.RescueController;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.ListView;
@@ -18,7 +14,11 @@ import view.RegisterView;
 import view.RescueDashboardView;
 import view.WelcomeView;
 import view.SimulationView;
-import controller.SimulationController;
+import controller.AdminPage.AdminController;
+import controller.AdminPage.SimulationController;
+import controller.AuthPage.ForgotPasswordController;
+import controller.CitizenPage.CitizenController;
+import controller.RescuePage.RescueController;
 
 public class Main extends Application {
 
@@ -47,7 +47,7 @@ public class Main extends Application {
 
     public static void showLoginView() {
         LoginView loginView = new LoginView();
-        new controller.LoginController(loginView, mainStage);
+        new controller.AuthPage.LoginController(loginView, mainStage);
 
         Scene scene = new Scene(loginView, 1000, 650);
         mainStage.setScene(scene);
@@ -55,7 +55,7 @@ public class Main extends Application {
 
     public static void showRegisterView() {
         RegisterView registerView = new RegisterView();
-        new controller.RegisterController(registerView, mainStage);
+        new controller.AuthPage.RegisterController(registerView, mainStage);
 
         Scene scene = new Scene(registerView, 1000, 650);
         mainStage.setScene(scene);

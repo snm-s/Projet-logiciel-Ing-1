@@ -1,4 +1,4 @@
-package controller;
+package controller.AuthPage;
 
 import app.Main;
 import model.auth.*;
