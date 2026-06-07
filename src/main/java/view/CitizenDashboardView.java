@@ -78,6 +78,8 @@ public class CitizenDashboardView extends BorderPane {
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
+
+        sidebar.getChildren().add(createSidebarButton("⚙️  Paramètres", false));
         Button btnLogout = createSidebarButton("🚪  Déconnexion", false);
         btnLogout.setOnAction(e -> Main.showWelcomeView());
         sidebar.getChildren().addAll(spacer, btnLogout);
