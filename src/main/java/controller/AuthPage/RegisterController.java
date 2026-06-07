@@ -127,6 +127,10 @@ public class RegisterController {
         return password != null && password.chars().anyMatch(Character::isUpperCase);
     }
 
+    public boolean validatePasswordLower(String password) {
+        return password != null && password.chars().anyMatch(Character::isLowerCase);
+    }
+
     public boolean validatePasswordDigit(String password) {
         return password != null && password.chars().anyMatch(Character::isDigit);
     }
@@ -139,6 +143,7 @@ public class RegisterController {
     public boolean canRegister(String password, String confirmPassword) {
         return validatePasswordLength(password)
                 && validatePasswordUpper(password)
+                && validatePasswordLower(password)
                 && validatePasswordDigit(password)
                 && passwordsMatch(password, confirmPassword);
     }
