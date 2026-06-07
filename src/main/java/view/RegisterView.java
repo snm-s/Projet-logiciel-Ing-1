@@ -45,9 +45,6 @@ public class RegisterView extends StackPane {
     private TextField email = new TextField(), phone = new TextField();
     private PasswordField password = new PasswordField(), confirmPassword = new PasswordField();
     private TextField visiblePassword = new TextField(), visibleConfirmPassword = new TextField();
-    private Label ruleLength = new Label("• Au moins 8 charactères"),
-                  ruleUpper  = new Label("• Au moins 1 lettre majuscule"),
-                  ruleDigit  = new Label("• Au moins 1 chiffre");
     private TextField address = new TextField(), country = new TextField();
     private ComboBox<String> city = new ComboBox<>();
     private boolean citySelectionInProgress = false;
@@ -69,6 +66,7 @@ private double detectedLng = 2.3522;
     // Validation labels
     private Label errFirstName = errLabel(), errLastName = errLabel(), errBirthDate = errLabel(),
                   errEmail = errLabel(), errPhone = errLabel(),
+                  errPassword = errLabel(),
                   errAddress = errLabel(), errCity = errLabel(), errCountry = errLabel(),
                   errHouseType = errLabel(), errFloor = errLabel(),
                   errHouseholdSize = errLabel(), errEmergencyContact = errLabel(),
@@ -201,13 +199,10 @@ root.getChildren().addAll(
         // --- PASSWORD ---
         password.textProperty().bindBidirectional(visiblePassword.textProperty());
         confirmPassword.textProperty().bindBidirectional(visibleConfirmPassword.textProperty());
-        applyRuleLabelErrorStyle(ruleLength); applyRuleLabelErrorStyle(ruleUpper); applyRuleLabelErrorStyle(ruleDigit);
-        VBox rulesBox = new VBox(4, ruleLength, ruleUpper, ruleDigit);
-        rulesBox.setPadding(new Insets(0, 0, 10, 5));
         root.getChildren().addAll(createSectionLabel("Mot de passe"),
-            createPasswordFieldWithEye(password, visiblePassword, "Mot de passe"),
-            createPasswordFieldWithEye(confirmPassword, visibleConfirmPassword, "Confirmer le mot de passe"),
-            rulesBox);
+    createPasswordFieldWithEye(password, visiblePassword, "Mot de passe"),
+    createPasswordFieldWithEye(confirmPassword, visibleConfirmPassword, "Confirmer le mot de passe"),
+    errPassword);
 
         // --- ADDRESS ---
         address.setPromptText("Addresse"); applyTextFieldStyle(address);
@@ -670,12 +665,27 @@ if (cityValue.isEmpty() || !city.getItems().contains(cityValue)) {
             boolean length = controller.validatePasswordLength(pwd);
             boolean upper  = controller.validatePasswordUpper(pwd);
             boolean digit  = controller.validatePasswordDigit(pwd);
-            ruleLength.setTextFill(length ? Color.web("#2ecc71") : Color.web("#e74c3c"));
-            ruleUpper.setTextFill(upper   ? Color.web("#2ecc71") : Color.web("#e74c3c"));
-            ruleDigit.setTextFill(digit   ? Color.web("#2ecc71") : Color.web("#e74c3c"));
-            boolean passwordValid = length && upper && digit;
-            applyPasswordColorStyle(password, pwd, passwordValid);
-            applyPasswordColorStyle(confirmPassword, confirm, controller.passwordsMatch(pwd, confirm) && passwordValid);
+            boolean lower = controller.validatePasswordLower(pwd);
+            boolean passwordValid = length && upper && lower && digit;
+boolean samePassword = controller.passwordsMatch(pwd, confirm);
+
+if (!pwd.isEmpty() && !passwordValid) {
+    errPassword.setText("Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule et un chiffre.");
+    errPassword.setVisible(true);
+    errPassword.setManaged(true);
+} 
+else if (!confirm.isEmpty() && !samePassword) {
+    errPassword.setText("Les mots de passe ne correspondent pas.");
+    errPassword.setVisible(true);
+    errPassword.setManaged(true);
+} 
+else {
+    errPassword.setVisible(false);
+    errPassword.setManaged(false);
+}
+
+applyPasswordColorStyle(password, pwd, passwordValid);
+applyPasswordColorStyle(confirmPassword, confirm, confirm.isEmpty() || samePassword);
         };
         password.textProperty().addListener((o, ov, n) -> validate.run());
         visiblePassword.textProperty().addListener((o, ov, n) -> validate.run());
@@ -743,9 +753,13 @@ if (cityValue.isEmpty() || !city.getItems().contains(cityValue)) {
         String pwd     = password.isVisible() ? password.getText() : visiblePassword.getText();
         String confirm = confirmPassword.isVisible() ? confirmPassword.getText() : visibleConfirmPassword.getText();
         if (!controller.canRegister(pwd, confirm)) {
-            System.out.println("[Créer FORMULAIRE INVALIDE (Mots de passe incorrects)");
-            applyPasswordColorStyle(confirmPassword, confirm, false);
-            return;
+            errPassword.setText("Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule et un chiffre. Les deux mots de passe doivent aussi correspondre.");
+errPassword.setVisible(true);
+errPassword.setManaged(true);
+
+applyPasswordColorStyle(password, pwd, false);
+applyPasswordColorStyle(confirmPassword, confirm, false);
+return;
         }
 
         int size = 0, floorNum = 0;
