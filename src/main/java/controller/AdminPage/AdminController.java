@@ -1,112 +1,194 @@
-package controller.AdminPage;
-
-import java.io.File;
-import java.io.FileReader;
-import java.util.List;
-
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
+package controller;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import view.AdminDashboardView.AgentInscrit;
-import view.AdminDashboardView.Position;
+import model.agent.Agent;
+import model.agent.AdminAgent;
+import model.agent.Citizen;
+import model.agent.RescueAgent;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * AdminController
+ * Charge les agents depuis users.json (hiérarchie Agent) et expose
+ * les données agrégées pour AdminDashboardView.
+ */
 public class AdminController {
 
-    private static final String JSON_FILE_PATH = "user.json";
+    private static final String USERS_FILE = "dataUser/users.json";
 
-    private final ObservableList<AgentInscrit> registeredAgents;
+    private final ObjectMapper mapper;
+    private ObservableList<Agent> allAgents = FXCollections.observableArrayList();
 
-    public AdminController() {
-        registeredAgents = FXCollections.observableArrayList();
-        loadDataFromJSON();
+    // ── Singleton ──────────────────────────────────────────────────────────────
+    private static AdminController instance;
+
+    public static AdminController getInstance() {
+        if (instance == null) instance = new AdminController();
+        return instance;
     }
 
-    // ── Data loading ────────────────────────────────────────────────────────────
+    private AdminController() {
+        mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        loadAgents();
+    }
 
-    private void loadDataFromJSON() {
-        File file = new File(JSON_FILE_PATH);
+    // ── Chargement ─────────────────────────────────────────────────────────────
 
-        if (!file.exists()) {
-            System.out.println("⚠️ Fichier user.json introuvable. Création de données par défaut.");
-            registeredAgents.add(new AgentInscrit(
-                    "admin", 1, "Chef", "Admin", "admin@test.com",
-                    "CALME", null, new Position(48.85, 2.35)));
-            return;
-        }
-
+    public void loadAgents() {
         try {
-            Gson gson = new Gson();
-            FileReader reader = new FileReader(file);
-            List<AgentInscrit> jsonList = gson.fromJson(
-                    reader, new TypeToken<List<AgentInscrit>>() {}.getType());
-            reader.close();
-
-            if (jsonList != null) {
-                registeredAgents.addAll(jsonList);
-                System.out.println("✅ " + registeredAgents.size() + " utilisateurs chargés avec succès depuis le JSON !");
+            File file = new File(USERS_FILE);
+            if (!file.exists()) {
+                System.err.println("[AdminController] users.json introuvable : " + file.getAbsolutePath());
+                return;
             }
-        } catch (Exception e) {
-            System.err.println("❌ Erreur critique lors de la lecture du JSON via GSON : " + e.getMessage());
-            e.printStackTrace();
+            List<Agent> loaded = mapper.readValue(file, new TypeReference<List<Agent>>() {});
+            allAgents.setAll(loaded);
+            System.out.println("[AdminController] " + loaded.size() + " agents chargés.");
+        } catch (IOException e) {
+            System.err.println("[AdminController] Erreur lecture users.json : " + e.getMessage());
         }
     }
 
-    // ── Data access ─────────────────────────────────────────────────────────────
+    // ── Listes observables ─────────────────────────────────────────────────────
 
-    public ObservableList<AgentInscrit> getRegisteredAgents() {
-        return registeredAgents;
+    public ObservableList<Agent> getAllAgents() { return allAgents; }
+
+    public ObservableList<Agent> getAdmins() {
+        return filter("admin");
     }
 
-    // ── Actions ─────────────────────────────────────────────────────────────────
+    public ObservableList<Agent> getCitizens() {
+        return filter("citizen");
+    }
 
-    public void deleteAgent(AgentInscrit agent) {
-        if (agent != null) {
-            registeredAgents.remove(agent);
+    public ObservableList<Agent> getRescueAgents() {
+        return filter("rescueAgent");
+    }
+
+    private ObservableList<Agent> filter(String type) {
+        return allAgents.stream()
+                .filter(a -> a.getClass().getSimpleName().toLowerCase().contains(
+                        type.equals("admin") ? "admin" :
+                        type.equals("rescueAgent") ? "rescue" : "citizen"))
+                .collect(Collectors.toCollection(FXCollections::observableArrayList));
+    }
+
+    // ── KPIs ───────────────────────────────────────────────────────────────────
+
+    public int getTotalAgents()        { return allAgents.size(); }
+    public int getTotalCitizens()      { return getCitizens().size(); }
+    public int getTotalRescueAgents()  { return getRescueAgents().size(); }
+
+    public int getAtRiskCount() {
+        return (int) getCitizens().stream()
+                .filter(a -> a instanceof Citizen)
+                .map(a -> (Citizen) a)
+                .filter(c -> c.getState() != null && !"CALME".equalsIgnoreCase(c.getState().name()))
+                .count();
+    }
+
+    public int getSavedCount() {
+        return (int) allAgents.stream().filter(Agent::isSaved).count();
+    }
+
+    public int getActiveRescueCount() {
+        return (int) getRescueAgents().stream()
+                .filter(a -> a instanceof RescueAgent)
+                .map(a -> (RescueAgent) a)
+                .filter(r -> r.getState() != null && "EN_INTERVENTION".equalsIgnoreCase(r.getState().name()))
+                .count();
+    }
+
+    public int getAvailableRescueCount() {
+        return (int) getRescueAgents().stream()
+                .filter(a -> a instanceof RescueAgent)
+                .map(a -> (RescueAgent) a)
+                .filter(r -> r.getState() != null && "DISPONIBLE".equalsIgnoreCase(r.getState().name()))
+                .count();
+    }
+
+    /** Map<état, nb> pour les citoyens */
+    public Map<String, Long> getCitizenStateBreakdown() {
+        return getCitizens().stream()
+                .filter(a -> a instanceof Citizen)
+                .map(a -> (Citizen) a)
+                .collect(Collectors.groupingBy(
+                        c -> c.getState() != null ? c.getState().name() : "INCONNU",
+                        Collectors.counting()));
+    }
+
+    /** Map<état, nb> pour les agents secours */
+    public Map<String, Long> getRescueStateBreakdown() {
+        return getRescueAgents().stream()
+                .filter(a -> a instanceof RescueAgent)
+                .map(a -> (RescueAgent) a)
+                .collect(Collectors.groupingBy(
+                        r -> r.getState() != null ? r.getState().name() : "INCONNU",
+                        Collectors.counting()));
+    }
+
+    // ── CRUD ───────────────────────────────────────────────────────────────────
+
+    public void addAgent(Agent a) {
+        allAgents.add(a);
+        saveAgents();
+    }
+
+    public void deleteAgent(Agent a) {
+        allAgents.remove(a);
+        saveAgents();
+    }
+
+    public void saveAgents() {
+        try {
+            mapper.writerWithDefaultPrettyPrinter().writeValue(new File(USERS_FILE), allAgents);
+        } catch (IOException e) {
+            System.err.println("[AdminController] Erreur sauvegarde : " + e.getMessage());
         }
     }
 
-    // ── Map HTML generation ─────────────────────────────────────────────────────
+    // ── Recherche ──────────────────────────────────────────────────────────────
 
-    public String generateMapHtml() {
-        StringBuilder html = new StringBuilder();
-        html.append("<html><head>")
-                .append("<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'/>")
-                .append("<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script>")
-                .append("<style>html, body, #map { height: 100%; margin: 0; padding: 0; }</style>")
-                .append("</head><body><div id='map'></div><script>")
-                .append("var map = L.map('map').setView([48.85, 2.35], 12);")
-                .append("L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);");
+    public ObservableList<Agent> search(String query) {
+        if (query == null || query.isBlank()) return allAgents;
+        String q = query.toLowerCase();
+        return allAgents.stream()
+                .filter(a ->
+                        String.valueOf(a.getId()).contains(q)
+                        || (a.getFirstName() != null && a.getFirstName().toLowerCase().contains(q))
+                        || (a.getLastName()  != null && a.getLastName() .toLowerCase().contains(q))
+                        || (a.getEmail()     != null && a.getEmail()    .toLowerCase().contains(q))
+                        || a.getClass().getSimpleName().toLowerCase().contains(q)
+                )
+                .collect(Collectors.toCollection(FXCollections::observableArrayList));
+    }
 
-        html.append("L.marker([48.8584, 2.3499]).addTo(map).bindPopup('<b>🏢 CASERNE DE POMPIERS CENTRALE</b>');");
-        html.append("L.marker([48.8462, 2.3427]).addTo(map).bindPopup('<b>🏠 REFUGE DE CRISE PRINCIPAL</b>');");
+    // ── Helpers type string ────────────────────────────────────────────────────
 
-        for (AgentInscrit agent : registeredAgents) {
-            if (agent.getPosition() == null) continue;
+    /** Renvoie "admin" / "rescueAgent" / "citizen" / "pmr" depuis la classe */
+    public static String typeOf(Agent a) {
+        String name = a.getClass().getSimpleName().toLowerCase();
+        if (name.contains("admin"))   return "admin";
+        if (name.contains("rescue"))  return "rescueAgent";
+        if (name.contains("pmr"))     return "pmr";
+        return "citizen";
+    }
 
-            String color = "blue";
-            if ("admin".equals(agent.getType()))       color = "purple";
-            if ("rescueAgent".equals(agent.getType())) color = "red";
-
-            String destination = agent.getDestination() != null ? agent.getDestination() : "Aucune";
-            String firstName   = agent.getFirstName().replace("'", "\\'");
-            String lastName    = agent.getLastName().replace("'", "\\'");
-
-            html.append("L.circle([").append(agent.getPosition().getLat()).append(", ")
-                    .append(agent.getPosition().getLng()).append("], {")
-                    .append("color: '").append(color).append("',")
-                    .append("fillColor: '").append(color).append("',")
-                    .append("fillOpacity: 0.7, radius: 250 })")
-                    .append(".addTo(map).bindPopup('")
-                    .append("<b>Rôle:</b> ").append(agent.getType())
-                    .append("<br><b>Nom:</b> ").append(firstName).append(" ").append(lastName)
-                    .append("<br><b>État:</b> ").append(agent.getState())
-                    .append("<br><b>Destination:</b> ").append(destination)
-                    .append("');");
-        }
-
-        html.append("</script></body></html>");
-        return html.toString();
+    /** Renvoie l'état textuel d'un agent (Citizen ou RescueAgent), "" sinon */
+    public static String stateOf(Agent a) {
+        if (a instanceof Citizen  c && c.getState()  != null) return c.getState().name();
+        if (a instanceof RescueAgent r && r.getState() != null) return r.getState().name();
+        return "";
     }
 }
