@@ -58,9 +58,8 @@ public class RegisterController {
 
         String roleKey = role.equalsIgnoreCase("Citoyen") ? "citizen" : "rescue";
     
-        // 2. Traduction du type de logement (UI "Appartement" -> Logic "APARTMENT")
-        //String houseTypeKey = houseTypeString.equalsIgnoreCase("Appartement") ? "APARTMENT" : "HOUSE";
-
+    
+        
 
 
         if ("rescue".equalsIgnoreCase(roleKey)) {
@@ -94,12 +93,14 @@ public class RegisterController {
         // 4. Remplissage des données spécifiques aux citoyens
         if (newAgent instanceof Citizen) {
             Citizen cit = (Citizen) newAgent;
+            String houseTypeKey = houseTypeString.equalsIgnoreCase("Appartement") ? "APARTMENT" : "HOUSE";
+
             try {
                 // Conversion protégée
-                HouseType houseType = HouseType.valueOf(houseTypeString.toUpperCase());
+                HouseType houseType = HouseType.valueOf(houseTypeKey.toUpperCase());
                 cit.setHouseType(houseType);
             } catch (Exception e) {
-                System.err.println("[RegisterController] Type de maison invalide : " + houseTypeString);
+                System.err.println("[RegisterController] Type de maison invalide : " + houseTypeKey);
                 return false; 
             }
             
