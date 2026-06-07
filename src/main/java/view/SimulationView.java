@@ -20,31 +20,32 @@ import java.util.List;
 
 /**
  * Vue simulation d'inondation — dark dashboard fidèle à la maquette.
- * Layout : carte centrale plein écran + overlays (panel zone, légende, contrôles, barre stats bas).
+ * Layout : carte centrale plein écran + overlays (panel zone, légende,
+ * contrôles, barre stats bas).
  */
 public class SimulationView extends BorderPane {
 
     // ── Couleurs du thème sombre ──────────────────────────────────────────
-    private static final String BG_DARK       = "#0d1117";
-    private static final String BG_PANEL      = "rgba(13,17,27,0.88)";
-    private static final String BG_CARD       = "#131b2e";
-    private static final String BG_CARD2      = "#0f1923";
-    private static final String ACCENT_BLUE   = "#3b82f6";
-    private static final String ACCENT_TEAL   = "#06b6d4";
-    private static final String ACCENT_GREEN  = "#22c55e";
+    private static final String BG_DARK = "#0d1117";
+    private static final String BG_PANEL = "rgba(13,17,27,0.88)";
+    private static final String BG_CARD = "#131b2e";
+    private static final String BG_CARD2 = "#0f1923";
+    private static final String ACCENT_BLUE = "#3b82f6";
+    private static final String ACCENT_TEAL = "#06b6d4";
+    private static final String ACCENT_GREEN = "#22c55e";
     private static final String ACCENT_ORANGE = "#f59e0b";
-    private static final String ACCENT_RED    = "#ef4444";
-    private static final String TEXT_PRIMARY  = "#f1f5f9";
-    private static final String TEXT_MUTED    = "#94a3b8";
-    private static final String BORDER_COLOR  = "#1e293b";
+    private static final String ACCENT_RED = "#ef4444";
+    private static final String TEXT_PRIMARY = "#f1f5f9";
+    private static final String TEXT_MUTED = "#94a3b8";
+    private static final String BORDER_COLOR = "#1e293b";
 
     // ── Contrôleur & modèle ───────────────────────────────────────────────
     private final SimulationController controller;
-    private final FloodSimulation  modele;
+    private final FloodSimulation modele;
     private MapController mapController;
 
     // ── Composants carte ──────────────────────────────────────────────────
-    private MapView  mapView;
+    private MapView mapView;
     private StackPane mapContainer;
 
     // ── Panel info zone sélectionnée ──────────────────────────────────────
@@ -68,15 +69,15 @@ public class SimulationView extends BorderPane {
     private Label lblZoneNiveaux;
 
     // ── Contrôles simulation ──────────────────────────────────────────────
-    private Button  btnPause;
-    private Button  btnPlay;
-    private Button  btnStop;
-    private Button  btnAleatoire;
-    private Button  btnManuelle;
-    private Label   lblTimer;
-    private Label   lblVitesseVal;
-    private Slider  sliderVitesse;
-    private Label   lblSimStatus;
+    private Button btnPause;
+    private Button btnPlay;
+    private Button btnStop;
+    private Button btnAleatoire;
+    private Button btnManuelle;
+    private Label lblTimer;
+    private Label lblVitesseVal;
+    private Slider sliderVitesse;
+    private Label lblSimStatus;
 
     // ── Boutons zones (légende) ────────────────────────────────────────────
     private ToggleButton[] zoneButtons;
@@ -117,9 +118,9 @@ public class SimulationView extends BorderPane {
         HBox bar = new HBox(0);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-border-color: transparent transparent " + BORDER_COLOR + " transparent;" +
-            "-fx-border-width: 0 0 1 0;");
+                "-fx-background-color: " + BG_CARD + ";" +
+                        "-fx-border-color: transparent transparent " + BORDER_COLOR + " transparent;" +
+                        "-fx-border-width: 0 0 1 0;");
         bar.setPrefHeight(46);
 
         // Logo / Titre
@@ -127,12 +128,13 @@ public class SimulationView extends BorderPane {
         logo.setAlignment(Pos.CENTER_LEFT);
         logo.setPadding(new Insets(0, 20, 0, 16));
         logo.setPrefWidth(220);
-        logo.setStyle("-fx-border-color: transparent " + BORDER_COLOR + " transparent transparent; -fx-border-width: 0 1 0 0;");
+        logo.setStyle("-fx-border-color: transparent " + BORDER_COLOR
+                + " transparent transparent; -fx-border-width: 0 1 0 0;");
         Label ico = new Label("🏠");
         ico.setStyle("-fx-font-size: 16px;");
         VBox titreBox = new VBox(1);
         Label titre = styledLabel("Inondation", FontWeight.BOLD, 13, TEXT_PRIMARY);
-        Label sous   = styledLabel("Simulation & emergency management", FontWeight.NORMAL, 10, TEXT_MUTED);
+        Label sous = styledLabel("Simulation & emergency management", FontWeight.NORMAL, 10, TEXT_MUTED);
         titreBox.getChildren().addAll(titre, sous);
         logo.getChildren().addAll(ico, titreBox);
 
@@ -142,9 +144,23 @@ public class SimulationView extends BorderPane {
         modeBox.setPadding(new Insets(0, 24, 0, 24));
 
         btnAleatoire = modeButton("⟳  Simulation aléatoire", true);
-        btnManuelle  = modeButton("↺  Simulation manuelle", false);
-        btnAleatoire.setOnAction(e -> { setModeActive(btnAleatoire, btnManuelle); });
-        btnManuelle.setOnAction(e -> { setModeActive(btnManuelle, btnAleatoire); });
+        btnManuelle = modeButton("↺  Simulation manuelle", false);
+        btnAleatoire.setOnAction(e -> {
+            setModeActive(btnAleatoire, btnManuelle);
+            if (controller != null) {
+                controller.setModeAleatoire(true);
+                controller.demarrerSimulation();
+                startSimLoop();
+            }
+        });
+        btnManuelle.setOnAction(e -> {
+            setModeActive(btnManuelle, btnAleatoire);
+            if (controller != null) {
+                controller.setModeAleatoire(false);
+                controller.mettreEnPause();
+                stopSimLoop();
+            }
+        });
         modeBox.getChildren().addAll(btnAleatoire, btnManuelle);
 
         Region spacer = new Region();
@@ -155,7 +171,7 @@ public class SimulationView extends BorderPane {
         statusBox.setAlignment(Pos.CENTER);
         statusBox.setPadding(new Insets(0, 20, 0, 0));
         lblSimStatus = styledLabel("Simulation en cours", FontWeight.NORMAL, 11, ACCENT_GREEN);
-        lblTimer     = styledLabel("⏱  00:00:00", FontWeight.BOLD, 12, TEXT_PRIMARY);
+        lblTimer = styledLabel("⏱  00:00:00", FontWeight.BOLD, 12, TEXT_PRIMARY);
         statusBox.getChildren().addAll(lblSimStatus, lblTimer);
 
         bar.getChildren().addAll(logo, modeBox, spacer, statusBox);
@@ -165,8 +181,7 @@ public class SimulationView extends BorderPane {
     // ═════════════════════════════════════════════════════════════════════
     // CONTENEUR CARTE + OVERLAYS
     // ═════════════════════════════════════════════════════════════════════
-    
-    
+
     private StackPane buildMapContainer() {
         StackPane stack = new StackPane();
         stack.setStyle("-fx-background-color: #090e1a;");
@@ -200,10 +215,11 @@ public class SimulationView extends BorderPane {
         // 4. Initialiser le contrôleur
         mapController = new MapController(mapView, modele.getZones());
 
-        // 5. Configurer le callback
+        // 5. Configurer le callback map -> UI
         mapController.setOnZoneSelected(zone -> {
             int idx = modele.getZones().indexOf(zone);
-            if (idx >= 0) selectedZoneIndex = idx;
+            if (idx >= 0)
+                selectedZoneIndex = idx;
             lblSelectedZone.setText("Zone " + zone.getName().substring(0, Math.min(8, zone.getName().length())));
             lblNiveauEauZone.setText(String.format("%.2f m", modele.getNiveauEau()));
             boolean flooded = zone.isFlooded();
@@ -212,12 +228,31 @@ public class SimulationView extends BorderPane {
             lblStatutZone.setTextFill(Color.web(flooded ? ACCENT_RED : nv > 0.5 ? ACCENT_ORANGE : ACCENT_GREEN));
         });
 
+        // 6. Lier le controller de simulation aux callbacks UI
+        if (controller != null) {
+            controller.setOnStatusChanged(status -> {
+                try {
+                    lblSimStatus.setText(status);
+                } catch (Exception ignored) {
+                }
+            });
+            controller.setOnWaterLevelChanged(level -> {
+                try {
+                    lblNiveauActuel.setText(String.format("%.2f m", level));
+                } catch (Exception ignored) {
+                }
+            });
+            controller.setOnZonesUpdated(zs -> {
+                try {
+                    if (mapView != null)
+                        mapView.updateAllZones(zs);
+                } catch (Exception ignored) {
+                }
+            });
+        }
+
         return stack;
     }
-    
-
-
-
 
     // ─── Panel info zone sélectionnée ─────────────────────────────────────
     private VBox buildZoneInfoPanel() {
@@ -225,11 +260,11 @@ public class SimulationView extends BorderPane {
         panel.setPadding(new Insets(12, 14, 12, 14));
         panel.setMaxWidth(180);
         panel.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 8;" +
-            "-fx-border-color: " + BORDER_COLOR + ";" +
-            "-fx-border-radius: 8;" +
-            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 12, 0, 0, 4);");
+                "-fx-background-color: " + BG_CARD + ";" +
+                        "-fx-background-radius: 8;" +
+                        "-fx-border-color: " + BORDER_COLOR + ";" +
+                        "-fx-border-radius: 8;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 12, 0, 0, 4);");
 
         Label zoneSelectLbl = styledLabel("Zone sélectionnée", FontWeight.NORMAL, 10, TEXT_MUTED);
 
@@ -257,11 +292,11 @@ public class SimulationView extends BorderPane {
         panel.setPadding(new Insets(12, 14, 12, 14));
         panel.setMaxWidth(180);
         panel.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 8;" +
-            "-fx-border-color: " + BORDER_COLOR + ";" +
-            "-fx-border-radius: 8;" +
-            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 12, 0, 0, 4);");
+                "-fx-background-color: " + BG_CARD + ";" +
+                        "-fx-background-radius: 8;" +
+                        "-fx-border-color: " + BORDER_COLOR + ";" +
+                        "-fx-border-radius: 8;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 12, 0, 0, 4);");
 
         Label titLeg = styledLabel("LÉGENDE", FontWeight.BOLD, 10, TEXT_MUTED);
 
@@ -283,11 +318,11 @@ public class SimulationView extends BorderPane {
         panel.getChildren().add(styledLabel("NIVEAU D'EAU", FontWeight.BOLD, 10, TEXT_MUTED));
 
         String[][] niveaux = {
-            {"#bfdbfe", "0 - 0.5 m"},
-            {"#60a5fa", "0.5 - 1 m"},
-            {"#3b82f6", "1 - 1.5 m"},
-            {"#1d4ed8", "1.5 - 2 m"},
-            {"#1e3a8a", "> 2 m"}
+                { "#bfdbfe", "0 - 0.5 m" },
+                { "#60a5fa", "0.5 - 1 m" },
+                { "#3b82f6", "1 - 1.5 m" },
+                { "#1d4ed8", "1.5 - 2 m" },
+                { "#1e3a8a", "> 2 m" }
         };
         for (String[] n : niveaux) {
             panel.getChildren().add(legendeColorBar(n[0], n[1]));
@@ -300,7 +335,7 @@ public class SimulationView extends BorderPane {
         panel.getChildren().add(styledLabel("ZONES", FontWeight.BOLD, 10, TEXT_MUTED));
 
         ToggleGroup tg = new ToggleGroup();
-        String[] zoneNames = {"A", "B", "C", "D", "E", "F"};
+        String[] zoneNames = { "A", "B", "C", "D", "E", "F" };
         zoneButtons = new ToggleButton[6];
 
         GridPane zonesGrid = new GridPane();
@@ -313,21 +348,23 @@ public class SimulationView extends BorderPane {
             tb.setToggleGroup(tg);
             tb.setStyle(zoneButtonStyle(false));
             tb.setSelected(i == selectedZoneIndex);
-            if (i == selectedZoneIndex) tb.setStyle(zoneButtonStyle(true));
+            if (i == selectedZoneIndex)
+                tb.setStyle(zoneButtonStyle(true));
             tb.setOnAction(e -> {
-                    selectedZoneIndex = idx;
-                    for (ToggleButton b : zoneButtons) b.setStyle(zoneButtonStyle(false));
-                    tb.setStyle(zoneButtonStyle(true));
-                    updateSelectedZone(zoneNames[idx]);
-                    
-                    // Interaction avec la carte
-                    if (mapController != null && modele != null) {
-                        List<Zone> zones = modele.getZones();
-                        if (idx < zones.size()) {
-                            mapController.focusZone(zones.get(idx));
-                        }
+                selectedZoneIndex = idx;
+                for (ToggleButton b : zoneButtons)
+                    b.setStyle(zoneButtonStyle(false));
+                tb.setStyle(zoneButtonStyle(true));
+                updateSelectedZone(zoneNames[idx]);
+
+                // Interaction avec la carte
+                if (mapController != null && modele != null) {
+                    List<Zone> zones = modele.getZones();
+                    if (idx < zones.size()) {
+                        mapController.focusZone(zones.get(idx));
                     }
-                });
+                }
+            });
             zoneButtons[i] = tb;
             zonesGrid.add(tb, i % 3, i / 3);
         }
@@ -341,12 +378,25 @@ public class SimulationView extends BorderPane {
 
         HBox ctrlBtns = new HBox(6);
         ctrlBtns.setAlignment(Pos.CENTER);
-        btnPause   = iconButton("⏸");
-        btnPlay    = iconButton("▶");
-        btnStop    = iconButton("⏹");
-        btnPause.setOnAction(e -> { if (controller != null) controller.mettreEnPause(); stopSimLoop(); });
-        btnPlay.setOnAction(e  -> { if (controller != null) { controller.demarrerSimulation(); startSimLoop(); } });
-        btnStop.setOnAction(e  -> { if (controller != null) controller.resetSimulation(); stopSimLoop(); });
+        btnPause = iconButton("⏸");
+        btnPlay = iconButton("▶");
+        btnStop = iconButton("⏹");
+        btnPause.setOnAction(e -> {
+            if (controller != null)
+                controller.mettreEnPause();
+            stopSimLoop();
+        });
+        btnPlay.setOnAction(e -> {
+            if (controller != null) {
+                controller.demarrerSimulation();
+                startSimLoop();
+            }
+        });
+        btnStop.setOnAction(e -> {
+            if (controller != null)
+                controller.resetSimulation();
+            stopSimLoop();
+        });
         ctrlBtns.getChildren().addAll(btnPause, btnPlay, btnStop);
         panel.getChildren().add(ctrlBtns);
 
@@ -361,7 +411,8 @@ public class SimulationView extends BorderPane {
         sliderVitesse.valueProperty().addListener((obs, o, n) -> {
             double v = Math.round(n.doubleValue() * 10.0) / 10.0;
             lblVitesseVal.setText(v + "×");
-            if (controller != null) controller.setGravite(v);
+            if (controller != null)
+                controller.setGravite(v);
         });
         vitRow.getChildren().addAll(vitLbl, sliderVitesse, lblVitesseVal);
         panel.getChildren().add(vitRow);
@@ -382,57 +433,61 @@ public class SimulationView extends BorderPane {
     private HBox buildBottomBar() {
         HBox bar = new HBox(0);
         bar.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-border-color: " + BORDER_COLOR + " transparent transparent transparent;" +
-            "-fx-border-width: 1 0 0 0;");
+                "-fx-background-color: " + BG_CARD + ";" +
+                        "-fx-border-color: " + BORDER_COLOR + " transparent transparent transparent;" +
+                        "-fx-border-width: 1 0 0 0;");
         bar.setPrefHeight(90);
 
         // Bloc 1 — Informations générales
         VBox bloc1 = buildStatBloc("INFORMATIONS GÉNÉRALES", null);
         bloc1.getChildren().addAll(
-            buildStatLine("👥", "Population à risque", lblPopRisque = styledLabel("1,248", FontWeight.BOLD, 12, ACCENT_ORANGE)),
-            buildStatLine("🚶", "Personnes en sécurité", lblPersonnesSec = styledLabel("3,756", FontWeight.BOLD, 12, ACCENT_GREEN)),
-            buildStatLine("⚙", "Agents actifs", lblAgentsActifs = styledLabel("24", FontWeight.BOLD, 12, ACCENT_BLUE))
-        );
+                buildStatLine("👥", "Population à risque",
+                        lblPopRisque = styledLabel("1,248", FontWeight.BOLD, 12, ACCENT_ORANGE)),
+                buildStatLine("🚶", "Personnes en sécurité",
+                        lblPersonnesSec = styledLabel("3,756", FontWeight.BOLD, 12, ACCENT_GREEN)),
+                buildStatLine("⚙", "Agents actifs",
+                        lblAgentsActifs = styledLabel("24", FontWeight.BOLD, 12, ACCENT_BLUE)));
 
         // Bloc 2 — Statut du réseau
         VBox bloc2 = buildStatBloc("STATUT DU RÉSEAU", null);
         bloc2.getChildren().addAll(
-            buildStatLineBar("— Arêtes sûres",   ACCENT_GREEN,  lblAretesSures  = styledLabel("58%", FontWeight.BOLD, 11, TEXT_PRIMARY)),
-            buildStatLineBar("— Arêtes à risque", ACCENT_ORANGE, lblAretesRisque = styledLabel("27%", FontWeight.BOLD, 11, TEXT_PRIMARY)),
-            buildStatLineBar("— Arêtes inondées", ACCENT_RED,    lblAretesInond  = styledLabel("15%", FontWeight.BOLD, 11, TEXT_PRIMARY))
-        );
+                buildStatLineBar("— Arêtes sûres", ACCENT_GREEN,
+                        lblAretesSures = styledLabel("58%", FontWeight.BOLD, 11, TEXT_PRIMARY)),
+                buildStatLineBar("— Arêtes à risque", ACCENT_ORANGE,
+                        lblAretesRisque = styledLabel("27%", FontWeight.BOLD, 11, TEXT_PRIMARY)),
+                buildStatLineBar("— Arêtes inondées", ACCENT_RED,
+                        lblAretesInond = styledLabel("15%", FontWeight.BOLD, 11, TEXT_PRIMARY)));
 
         // Bloc 3 — Points de refuge
         VBox bloc3 = buildStatBloc("POINTS DE REFUGE", null);
         bloc3.getChildren().addAll(
-            buildStatLine("⛺", "Total",         lblRefugesTotal  = styledLabel("12", FontWeight.BOLD, 12, TEXT_PRIMARY)),
-            buildStatLine("✅", "Accessibles",   lblRefugesAccess = styledLabel("8",  FontWeight.BOLD, 12, ACCENT_GREEN)),
-            buildStatLine("❌", "Inaccessibles", lblRefugesInacc  = styledLabel("4",  FontWeight.BOLD, 12, ACCENT_RED))
-        );
+                buildStatLine("⛺", "Total", lblRefugesTotal = styledLabel("12", FontWeight.BOLD, 12, TEXT_PRIMARY)),
+                buildStatLine("✅", "Accessibles",
+                        lblRefugesAccess = styledLabel("8", FontWeight.BOLD, 12, ACCENT_GREEN)),
+                buildStatLine("❌", "Inaccessibles",
+                        lblRefugesInacc = styledLabel("4", FontWeight.BOLD, 12, ACCENT_RED)));
 
         // Bloc 4 — Niveau d'eau moyen
         VBox bloc4 = buildStatBloc("NIVEAU D'EAU MOYEN", null);
         lblNiveauActuel = styledLabel("1.35 m", FontWeight.BOLD, 18, ACCENT_BLUE);
-        Label actLbl  = styledLabel("Actuel", FontWeight.NORMAL, 10, TEXT_MUTED);
-        lblNiveauMax  = styledLabel("Max prédit  2.40 m", FontWeight.NORMAL, 10, ACCENT_RED);
+        Label actLbl = styledLabel("Actuel", FontWeight.NORMAL, 10, TEXT_MUTED);
+        lblNiveauMax = styledLabel("Max prédit  2.40 m", FontWeight.NORMAL, 10, ACCENT_RED);
         bloc4.getChildren().addAll(actLbl, lblNiveauActuel, lblNiveauMax);
 
         // Bloc 5 — Prochaine étape
         VBox bloc5 = buildStatBloc("PROCHAINE ÉTAPE", null);
         lblTempsRestant = styledLabel("+ 2 min", FontWeight.BOLD, 13, ACCENT_TEAL);
-        Label subPE  = styledLabel("Niveau d'eau estimé dans les zones", FontWeight.NORMAL, 10, TEXT_MUTED);
+        Label subPE = styledLabel("Niveau d'eau estimé dans les zones", FontWeight.NORMAL, 10, TEXT_MUTED);
         lblZoneNiveaux = styledLabel("A 1.10m   B 1.65m\nC 1.25m   F 0.90m", FontWeight.NORMAL, 10, TEXT_PRIMARY);
         lblZoneNiveaux.setStyle("-fx-font-family: monospace; -fx-font-size: 10px;");
         bloc5.getChildren().addAll(lblTempsRestant, subPE, lblZoneNiveaux);
 
         bar.getChildren().addAll(
-            wrapBloc(bloc1), divider(),
-            wrapBloc(bloc2), divider(),
-            wrapBloc(bloc3), divider(),
-            wrapBloc(bloc4), divider(),
-            wrapBloc(bloc5)
-        );
+                wrapBloc(bloc1), divider(),
+                wrapBloc(bloc2), divider(),
+                wrapBloc(bloc3), divider(),
+                wrapBloc(bloc4), divider(),
+                wrapBloc(bloc5));
         return bar;
     }
 
@@ -441,90 +496,90 @@ public class SimulationView extends BorderPane {
     // ═════════════════════════════════════════════════════════════════════
     private void startRefreshLoop() {
         refreshTimeline = new Timeline(
-            new KeyFrame(Duration.millis(500), e -> actualiserUI()));
+                new KeyFrame(Duration.millis(500), e -> actualiserUI()));
         refreshTimeline.setCycleCount(Timeline.INDEFINITE);
         refreshTimeline.play();
     }
 
     private void startSimLoop() {
-        if (simTimeline != null) simTimeline.stop();
+        if (simTimeline != null)
+            simTimeline.stop();
         simTimeline = new Timeline(
-            new KeyFrame(Duration.millis(1000), e -> {
-                if (controller != null) controller.executerPas();
-            }));
+                new KeyFrame(Duration.millis(1000), e -> {
+                    if (controller != null)
+                        controller.executerPas();
+                }));
         simTimeline.setCycleCount(Timeline.INDEFINITE);
         simTimeline.play();
     }
 
     private void stopSimLoop() {
-        if (simTimeline != null) simTimeline.stop();
+        if (simTimeline != null)
+            simTimeline.stop();
     }
 
     private void actualiserUI() {
-        if (modele == null) return;
+        if (modele == null)
+            return;
 
         try {
 
-        // Timer
-        int secs = (int) modele.getTempsEcoule();
-        lblTimer.setText(String.format("⏱  %02d:%02d:%02d", secs / 3600, (secs % 3600) / 60, secs % 60));
+            // Timer
+            int secs = (int) modele.getTempsEcoule();
+            lblTimer.setText(String.format("⏱  %02d:%02d:%02d", secs / 3600, (secs % 3600) / 60, secs % 60));
 
-        // Statut
-        boolean pause = modele.isEnPause();
-        lblSimStatus.setText(pause ? "En pause" : "Simulation en cours");
-        lblSimStatus.setTextFill(Color.web(pause ? ACCENT_ORANGE : ACCENT_GREEN));
+            // Statut
+            boolean pause = modele.isEnPause();
+            lblSimStatus.setText(pause ? "En pause" : "Simulation en cours");
+            lblSimStatus.setTextFill(Color.web(pause ? ACCENT_ORANGE : ACCENT_GREEN));
 
-        // Niveau eau
-        double nv = modele.getNiveauEau();
-        lblNiveauActuel.setText(String.format("%.2f m", nv));
-        lblNiveauMax.setText(String.format("Max prédit  %.2f m", nv * 1.78));
+            // Niveau eau
+            double nv = modele.getNiveauEau();
+            lblNiveauActuel.setText(String.format("%.2f m", nv));
+            lblNiveauMax.setText(String.format("Max prédit  %.2f m", nv * 1.78));
 
+            if (controller != null) {
+                // Stats du réseau (Arêtes)
+                double[] reseau = controller.getStatutReseau();
+                if (reseau != null && reseau.length >= 3) {
+                    lblAretesSures.setText(String.format("%.0f%%", reseau[0]));
+                    lblAretesRisque.setText(String.format("%.0f%%", reseau[1]));
+                    lblAretesInond.setText(String.format("%.0f%%", reseau[2]));
+                }
 
-        if (controller != null) {
-            // Stats du réseau (Arêtes)
-            double[] reseau = controller.getStatutReseau();
-            if (reseau != null && reseau.length >= 3) {
-                lblAretesSures.setText(String.format("%.0f%%", reseau[0]));
-                lblAretesRisque.setText(String.format("%.0f%%", reseau[1]));
-                lblAretesInond.setText(String.format("%.0f%%", reseau[2]));
+                // Population dynamique
+                lblPopRisque.setText(String.valueOf(controller.getPopulationARisque()));
+                lblPersonnesSec.setText(String.valueOf(controller.getPopulationEnSecurite()));
             }
 
-            // Population dynamique
-            lblPopRisque.setText(String.valueOf(controller.getPopulationARisque()));
-            lblPersonnesSec.setText(String.valueOf(controller.getPopulationEnSecurite()));
-        }
+            // Zone sélectionnée
+            List<Zone> zones = modele.getZones();
+            if (selectedZoneIndex < zones.size()) {
+                Zone z = zones.get(selectedZoneIndex);
+                lblNiveauEauZone.setText(String.format("%.2f m", nv));
+                lblStatutZone.setText(z.isFlooded() ? "Inondée ⚠" : nv > 0.5 ? "En montée ↗" : "Stable →");
+                lblStatutZone
+                        .setTextFill(Color.web(z.isFlooded() ? ACCENT_RED : nv > 0.5 ? ACCENT_ORANGE : ACCENT_GREEN));
+            }
 
+            // Agents
+            lblAgentsActifs.setText(String.valueOf(modele.getNombreAgents()));
+            lblPersonnesSec.setText(String.valueOf(modele.getNombreAgentsEvacues()));
+            int zInond = modele.getNombreZonesInondees();
+            lblRefugesInacc.setText(String.valueOf(zInond));
+            lblRefugesAccess.setText(String.valueOf(Math.max(0, 8 - zInond)));
 
-
-        // Zone sélectionnée
-        List<Zone> zones = modele.getZones();
-        if (selectedZoneIndex < zones.size()) {
-            Zone z = zones.get(selectedZoneIndex);
-            lblNiveauEauZone.setText(String.format("%.2f m", nv));
-            lblStatutZone.setText(z.isFlooded() ? "Inondée ⚠" : nv > 0.5 ? "En montée ↗" : "Stable →");
-            lblStatutZone.setTextFill(Color.web(z.isFlooded() ? ACCENT_RED : nv > 0.5 ? ACCENT_ORANGE : ACCENT_GREEN));
-        }
-
-        // Agents
-        lblAgentsActifs.setText(String.valueOf(modele.getNombreAgents()));
-        lblPersonnesSec.setText(String.valueOf(modele.getNombreAgentsEvacues()));
-        int zInond = modele.getNombreZonesInondees();
-        lblRefugesInacc.setText(String.valueOf(zInond));
-        lblRefugesAccess.setText(String.valueOf(Math.max(0, 8 - zInond)));
-
-        // Zones info bas
-        if (zones.size() >= 6) {
-            lblZoneNiveaux.setText(String.format(
-                "A %.2fm   B %.2fm%nC %.2fm   F %.2fm",
-                nv * 0.8, nv, nv * 0.9, nv * 0.65));
-        }
-
+            // Zones info bas
+            if (zones.size() >= 6) {
+                lblZoneNiveaux.setText(String.format(
+                        "A %.2fm   B %.2fm%nC %.2fm   F %.2fm",
+                        nv * 0.8, nv, nv * 0.9, nv * 0.65));
+            }
 
         } catch (Exception e) {
-        System.out.println("Erreur dans actualiserUI : " + e.getMessage());
-        e.printStackTrace();
+            System.out.println("Erreur dans actualiserUI : " + e.getMessage());
+            e.printStackTrace();
         }
-
 
     }
 
@@ -533,8 +588,10 @@ public class SimulationView extends BorderPane {
     }
 
     public void stopRefresh() {
-        if (refreshTimeline != null) refreshTimeline.stop();
-        if (simTimeline != null) simTimeline.stop();
+        if (refreshTimeline != null)
+            refreshTimeline.stop();
+        if (simTimeline != null)
+            simTimeline.stop();
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -550,70 +607,70 @@ public class SimulationView extends BorderPane {
 
     private Button modeButton(String text, boolean active) {
         Button btn = new Button(text);
-        String activeStyle =
-            "-fx-background-color: #1e40af;" +
-            "-fx-text-fill: #93c5fd;" +
-            "-fx-background-radius: 6;" +
-            "-fx-font-size: 11px;" +
-            "-fx-padding: 5 12 5 12;" +
-            "-fx-cursor: hand;";
-        String inactiveStyle =
-            "-fx-background-color: #1e293b;" +
-            "-fx-text-fill: " + TEXT_MUTED + ";" +
-            "-fx-background-radius: 6;" +
-            "-fx-font-size: 11px;" +
-            "-fx-padding: 5 12 5 12;" +
-            "-fx-cursor: hand;";
+        String activeStyle = "-fx-background-color: #1e40af;" +
+                "-fx-text-fill: #93c5fd;" +
+                "-fx-background-radius: 6;" +
+                "-fx-font-size: 11px;" +
+                "-fx-padding: 5 12 5 12;" +
+                "-fx-cursor: hand;";
+        String inactiveStyle = "-fx-background-color: #1e293b;" +
+                "-fx-text-fill: " + TEXT_MUTED + ";" +
+                "-fx-background-radius: 6;" +
+                "-fx-font-size: 11px;" +
+                "-fx-padding: 5 12 5 12;" +
+                "-fx-cursor: hand;";
         btn.setStyle(active ? activeStyle : inactiveStyle);
-        btn.setUserData(new String[]{activeStyle, inactiveStyle});
+        btn.setUserData(new String[] { activeStyle, inactiveStyle });
         return btn;
     }
 
     private void setModeActive(Button active, Button inactive) {
         String[] sa = (String[]) active.getUserData();
         String[] si = (String[]) inactive.getUserData();
-        if (sa != null) active.setStyle(sa[0]);
-        if (si != null) inactive.setStyle(si[1]);
+        if (sa != null)
+            active.setStyle(sa[0]);
+        if (si != null)
+            inactive.setStyle(si[1]);
     }
 
     private Button iconButton(String icon) {
         Button btn = new Button(icon);
         btn.setStyle(
-            "-fx-background-color: #1e293b;" +
-            "-fx-text-fill: " + TEXT_PRIMARY + ";" +
-            "-fx-background-radius: 6;" +
-            "-fx-font-size: 13px;" +
-            "-fx-padding: 5 10 5 10;" +
-            "-fx-cursor: hand;");
+                "-fx-background-color: #1e293b;" +
+                        "-fx-text-fill: " + TEXT_PRIMARY + ";" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-font-size: 13px;" +
+                        "-fx-padding: 5 10 5 10;" +
+                        "-fx-cursor: hand;");
         btn.setOnMouseEntered(e -> btn.setStyle(
-            "-fx-background-color: " + ACCENT_BLUE + ";" +
-            "-fx-text-fill: white;" +
-            "-fx-background-radius: 6;" +
-            "-fx-font-size: 13px;" +
-            "-fx-padding: 5 10 5 10;" +
-            "-fx-cursor: hand;"));
+                "-fx-background-color: " + ACCENT_BLUE + ";" +
+                        "-fx-text-fill: white;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-font-size: 13px;" +
+                        "-fx-padding: 5 10 5 10;" +
+                        "-fx-cursor: hand;"));
         btn.setOnMouseExited(e -> btn.setStyle(
-            "-fx-background-color: #1e293b;" +
-            "-fx-text-fill: " + TEXT_PRIMARY + ";" +
-            "-fx-background-radius: 6;" +
-            "-fx-font-size: 13px;" +
-            "-fx-padding: 5 10 5 10;" +
-            "-fx-cursor: hand;"));
+                "-fx-background-color: #1e293b;" +
+                        "-fx-text-fill: " + TEXT_PRIMARY + ";" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-font-size: 13px;" +
+                        "-fx-padding: 5 10 5 10;" +
+                        "-fx-cursor: hand;"));
         return btn;
     }
 
     private String zoneButtonStyle(boolean selected) {
         return selected
-            ? "-fx-background-color: " + ACCENT_BLUE + ";" +
-              "-fx-text-fill: white;" +
-              "-fx-background-radius: 4;" +
-              "-fx-font-size: 11px; -fx-font-weight: bold;" +
-              "-fx-min-width: 36; -fx-min-height: 24; -fx-cursor: hand;"
-            : "-fx-background-color: #1e293b;" +
-              "-fx-text-fill: " + TEXT_MUTED + ";" +
-              "-fx-background-radius: 4;" +
-              "-fx-font-size: 11px;" +
-              "-fx-min-width: 36; -fx-min-height: 24; -fx-cursor: hand;";
+                ? "-fx-background-color: " + ACCENT_BLUE + ";" +
+                        "-fx-text-fill: white;" +
+                        "-fx-background-radius: 4;" +
+                        "-fx-font-size: 11px; -fx-font-weight: bold;" +
+                        "-fx-min-width: 36; -fx-min-height: 24; -fx-cursor: hand;"
+                : "-fx-background-color: #1e293b;" +
+                        "-fx-text-fill: " + TEXT_MUTED + ";" +
+                        "-fx-background-radius: 4;" +
+                        "-fx-font-size: 11px;" +
+                        "-fx-min-width: 36; -fx-min-height: 24; -fx-cursor: hand;";
     }
 
     private HBox legendeRow(String icon, String iconColor, String text, int size) {
@@ -643,7 +700,7 @@ public class SimulationView extends BorderPane {
         HBox row = new HBox(6);
         row.setAlignment(Pos.CENTER_LEFT);
         Label dash = styledLabel("- - -", FontWeight.NORMAL, 10, TEXT_MUTED);
-        Label lbl  = styledLabel(text, FontWeight.NORMAL, 10, TEXT_MUTED);
+        Label lbl = styledLabel(text, FontWeight.NORMAL, 10, TEXT_MUTED);
         row.getChildren().addAll(dash, lbl);
         return row;
     }
