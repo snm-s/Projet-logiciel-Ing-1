@@ -98,5 +98,40 @@
         "altitude": 0.3,
         "population": 200,
         "description": "Port fluvial, zone critique à risque"
+    },
+
+    {
+        "id": 11,
+        "name": "Plateau de la Croix-Rousse",
+        "type": "shelter",
+        "latitude": 45.7795,
+        "longitude": 4.8290,
+        "altitude": 250.0,
+        "population": 0,
+        "description": "Zone haute et sécurisée, éloignée des berges de la Saône",
+        "capacity": 1200
+    },
+    {
+        "id": 12,
+        "name": "Campus Santé Est (8ème)",
+        "type": "shelter",
+        "latitude": 45.7350,
+        "longitude": 4.8700,
+        "altitude": 195.0,
+        "population": 0,
+        "description": "Refuge situé sur le plateau du 8ème arrondissement, zone haute",
+        "capacity": 1000
+    },
+    {
+        "id": 13,
+        "name": "Fort de Loyasse (5ème)",
+        "type": "shelter",
+        "latitude": 45.7650,
+        "longitude": 4.8050,
+        "altitude": 270.0,
+        "population": 0,
+        "description": "Position dominante sur les hauteurs de Fourvière",
+        "capacity": 700
     }
+    
 ]

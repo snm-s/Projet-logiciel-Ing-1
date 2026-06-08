@@ -1,5 +1,6 @@
 package view;
 
+import model.zone.Shelter;
 import model.zone.Zone;
 import org.jxmapviewer.JXMapViewer;
 import org.jxmapviewer.painter.Painter;
@@ -193,6 +194,11 @@ public class ZonePainter implements Painter<JXMapViewer> {
     // ─────────────────────────────────────────────────────────────────────
 
     private Color getFillColor(Zone zone, double niveau) {
+        
+        if (zone instanceof Shelter) {
+            return new Color(168, 85, 247, 150); // Violet translucide pour les refuges
+        }
+        
         if (!zone.isFlooded()) return COLOR_SAFE;
         if (zone.isEvacuated()) return COLOR_EVACUATED;
         if (niveau > 2.0)   return COLOR_FLOODED_L5;

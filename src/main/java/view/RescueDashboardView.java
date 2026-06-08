@@ -1,6 +1,7 @@
 package view;
 
 import app.Main;
+import controller.MapController;
 import model.zone.ZoneManager;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -21,11 +22,15 @@ public class RescueDashboardView extends BorderPane {
 
     private VBox dashboardContent;
     private MapView mapComponent;
+    private MapController mapController;
     
     public RescueDashboardView() {
         this.setStyle("-fx-background-color: #f4f6f9;");
         // Construire la carte depuis zones.json
-        this.mapComponent = new MapView(new ZoneManager().getZones());
+        var zones = new ZoneManager().getZones();
+        this.mapComponent = new MapView(zones);
+        this.mapController = new MapController(mapComponent, zones);
+        this.dashboardContent = new VBox(20);
 
         // 🔥 Lecture du nom de l'agent de secours connecté
         String name = (Main.currentUser != null && Main.currentUser.getFirstName() != null) ? Main.currentUser.getFirstName() : "Coordinateur";
@@ -62,10 +67,11 @@ public class RescueDashboardView extends BorderPane {
         Button btnMapView = createSidebarButton("🗺️  Carte", false);
         btnMapView.setOnAction(e -> this.setCenter(mapComponent.getSwingNode()));
         
-        
+        Button btnDashboard = createSidebarButton("🏠 Tableau de bord", true);
+        btnDashboard.setOnAction(e -> this.setCenter(dashboardContent));
         
         sidebar.getChildren().addAll(
-            createSidebarButton("🏠   Tableau de bord", true),
+            btnDashboard,
             btnMapView,
             createSidebarButton("👥   Agents", false),
             btnAlerts,

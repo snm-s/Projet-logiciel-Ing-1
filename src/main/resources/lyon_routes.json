@@ -198,6 +198,65 @@
         { "lat": 45.7465, "lng": 4.8300 },
         { "lat": 45.7430, "lng": 4.8190 }
       ]
+    },
+
+    {
+      "id": 19,
+      "fromZoneId": 1, 
+      "toZoneId": 11,
+      "name": "Évacuation Centre → Croix-Rousse",
+      "waypoints": [
+        { "lat": 45.7649, "lng": 4.8357 },
+        { "lat": 45.7700, "lng": 4.8320 },
+        { "lat": 45.7795, "lng": 4.8290 }
+      ]
+    },
+    {
+      "id": 20,
+      "fromZoneId": 5, 
+      "toZoneId": 12,
+      "name": "Évacuation Guillotière → Plateau 8ème",
+      "waypoints": [
+        { "lat": 45.7516, "lng": 4.8751 },
+        { "lat": 45.7450, "lng": 4.8720 },
+        { "lat": 45.7350, "lng": 4.8700 }
+      ]
+    },
+    {
+      "id": 21,
+      "fromZoneId": 6,
+      "toZoneId": 12,
+      "name": "Évacuation Gerland → Plateau 8ème",
+      "waypoints": [
+        { "lat": 45.7205, "lng": 4.8352 },
+        { "lat": 45.7250, "lng": 4.8550 },
+        { "lat": 45.7350, "lng": 4.8700 }
+      ]
+    },
+
+   
+    {
+      "id": 22,
+      "fromZoneId": 1,
+      "toZoneId": 13,
+      "name": "Évacuation Centre → Loyasse",
+      "waypoints": [
+        { "lat": 45.7649, "lng": 4.8357 },
+        { "lat": 45.7600, "lng": 4.8200 },
+        { "lat": 45.7650, "lng": 4.8050 }
+      ]
+    },
+    {
+      "id": 23,
+      "fromZoneId": 4, 
+      "toZoneId": 13,
+      "name": "Évacuation Vieux-Lyon → Loyasse",
+      "waypoints": [
+        { "lat": 45.7603, "lng": 4.8135 },
+        { "lat": 45.7630, "lng": 4.8100 },
+        { "lat": 45.7650, "lng": 4.8050 }
+      ]
     }
+
   ]
 }
