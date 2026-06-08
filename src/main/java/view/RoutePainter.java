@@ -1,6 +1,9 @@
 package view;
 
-import model.zone.Zone;
+import model.graph.Edge;
+import model.graph.EdgeState;
+import model.graph.RouteGraph;
+import model.observer.Observer;
 import org.jxmapviewer.JXMapViewer;
 import org.jxmapviewer.painter.Painter;
 import org.jxmapviewer.viewer.GeoPosition;
@@ -8,64 +11,59 @@ import org.jxmapviewer.viewer.GeoPosition;
 import java.awt.*;
 import java.awt.geom.GeneralPath;
 import java.awt.geom.Point2D;
-import java.util.*;
+import java.util.ArrayList;
 import java.util.List;
+
+import javax.swing.SwingUtilities;
 
 /**
  * Painter JXMapViewer pour les routes inter-zones.
  *
- * Couleurs :
- *   - Vert   (#22c55e) = deux zones sûres
- *   - Orange (#f59e0b) = une zone à risque (altitude basse ou une inondée)
- *   - Rouge  (#ef4444) = les deux zones inondées
+ * <p>Rendu de type Google Maps :
+ * <ul>
+ *   <li>Ombre portée sous chaque route (couleur sombre décalée).</li>
+ *   <li>Épaisseur variable selon le zoom de la carte.</li>
+ *   <li>Couleur codée selon {@link EdgeState} (vert → orange → rouge → bleu).</li>
+ *   <li>Indicateur de capacité (barre proportionnelle au centre de chaque route).</li>
+ *   <li>Flèche directionnelle au milieu du tracé.</li>
+ * </ul>
  *
- * Style :
- *   - Route sûre     : ligne pleine, 2.5px
- *   - Route à risque : tirets 10-5, 2px
- *   - Route inondée  : tirets 6-4, 3px
+ * <p>Observe chaque {@link Edge} : dès qu'un edge change d'état (inondation ou
+ * variation de flux), il notifie ce painter qui demande un repaint de la carte.
  */
-public class RoutePainter implements Painter<JXMapViewer> {
+public class RoutePainter implements Painter<JXMapViewer>, Observer<Edge> {
 
-    private List<Zone>       zones = new ArrayList<>();
-    private List<int[]>      customRoutes = null; // null = réseau par défaut
+    // ─── Carte ────────────────────────────────────────────────────────────
+    private JXMapViewer mapViewer;
 
-    // Réseau par défaut entre les zones (paires d'IDs)
-    private static final int[][] DEFAULT_CONNECTIONS = {
-        {1, 2}, {1, 3}, {1, 4}, {1, 5},
-        {2, 6}, {2, 10},
-        {3, 7}, {3, 9},
-        {4, 9}, {4, 1},
-        {5, 7}, {5, 10},
-        {6, 10}, {6, 2},
-        {7, 8}, {7, 5},
-        {8, 3}, {8, 7},
-        {9, 4}, {9, 3},
-        {10, 5}, {10, 2}
-    };
-
-    // ─── Couleurs routes ──────────────────────────────────────────────────
-    private static final Color ROUTE_SAFE    = new Color(34,  197, 94,  210);
-    private static final Color ROUTE_RISK    = new Color(245, 158, 11,  210);
-    private static final Color ROUTE_FLOODED = new Color(239, 68,  68,  230);
+    // ─── Snapshot thread-safe ─────────────────────────────────────────────
+    private volatile List<Edge> edges = new ArrayList<>();
 
     // ─────────────────────────────────────────────────────────────────────
+    // INIT
+    // ─────────────────────────────────────────────────────────────────────
 
-    public RoutePainter(List<Zone> zones) {
-        setZones(zones);
+    public RoutePainter() {}
+
+    public void setMapViewer(JXMapViewer mapViewer) {
+        this.mapViewer = mapViewer;
     }
 
-    public synchronized void setZones(List<Zone> zones) {
-        this.zones = new ArrayList<>(zones);
+    public synchronized void setRouteGraph(RouteGraph graph) {
+        for (Edge e : edges)       e.removeObserver(this);
+        List<Edge> newEdges = new ArrayList<>(graph.getEdges());
+        for (Edge e : newEdges)    e.addObserver(this);
+        this.edges = newEdges;
     }
 
-    /** Définit un réseau de routes custom (liste de paires d'IDs). */
-    public synchronized void setCustomRoutes(List<int[]> routes) {
-        this.customRoutes = routes == null ? null : new ArrayList<>(routes);
-    }
+    // ─────────────────────────────────────────────────────────────────────
+    // Observer<Edge>
+    // ─────────────────────────────────────────────────────────────────────
 
-    /** Revient au réseau par défaut. */
-    public synchronized void useDefaultRoutes() {
-        this.customRoutes = null;
+    @Override
+    public void update(Edge edge) {
+        if (mapViewer != null)
+            SwingUtilities.invokeLater(mapViewer::repaint);
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -75,156 +73,180 @@ public class RoutePainter implements Painter<JXMapViewer> {
     @Override
     public void paint(Graphics2D g2, JXMapViewer map, int w, int h) {
         g2 = (Graphics2D) g2.create();
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                            RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,
+                            RenderingHints.VALUE_STROKE_PURE);
 
+        List<Edge> snapshot = edges;
 
-        List<Zone>  zSnap;
-        List<int[]> connections;
-        synchronized (this) {
-            zSnap       = new ArrayList<>(zones);
-            connections = customRoutes != null
-                ? new ArrayList<>(customRoutes)
-                : toList(DEFAULT_CONNECTIONS);
-        }
+        // Passe 1 : ombres (dessinées avant pour ne pas couvrir les routes)
+        for (Edge edge : snapshot) drawShadow(g2, map, edge);
 
-        Map<Integer, Zone> zoneMap = buildZoneMap(zSnap);
+        // Passe 2 : routes colorées
+        for (Edge edge : snapshot) drawRoute(g2, map, edge);
 
-        for (int[] edge : connections) {
-            if (edge.length < 2) continue;
-            Zone from = zoneMap.get(edge[0]);
-            Zone to   = zoneMap.get(edge[1]);
-            if (from == null || to == null) continue;
-            drawRoute(g2, map, from, to);
-        }
+        // Passe 3 : annotations (flèches + jauge capacité)
+        for (Edge edge : snapshot) drawAnnotations(g2, map, edge);
 
         g2.dispose();
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // DESSIN D'UNE ROUTE
+    // OMBRE
     // ─────────────────────────────────────────────────────────────────────
 
-    private void drawRoute(Graphics2D g2, JXMapViewer map, Zone from, Zone to) {
+    private void drawShadow(Graphics2D g2, JXMapViewer map, Edge edge) {
+        List<GeoPosition> wps = edge.getWaypoints();
+        if (wps.size() < 2) return;
         try {
-            Point2D pFrom = map.convertGeoPositionToPoint(
-                new GeoPosition(from.getLatitude(), from.getLongitude()));
-            Point2D pTo   = map.convertGeoPositionToPoint(
-                new GeoPosition(to.getLatitude(), to.getLongitude()));
-
-            RouteStyle style = computeStyle(from, to);
-
-            g2.setColor(style.color);
-            g2.setStroke(style.stroke);
-
-            // Ligne légèrement courbée (bezier) pour un aspect plus naturel
-            GeneralPath path = buildCurvedPath(pFrom, pTo);
+            GeneralPath path = buildPath(map, wps, 1.5f, 1.5f); // décalage pixel
+            g2.setColor(new Color(0, 0, 0, 40));
+            g2.setStroke(new BasicStroke(routeWidth(map) + 3f,
+                BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             g2.draw(path);
+        } catch (Exception ignored) {}
+    }
 
-            // Flèche directionnelle au milieu
-            drawArrowHead(g2, pFrom, pTo, style.color);
+    // ─────────────────────────────────────────────────────────────────────
+    // ROUTE
+    // ─────────────────────────────────────────────────────────────────────
+
+    private void drawRoute(Graphics2D g2, JXMapViewer map, Edge edge) {
+        List<GeoPosition> wps = edge.getWaypoints();
+        if (wps.size() < 2) return;
+        try {
+            EdgeState state = edge.getState();
+            float width = routeWidth(map);
+
+            // — Bordure blanche (casing style Google Maps) —
+            g2.setColor(new Color(255, 255, 255, 160));
+            g2.setStroke(new BasicStroke(width + 3f,
+                BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.draw(buildPath(map, wps, 0, 0));
+
+            // — Route colorée —
+            applyStyle(g2, state, width);
+            g2.draw(buildPath(map, wps, 0, 0));
 
         } catch (Exception ignored) {}
     }
 
-    /**
-     * Construit une courbe de Bézier quadratique légèrement déviée vers la droite,
-     * ce qui donne l'impression d'une route sinueuse plutôt qu'un segment rectiligne.
-     */
-    private GeneralPath buildCurvedPath(Point2D from, Point2D to) {
-        double mx = (from.getX() + to.getX()) / 2.0;
-        double my = (from.getY() + to.getY()) / 2.0;
+    // ─────────────────────────────────────────────────────────────────────
+    // ANNOTATIONS
+    // ─────────────────────────────────────────────────────────────────────
 
-        // Perpendiculaire au segment, décalage proportionnel à la longueur
-        double dx  = to.getX() - from.getX();
-        double dy  = to.getY() - from.getY();
-        double len = Math.sqrt(dx * dx + dy * dy);
-        double offset = Math.min(len * 0.08, 20.0);
+    private void drawAnnotations(Graphics2D g2, JXMapViewer map, Edge edge) {
+        List<GeoPosition> wps = edge.getWaypoints();
+        if (wps.size() < 2) return;
+        try {
+            Point2D pFirst = map.convertGeoPositionToPoint(wps.get(0));
+            Point2D pLast  = map.convertGeoPositionToPoint(wps.get(wps.size() - 1));
 
-        // Contrôle décalé perpendiculairement
-        double ctrlX = mx - dy / len * offset;
-        double ctrlY = my + dx / len * offset;
+            // Flèche directionnelle
+            drawArrow(g2, pFirst, pLast, edge.getState().color);
 
+            // Jauge de capacité (visible si zoom assez proche, zoom < 5)
+            if (map.getZoom() < 5) {
+                drawCapacityBadge(g2, pFirst, pLast, edge);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // HELPERS
+    // ─────────────────────────────────────────────────────────────────────
+
+    private GeneralPath buildPath(JXMapViewer map, List<GeoPosition> wps,
+                                   float dx, float dy) {
         GeneralPath path = new GeneralPath();
-        path.moveTo(from.getX(), from.getY());
-        path.quadTo(ctrlX, ctrlY, to.getX(), to.getY());
+        boolean first = true;
+        for (GeoPosition gp : wps) {
+            Point2D p = map.convertGeoPositionToPoint(gp);
+            if (first) { path.moveTo(p.getX() + dx, p.getY() + dy); first = false; }
+            else         path.lineTo(p.getX() + dx, p.getY() + dy);
+        }
         return path;
     }
 
-    /** Dessine une petite flèche directionnelle au milieu de la route. */
-    private void drawArrowHead(Graphics2D g2, Point2D from, Point2D to, Color color) {
-        double mx = (from.getX() + to.getX()) / 2.0;
-        double my = (from.getY() + to.getY()) / 2.0;
+    /** Épaisseur de route adaptée au niveau de zoom de JXMapViewer. */
+    private float routeWidth(JXMapViewer map) {
+        int zoom = map.getZoom();
+        // JXMapViewer : zoom 1 = max près, zoom 17 = loin
+        if (zoom <= 2)  return 7f;
+        if (zoom <= 4)  return 5f;
+        if (zoom <= 6)  return 3.5f;
+        if (zoom <= 9)  return 2.5f;
+        return 2f;
+    }
 
+    private void applyStyle(Graphics2D g2, EdgeState state, float width) {
+        g2.setColor(state.color);
+        if (state.dashed) {
+            float[] dash = { 10f, 6f };
+            g2.setStroke(new BasicStroke(width,
+                BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f, dash, 0f));
+        } else {
+            g2.setStroke(new BasicStroke(width,
+                BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        }
+    }
+
+    /** Flèche directionnelle au milieu du segment. */
+    private void drawArrow(Graphics2D g2, Point2D from, Point2D to, Color color) {
         double dx  = to.getX() - from.getX();
         double dy  = to.getY() - from.getY();
         double len = Math.sqrt(dx * dx + dy * dy);
-        if (len < 30) return; // trop proche, pas de flèche
+        if (len < 40) return;
 
-        double ux = dx / len;
-        double uy = dy / len;
-        double arrowSize = 6.0;
+        double mx = (from.getX() + to.getX()) / 2.0;
+        double my = (from.getY() + to.getY()) / 2.0;
+        double ux = dx / len, uy = dy / len;
+        double as = 7.0;
 
-        int[] xPoints = {
-            (int)(mx + ux * arrowSize),
-            (int)(mx - ux * arrowSize - uy * arrowSize * 0.5),
-            (int)(mx - ux * arrowSize + uy * arrowSize * 0.5)
+        int[] xs = {
+            (int)(mx + ux * as),
+            (int)(mx - ux * as - uy * as * 0.55),
+            (int)(mx - ux * as + uy * as * 0.55)
         };
-        int[] yPoints = {
-            (int)(my + uy * arrowSize),
-            (int)(my - uy * arrowSize + ux * arrowSize * 0.5),
-            (int)(my - uy * arrowSize - ux * arrowSize * 0.5)
+        int[] ys = {
+            (int)(my + uy * as),
+            (int)(my - uy * as + ux * as * 0.55),
+            (int)(my - uy * as - ux * as * 0.55)
         };
 
-        g2.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), 180));
-        g2.fillPolygon(xPoints, yPoints, 3);
+        g2.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), 200));
+        g2.fillPolygon(xs, ys, 3);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // LOGIQUE COULEUR / STYLE
-    // ─────────────────────────────────────────────────────────────────────
+    /**
+     * Badge de capacité : petite barre de progression colorée près du milieu.
+     * Rouge si surchargé, orange si congestionné, vert sinon.
+     */
+    private void drawCapacityBadge(Graphics2D g2, Point2D from, Point2D to, Edge edge) {
+        double mx = (from.getX() + to.getX()) / 2.0 + 10;
+        double my = (from.getY() + to.getY()) / 2.0 - 14;
 
-    private RouteStyle computeStyle(Zone from, Zone to) {
-        if (from.isFlooded() && to.isFlooded()) {
-            return new RouteStyle(ROUTE_FLOODED,
-                new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND,
-                    1f, new float[]{6, 4}, 0));
-        }
-        if (from.isFlooded() || to.isFlooded()) {
-            return new RouteStyle(ROUTE_RISK,
-                new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND,
-                    1f, new float[]{10, 5}, 0));
-        }
-        double avgAlt = (from.getAltitude() + to.getAltitude()) / 2.0;
-        if (avgAlt < 1.0) {
-            return new RouteStyle(ROUTE_RISK,
-                new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND,
-                    1f, new float[]{10, 5}, 0));
-        }
-        return new RouteStyle(ROUTE_SAFE,
-            new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-    }
+        int badgeW = 36, badgeH = 7;
+        double ratio = Math.min(edge.getFlowRatio(), 1.0);
 
-    // ─────────────────────────────────────────────────────────────────────
-    // UTILITAIRES
-    // ─────────────────────────────────────────────────────────────────────
+        // Fond
+        g2.setColor(new Color(30, 30, 30, 160));
+        g2.fillRoundRect((int)mx, (int)my, badgeW, badgeH, 4, 4);
 
-    private Map<Integer, Zone> buildZoneMap(List<Zone> zoneList) {
-        Map<Integer, Zone> map = new HashMap<>();
-        for (Zone z : zoneList) map.put(z.getId(), z);
-        return map;
-    }
+        // Remplissage
+        Color fill = ratio > 1.0 ? new Color(0xB71C1C)
+                   : ratio > 0.8 ? new Color(0xE53935)
+                   : ratio > 0.5 ? new Color(0xFB8C00)
+                   :               new Color(0x2E7D32);
+        g2.setColor(fill);
+        g2.fillRoundRect((int)mx + 1, (int)my + 1,
+                         (int)((badgeW - 2) * ratio), badgeH - 2, 3, 3);
 
-    private List<int[]> toList(int[][] arr) {
-        List<int[]> list = new ArrayList<>();
-        for (int[] a : arr) list.add(a);
-        return list;
-    }
-
-    // ─── Structure interne ───────────────────────────────────────────────
-
-    private static class RouteStyle {
-        final Color  color;
-        final Stroke stroke;
-        RouteStyle(Color c, Stroke s) { color = c; stroke = s; }
+        // Texte flux/capacité
+        g2.setColor(Color.WHITE);
+        g2.setFont(new Font("SansSerif", Font.BOLD, 8));
+        String label = edge.getCurrentFlow() + "/" + edge.getCapacityMax();
+        g2.drawString(label, (int)mx + badgeW + 3, (int)my + badgeH - 1);
     }
 }

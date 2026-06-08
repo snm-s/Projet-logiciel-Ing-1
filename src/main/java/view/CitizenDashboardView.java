@@ -1,6 +1,7 @@
 package view;
 
 import app.Main;
+import controller.MapController;
 import controller.CitizenPage.CitizenController;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -23,6 +24,7 @@ public class CitizenDashboardView extends BorderPane {
     
     private VBox dashboardContent;
     private MapView mapComponent;
+    private MapController mapController;
 
     public CitizenDashboardView(CitizenController controller) {
         this.setStyle("-fx-background-color: #f4f6f9;");
@@ -42,6 +44,7 @@ public class CitizenDashboardView extends BorderPane {
         String routeStatus  = controller.getRouteStatusLabel(user);
 
         this.mapComponent = new MapView(controller.getZones());
+        this.mapController = new MapController(mapComponent, controller.getZones());
         // ==========================================
         // SIDEBAR (GAUCHE)
         // ==========================================
