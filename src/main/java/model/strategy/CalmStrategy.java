@@ -21,7 +21,7 @@ public class CalmStrategy implements Strategy {
         }
 
         if (agent instanceof Citizen) {
-            ((Citizen) agent).setState(CitizenState.CALME);
+            ((Citizen) agent).setState(CitizenState.CALM);
         }
 
         return Strategy.findHighestSafeZone(zones);

@@ -256,7 +256,7 @@ public class AdminDashboardView extends BorderPane {
 
         javafx.application.Platform.runLater(() -> {
             javax.swing.SwingUtilities.invokeLater(() -> {
-                mapView.getMapViewer().setZoom(12);
+                mapView.getMapViewer().setZoom(6);
                 mapView.getMapViewer().setAddressLocation(new org.jxmapviewer.viewer.GeoPosition(45.7640, 4.8357));
                 mapView.getMapViewer().repaint();
             });

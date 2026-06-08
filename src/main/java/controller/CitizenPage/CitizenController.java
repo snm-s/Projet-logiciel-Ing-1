@@ -44,7 +44,7 @@ public class CitizenController {
      */
     public String getCitizenState(Agent user) {
         if (user instanceof Citizen c) {
-            return (c.getState() != null) ? c.getState().name() : "CALME";
+            return (c.getState() != null) ? c.getState().name() : "CALM";
         }
         throw new IllegalStateException("L'utilisateur connecté n'est pas un citoyen !");
     }
@@ -52,7 +52,7 @@ public class CitizenController {
     /** Vrai si l'état est PANIQUE ou FOLIE (utile pour colorer l'avatar). */
     public boolean isCitizenInPanic(Agent user) {
         String state = getCitizenState(user);
-        return "PANIQUE".equalsIgnoreCase(state) || "FOLIE".equalsIgnoreCase(state);
+        return "STRESSED".equalsIgnoreCase(state);
     }
 
     // ── Position & navigation ───────────────────────────────────────────────────

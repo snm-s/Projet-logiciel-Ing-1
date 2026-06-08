@@ -10,7 +10,7 @@ import model.graph.Node;
 public class Citizen extends Agent {
     private CitizenState state;
 
-    private boolean hasPhone;
+
     private String mobilityStatus;
     private HouseType houseType;
     private int floor;
@@ -24,9 +24,6 @@ public class Citizen extends Agent {
         return state;
     }
 
-    public boolean isHasPhone() {
-        return hasPhone;
-    }
 
     public String getMobilityStatus() {
         return mobilityStatus;
@@ -60,12 +57,12 @@ public class Citizen extends Agent {
     // Constructeur vide nécessaire pour Jackson
     public Citizen() {
         super(); // Appelle le constructeur par défaut de Agent
-        this.state = CitizenState.CALME; // État par défaut
+        this.state = CitizenState.CALM; // État par défaut
     }
     
     public Citizen(int id, String firstName, String lastName, Node position) {
         super(id, firstName, lastName, position);
-        this.state = CitizenState.CALME; // État par défaut
+        this.state = CitizenState.CALM; // État par défaut
     }
 
     // --- setters

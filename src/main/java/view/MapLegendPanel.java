@@ -33,6 +33,8 @@ public class MapLegendPanel extends JPanel {
         addTitle("Routes");
         addRouteItem(new Color(34, 197, 94),  false, "Sûre");
         addRouteItem(new Color(245, 158, 11), true,  "À risque");
+        addRouteItem(new Color(234, 179, 8),  false, "Congestionnée"); // Jaune (#eab308)
+        addRouteItem(new Color(185, 28, 28),  false, "Surchargée");
         addRouteItem(new Color(239, 68, 68),  true,  "Inondée");
     }
 

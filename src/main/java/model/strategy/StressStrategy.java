@@ -21,7 +21,7 @@ public class StressStrategy implements Strategy {
         }
 
         if (agent instanceof Citizen) {
-            ((Citizen) agent).setState(CitizenState.STRESSE);
+            ((Citizen) agent).setState(CitizenState.STRESSED);
         }
 
         return Strategy.findNearestSafeZone(agent.getPosition(), zones);

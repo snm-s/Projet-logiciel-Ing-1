@@ -20,13 +20,11 @@ public enum EdgeState {
     CONGESTED (new Color(0xE53935), false, 0),   // rouge vif
 
     /** Attention (flux > 50 % — flux notable). */
-    WARNING   (new Color(0xFB8C00), false, 0),   // orange
-
-    /** Route praticable, flux faible. */
-    NORMAL    (new Color(0xFDD835), false, 0),   // jaune
+    AT_RISK   (new Color(0xFB8C00), false, 0),   // orange
 
     /** Route libre, zones saines. */
-    SAFE      (new Color(0x2E7D32), false, 0);   // vert
+    SAFE      (new Color(0x2E7D32), false, 0); 
+    //AT_RISK;   // vert
 
     // ─────────────────────────────────────────────────────────────────────
     public final Color   color;
@@ -57,8 +55,8 @@ public enum EdgeState {
         if (fromFlooded || toFlooded) return FLOODED;
         if (flowRatio > 1.0)          return OVERLOADED;
         if (flowRatio > 0.8)          return CONGESTED;
-        if (flowRatio > 0.5)          return WARNING;
-        if (flowRatio > 0.0)          return NORMAL;
+        if (flowRatio > 0.5)          return AT_RISK;
+        if (flowRatio > 0.0)          return SAFE;
         return SAFE;
     }
 

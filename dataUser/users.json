@@ -39,7 +39,7 @@
       "lng": 2.2950
     },
     "destination": null,
-    "state": "CALME"
+    "state": "CALM"
   },
   {
     "type": "rescueAgent",
@@ -67,7 +67,7 @@
       "lng": 2.3698
     },
     "destination": null,
-    "state": "PANIQUE"
+    "state": "STRESSED"
   },
   {
     "type": "citizen",
@@ -81,7 +81,7 @@
       "lng": 2.3821
     },
     "destination": null,
-    "state": "CALME"
+    "state": "CALM"
   },
   {
     "type": "rescueAgent",
@@ -109,7 +109,7 @@
       "lng": 2.3601
     },
     "destination": null,
-    "state": "BLESSE"
+    "state": "INJURED"
   },
   {
     "type": "citizen",
@@ -123,7 +123,7 @@
       "lng": 2.3480
     },
     "destination": null,
-    "state": "CALME"
+    "state": "CALM"
   },
   {
     "type": "rescueAgent",

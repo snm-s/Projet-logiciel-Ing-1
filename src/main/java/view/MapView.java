@@ -1,16 +1,18 @@
 package view;
 
 import controller.MapController;
+import model.graph.AgentMovement;
 import model.graph.RouteGraph;
 import model.observer.Observer;
 import model.zone.Zone;
 import model.zone.ZoneUpdateListener;
 import org.jxmapviewer.JXMapViewer;
 import org.jxmapviewer.OSMTileFactoryInfo;
-import org.jxmapviewer.viewer.*;
+import org.jxmapviewer.VirtualEarthTileFactoryInfo;
 import org.jxmapviewer.input.PanMouseInputListener;
 import org.jxmapviewer.input.ZoomMouseWheelListenerCursor;
 import org.jxmapviewer.painter.CompoundPainter;
+import org.jxmapviewer.viewer.*;
 
 import javafx.application.Platform;
 import javafx.embed.swing.SwingNode;
@@ -25,118 +27,118 @@ import java.util.*;
 import java.util.function.Consumer;
 
 /**
- * Vue carte interactive utilisant JXMapViewer2 + tuiles OpenStreetMap.
+ * Vue carte JXMapViewer2 intégrée dans JavaFX via {@link SwingNode}.
  *
- * <p>Changements par rapport à la version précédente :
- * <ul>
- *   <li>{@link RoutePainter} n'accepte plus une liste de zones mais un
- *       {@link RouteGraph} injecté par le Controller.</li>
- *   <li>MapView ne gère plus du tout la logique de routes : elle délègue
- *       entièrement à {@link RoutePainter} via le graphe.</li>
- *   <li>La méthode {@link #setRouteGraph(RouteGraph)} est l'unique point
- *       d'entrée pour brancher les routes.</li>
- * </ul>
+ * <h3>Ordre d'initialisation obligatoire :</h3>
+ * <ol>
+ *   <li>Appeler {@link #MapView(List)} depuis n'importe quel thread</li>
+ *   <li>Ajouter {@link #getSwingNode()} à la scène JavaFX <em>sur le thread FX</em></li>
+ *   <li>Injecter le graphe via {@link #setRouteGraph(RouteGraph)}</li>
+ *   <li>Injecter le controller via {@link #setMapController(MapController)}</li>
+ * </ol>
+ *
+ * <p>Tous les appels de mise à jour sont thread-safe :
+ * ils délèguent automatiquement au thread Swing via {@link SwingUtilities#invokeLater}.
  */
 public class MapView implements ZoneUpdateListener, Observer<Zone> {
 
-    // ─── Carte ───────────────────────────────────────────────────────────
+    // ─── Composants carte ─────────────────────────────────────────────────
     private final JXMapViewer mapViewer;
     private final SwingNode   swingNode;
     private List<Zone>        zones;
 
-    // ─── Painters ────────────────────────────────────────────────────────
-    private ZonePainter   zonePainter;
-    private RoutePainter  routePainter;
-    private CompoundPainter<JXMapViewer> compound;
+    // ─── Painters (couches graphiques empilées) ───────────────────────────
+    private final ZonePainter   zonePainter;
+    private final RoutePainter  routePainter;
+    private final AgentPainter  agentPainter;
+    private final CompoundPainter<JXMapViewer> compound;
 
-    // ─── Controller (optionnel) ───────────────────────────────────────────
-    private MapController mapController;
+    // ─── Références ───────────────────────────────────────────────────────
+    private MapController      mapController;
+    private Consumer<Zone>     onZoneSelected;
 
-    // ─── Callback sélection ──────────────────────────────────────────────
-    private Consumer<Zone> onZoneSelected;
-
-    // ─── Constantes Lyon ─────────────────────────────────────────────────
+    // ─── Constantes ───────────────────────────────────────────────────────
     private static final GeoPosition LYON_CENTER = new GeoPosition(45.7640, 4.8357);
     private static final int         DEFAULT_ZOOM = 6;
 
-    // =========================================================================
-    public MapView(List<Zone> zones) {
-        this.zones     = zones;
-        this.mapViewer = new JXMapViewer();
-        this.swingNode = new SwingNode();
-        configureTiles();
-        configurePainters();
-        configureInteraction();
-        loadZones();
-        swingNode.setContent(mapViewer);
-        Platform.runLater(() -> {
-            mapViewer.repaint();
-            mapViewer.revalidate();
-        });
-    }
-
     // ─────────────────────────────────────────────────────────────────────
-    // INITIALISATION
-    // ─────────────────────────────────────────────────────────────────────
-
-    private void configureTiles() {
-        System.setProperty("http.agent",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-          + "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
-
-        TileFactoryInfo info = new OSMTileFactoryInfo("OSM", "https://tile.openstreetmap.org");
-        DefaultTileFactory tileFactory = new DefaultTileFactory(info);
-        tileFactory.setThreadPoolSize(8);
-
-        mapViewer.setTileFactory(tileFactory);
-        mapViewer.setPreferredSize(new Dimension(800, 600));
-        mapViewer.setMinimumSize(new Dimension(400, 300));
-        mapViewer.setZoom(DEFAULT_ZOOM);
-        mapViewer.setAddressLocation(LYON_CENTER);
-    }
-
-    private void configurePainters() {
-        zonePainter  = new ZonePainter(zones);
-
-        // RoutePainter ne reçoit plus de zones — il sera alimenté
-        // par le RouteGraph via setRouteGraph()
-        routePainter = new RoutePainter();
-        routePainter.setMapViewer(mapViewer); // pour repaint réactif
-
-        compound = new CompoundPainter<>();
-        compound.addPainter(routePainter);  // routes en dessous
-        compound.addPainter(zonePainter);   // zones par-dessus
-        mapViewer.setOverlayPainter(compound);
-    }
-
-    private void configureInteraction() {
-        PanMouseInputListener panListener = new PanMouseInputListener(mapViewer);
-        mapViewer.addMouseListener(panListener);
-        mapViewer.addMouseMotionListener(panListener);
-        mapViewer.addMouseWheelListener(new ZoomMouseWheelListenerCursor(mapViewer));
-        mapViewer.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                handleMapClick(e.getPoint());
-            }
-        });
-    }
-
-    private void loadZones() {
-        zonePainter.setZones(zones);
-        mapViewer.repaint();
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // INJECTION DU GRAPHE DE ROUTES (appelé par MapController)
+    // CONSTRUCTEUR
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Branche le graphe de routes dans le RoutePainter.
-     * Doit être appelé par {@link MapController} après sa propre construction.
+     * Crée la MapView. Peut être appelé depuis n'importe quel thread.
+     * Le {@link SwingNode} est initialisé ici et doit être ajouté
+     * à la scène JavaFX ultérieurement.
+     */
+    public MapView(List<Zone> zones) {
+        this.zones = zones;
+
+        // ── 1. Construire le JXMapViewer (doit être sur le thread Swing) ──
+        this.mapViewer = new JXMapViewer();
+        this.swingNode = new SwingNode();
+
+        // Painters créés indépendamment des threads
+        this.zonePainter  = new ZonePainter(zones);
+        this.routePainter = new RoutePainter();
+        this.agentPainter = new AgentPainter();
+
+        this.compound = new CompoundPainter<>();
+        compound.addPainter(routePainter);
+        compound.addPainter(zonePainter);
+        compound.addPainter(agentPainter);
+
+        // ── 2. Initialiser le JXMapViewer sur le thread Swing ──
+        SwingUtilities.invokeLater(() -> {
+            initMapViewer();
+            swingNode.setContent(mapViewer);
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // INITIALISATION INTERNE (thread Swing)
+    // ─────────────────────────────────────────────────────────────────────
+
+    private void initMapViewer() {
+        // User-agent pour les tuiles OSM
+        // 1. Utilisez VirtualEarth (Bing Maps) au lieu d'OSM
+            // Cela évite les restrictions de filtrage d'OpenStreetMap
+        TileFactoryInfo info = new VirtualEarthTileFactoryInfo(VirtualEarthTileFactoryInfo.MAP);
+        DefaultTileFactory tf = new DefaultTileFactory(info);
+        mapViewer.setTileFactory(tf);
+
+
+
+        mapViewer.setPreferredSize(new Dimension(800, 600));
+        mapViewer.setMinimumSize(new Dimension(200, 200));
+        mapViewer.setZoom(DEFAULT_ZOOM);
+        mapViewer.setAddressLocation(LYON_CENTER);
+        mapViewer.setOverlayPainter(compound);
+
+        // Interaction : panoramique
+        PanMouseInputListener pan = new PanMouseInputListener(mapViewer);
+        mapViewer.addMouseListener(pan);
+        mapViewer.addMouseMotionListener(pan);
+        // Zoom molette
+        mapViewer.addMouseWheelListener(new ZoomMouseWheelListenerCursor(mapViewer));
+        // Clic pour sélection de zone
+        mapViewer.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) { handleClick(e.getPoint()); }
+        });
+
+        zonePainter.setZones(zones);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // INJECTION GRAPHE DE ROUTES
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Injecte le graphe de routes dans les painters.
+     * Doit être appelé après la construction, avant le premier tick.
      */
     public void setRouteGraph(RouteGraph graph) {
         routePainter.setRouteGraph(graph);
+        agentPainter.setRouteGraph(graph);
         SwingUtilities.invokeLater(mapViewer::repaint);
     }
 
@@ -144,21 +146,21 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     // ACCESSEURS
     // ─────────────────────────────────────────────────────────────────────
 
-    public JXMapViewer getMapViewer()    { return mapViewer; }
+    /** Nœud JavaFX à insérer dans la scène. */
     public SwingNode   getSwingNode()    { return swingNode; }
+
+    /** Composant Swing sous-jacent (pour SwingUtilities). */
+    public JXMapViewer getMapViewer()    { return mapViewer; }
+
+    /** Compatibilité ancienne API. */
     public Object      getWebView()      { return null; }
     public Object      getWebEngine()    { return null; }
 
-    public void setMapController(MapController controller) {
-        this.mapController = controller;
-    }
-
-    public void setOnZoneSelected(Consumer<Zone> callback) {
-        this.onZoneSelected = callback;
-    }
+    public void setMapController(MapController c)     { this.mapController = c; }
+    public void setOnZoneSelected(Consumer<Zone> cb)  { this.onZoneSelected = cb; }
 
     // ─────────────────────────────────────────────────────────────────────
-    // MISE À JOUR DYNAMIQUE
+    // MISE À JOUR ZONES (thread-safe)
     // ─────────────────────────────────────────────────────────────────────
 
     public void updateZoneColor(Zone zone) {
@@ -175,9 +177,11 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         });
     }
 
+    /**
+     * Rafraîchit l'affichage des routes et agents.
+     * Appelé après chaque tick de simulation.
+     */
     public void refreshRouteColors() {
-        // Le routePainter se rafraîchit automatiquement via les observers sur les Edge.
-        // Cette méthode reste pour compatibilité ; le repaint est déclenché par le graphe.
         SwingUtilities.invokeLater(mapViewer::repaint);
     }
 
@@ -190,24 +194,25 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // NAVIGATION
+    // NAVIGATION (thread-safe)
     // ─────────────────────────────────────────────────────────────────────
 
     public void zoomIn() {
         SwingUtilities.invokeLater(() -> {
-            int z = mapViewer.getZoom();
-            if (z > 1) mapViewer.setZoom(z - 1);
+            int z = mapViewer.getZoom(); if (z > 1) mapViewer.setZoom(z - 1);
         });
     }
 
     public void zoomOut() {
         SwingUtilities.invokeLater(() -> {
-            int z = mapViewer.getZoom();
-            if (z < 17) mapViewer.setZoom(z + 1);
+            int z = mapViewer.getZoom(); if (z < 17) mapViewer.setZoom(z + 1);
         });
     }
 
-    public void setZoom(int level)   { SwingUtilities.invokeLater(() -> mapViewer.setZoom(level)); }
+    public void setZoom(int level) {
+        SwingUtilities.invokeLater(() -> mapViewer.setZoom(level));
+    }
+
     public void resetView() {
         SwingUtilities.invokeLater(() -> {
             mapViewer.setAddressLocation(LYON_CENTER);
@@ -230,10 +235,11 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     public void focusZone(Zone zone) {
         if (zone == null) return;
         SwingUtilities.invokeLater(() -> {
-            mapViewer.setAddressLocation(new GeoPosition(zone.getLatitude(), zone.getLongitude()));
-            mapViewer.setZoom(2);
-            selectZone(zone);
+            mapViewer.setAddressLocation(
+                new GeoPosition(zone.getLatitude(), zone.getLongitude()));
+            mapViewer.setZoom(3);
         });
+        selectZone(zone);
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -242,37 +248,30 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
 
     public void selectZone(Zone zone) {
         if (zone == null) return;
-        zonePainter.setSelectedZone(zone);
-        mapViewer.repaint();
-        if (onZoneSelected != null) onZoneSelected.accept(zone);
+        SwingUtilities.invokeLater(() -> {
+            zonePainter.setSelectedZone(zone);
+            mapViewer.repaint();
+        });
+        if (onZoneSelected != null) Platform.runLater(() -> onZoneSelected.accept(zone));
     }
 
     public void highlightZone(int id) {
-        zones.stream()
-             .filter(z -> z.getId() == id)
-             .findFirst()
-             .ifPresent(this::selectZone);
+        zones.stream().filter(z -> z.getId() == id).findFirst().ifPresent(this::selectZone);
     }
 
     // ─────────────────────────────────────────────────────────────────────
     // CLIC CARTE
     // ─────────────────────────────────────────────────────────────────────
 
-    private void handleMapClick(Point screenPoint) {
-        GeoPosition clickPos = mapViewer.convertPointToGeoPosition(screenPoint);
-        double lat = clickPos.getLatitude();
-        double lng = clickPos.getLongitude();
+    private void handleClick(Point screenPoint) {
+        GeoPosition click = mapViewer.convertPointToGeoPosition(screenPoint);
+        double lat = click.getLatitude(), lng = click.getLongitude();
 
-        Zone closest  = null;
+        Zone closest = null;
         double minDist = Double.MAX_VALUE;
         for (Zone z : zones) {
-            double dLat = z.getLatitude()  - lat;
-            double dLng = z.getLongitude() - lng;
-            double dist = Math.sqrt(dLat * dLat + dLng * dLng);
-            if (dist < 0.007 && dist < minDist) {
-                minDist = dist;
-                closest = z;
-            }
+            double d = Math.hypot(z.getLatitude() - lat, z.getLongitude() - lng);
+            if (d < 0.007 && d < minDist) { minDist = d; closest = z; }
         }
         if (closest != null) {
             selectZone(closest);
@@ -284,18 +283,14 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     // INTERFACES Observer / ZoneUpdateListener
     // ─────────────────────────────────────────────────────────────────────
 
-    @Override
-    public void update(Zone zone) {
-        if (zone != null) updateZoneColor(zone);
-    }
-
+    @Override public void update(Zone zone)           { if (zone != null) updateZoneColor(zone); }
     @Override public void onZoneFlooded(Zone zone)    { updateZoneColor(zone); }
     @Override public void onZoneEvacuated(Zone zone)  { updateZoneColor(zone); }
     @Override public void onZoneReset(Zone zone)      { updateZoneColor(zone); }
 
     @Override
     public void onSimulationUpdated() {
-        for (Zone zone : zones) updateZoneColor(zone);
+        for (Zone z : zones) updateZoneColor(z);
         refreshRouteColors();
     }
 }
