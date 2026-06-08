@@ -1,127 +1,289 @@
 package view;
 
 import controller.MapController;
-import javafx.application.Platform;
-import javafx.scene.web.WebEngine;
-import javafx.scene.web.WebView;
 import model.observer.Observer;
 import model.zone.Zone;
 import model.zone.ZoneUpdateListener;
+import org.jxmapviewer.JXMapViewer;
+import org.jxmapviewer.OSMTileFactoryInfo;
+import org.jxmapviewer.viewer.*;
+import org.jxmapviewer.input.PanMouseInputListener;
+import org.jxmapviewer.input.ZoomMouseWheelListenerCursor;
+import org.jxmapviewer.painter.CompoundPainter;
 
+import javafx.application.Platform;
+import javafx.embed.swing.SwingNode;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.geom.Point2D;
 import java.util.List;
+import java.util.*;
+import java.util.function.Consumer;
 
 /**
- * Vue carte interactive Leaflet.js — thème dark, zones colorées selon le niveau d'eau.
- * 
- * MISE À JOUR : expose getWebEngine() pour MapController,
- * et intègre refreshRouteColors() après chaque mise à jour de zone.
+ * Vue carte interactive utilisant JXMapViewer2 + tuiles OpenStreetMap.
+ * Affiche des zones colorées (polygones délimités) et des routes inter-zones colorées.
+ *
+ * Mêmes signatures de méthodes que l'ancienne MapView WebView.
  */
 public class MapView implements ZoneUpdateListener, Observer<Zone> {
 
-    private final WebView   webView;
-    private final WebEngine webEngine;
-    private List<Zone> zones;
+    // ─── Carte ───────────────────────────────────────────────────────────
+    private final JXMapViewer mapViewer;
+    private final SwingNode swingNode;
+    private List<Zone>        zones;
 
-    // MapController optionnel (injecté après création)
+    // ─── Painters (couches graphiques) ───────────────────────────────────
+    private ZonePainter      zonePainter;
+    private RoutePainter     routePainter;
+    private CompoundPainter<JXMapViewer> compound;
+
+    // ─── Controller (optionnel) ───────────────────────────────────────────
     private MapController mapController;
 
-    // Centre Lyon
-    private static final double LYON_LAT    = 45.7640;
-    private static final double LYON_LNG    = 4.8357;
-    private static final int    DEFAULT_ZOOM = 13;
+    // ─── Callback sélection ──────────────────────────────────────────────
+    private Consumer<Zone> onZoneSelected;
 
-    // ─────────────────────────────────────────────────────────────────────
+    // ─── Constantes Lyon ─────────────────────────────────────────────────
+    private static final GeoPosition LYON_CENTER = new GeoPosition(45.7640, 4.8357);
+    private static final int         DEFAULT_ZOOM = 6;   // JXMapViewer : 17-zoom
+
+    // =========================================================================
     public MapView(List<Zone> zones) {
-        this.zones   = zones;
-        this.webView = new WebView();
-        this.webView.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
-        this.webView.setPrefSize(800, 600);
-        this.webView.setMinWidth(400);
-        this.webView.setMinHeight(300);
-        this.webEngine = webView.getEngine();
-        initializeMap();
-    }
+        this.zones     = zones;
+        this.mapViewer = new JXMapViewer();
+        this.swingNode = new SwingNode();
+        configureTiles();
+        configurePainters();
+        configureInteraction();
+        loadZones();
+        swingNode.setContent(mapViewer);
+        Platform.runLater(() -> {
+            mapViewer.repaint();
+            mapViewer.revalidate();
+        });
 
-    public WebView   getWebView()   { return webView; }
-    public WebEngine getWebEngine() { return webEngine; }
-
-    /** Injecte le MapController après construction (évite la dépendance circulaire). */
-    public void setMapController(MapController controller) {
-        this.mapController = controller;
     }
 
     // ─────────────────────────────────────────────────────────────────────
     // INITIALISATION
     // ─────────────────────────────────────────────────────────────────────
-    private void initializeMap() {
-        webEngine.getLoadWorker().stateProperty().addListener((obs, oldState, newState) -> {
-            if (newState == javafx.concurrent.Worker.State.SUCCEEDED) {
-                System.out.println("Carte chargée ! Injection des zones...");
-                String jsonData = zonesToJson();
-                // Remplacer les apostrophes qui cassent le JS
-                String safeJson = jsonData.replace("'", "\\'");
-                String script = "window.loadAllZones('" + safeJson + "');";
-                webEngine.executeScript(script);
+
+    private void configureTiles() {
+        // 1. Forcez un User-Agent valide avant toute requête réseau
+        System.setProperty("http.agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+
+        // 2. Utilisez une source de tuiles sécurisée (HTTPS)
+        TileFactoryInfo info = new OSMTileFactoryInfo("OSM", "https://tile.openstreetmap.org");
+        DefaultTileFactory tileFactory = new DefaultTileFactory(info);
+        
+        tileFactory.setThreadPoolSize(8);
+        mapViewer.setTileFactory(tileFactory);
+        // Force une taille minimale dès le départ
+        mapViewer.setPreferredSize(new Dimension(800, 600));
+        mapViewer.setMinimumSize(new Dimension(400, 300));
+        mapViewer.setZoom(DEFAULT_ZOOM);
+        mapViewer.setAddressLocation(LYON_CENTER);
+    }
+
+    private void configurePainters() {
+        zonePainter  = new ZonePainter(zones);
+        routePainter = new RoutePainter(zones);
+
+        compound = new CompoundPainter<>();
+        compound.addPainter(routePainter);  // routes en dessous
+        compound.addPainter(zonePainter);   // zones par-dessus
+        mapViewer.setOverlayPainter(compound);
+    }
+
+    private void configureInteraction() {
+        // Pan avec la souris
+        PanMouseInputListener panListener = new PanMouseInputListener(mapViewer);
+        mapViewer.addMouseListener(panListener);
+        mapViewer.addMouseMotionListener(panListener);
+
+        // Zoom molette
+        mapViewer.addMouseWheelListener(new ZoomMouseWheelListenerCursor(mapViewer));
+
+        // Clic sur zone
+        mapViewer.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                handleMapClick(e.getPoint());
             }
         });
+    }
 
-        String url = getClass().getResource("/map/map.html").toExternalForm();
-        webEngine.load(url);
+    private void loadZones() {
+        zonePainter.setZones(zones);
+        routePainter.setZones(zones);
+        mapViewer.repaint();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // ACCESSEURS
+    // ─────────────────────────────────────────────────────────────────────
+
+    /** Retourne le composant Swing à intégrer dans l'application. */
+    public JXMapViewer getMapViewer() { return mapViewer; }
+
+    public SwingNode getSwingNode() {
+        return swingNode;
+    }
+
+    /** Compatibilité — retourne null (plus de WebView). */
+    public Object getWebView()   { return null; }
+    public Object getWebEngine() { return null; }
+
+    public void setMapController(MapController controller) {
+        this.mapController = controller;
+    }
+
+    public void setOnZoneSelected(Consumer<Zone> callback) {
+        this.onZoneSelected = callback;
     }
 
     // ─────────────────────────────────────────────────────────────────────
     // MISE À JOUR DYNAMIQUE
     // ─────────────────────────────────────────────────────────────────────
 
+    /** Met à jour la couleur d'une zone selon son état inondé/évacué. */
     public void updateZoneColor(Zone zone) {
-        Platform.runLater(() -> {
-            String script = String.format(
-                "window.updateZone(%d, %b, %b, %.2f);",
-                zone.getId(), zone.isFlooded(), zone.isEvacuated(),
-                zone.isFlooded() ? 1.5 : 0.0);
-            try { webEngine.executeScript(script); } catch (Exception ignored) {}
+        SwingUtilities.invokeLater(() -> {
+            zonePainter.updateZone(zone);
+            mapViewer.repaint();
         });
     }
 
-    /** Mise à jour avec niveau d'eau réel + rafraîchissement des routes. */
+    /** Met à jour une zone avec son niveau d'eau réel + rafraîchit les routes. */
     public void updateZoneWithWaterLevel(Zone zone, double niveauEau) {
-        Platform.runLater(() -> {
-            String script = String.format(
-                "window.updateZone(%d,%b,%b,%.2f);",
-                zone.getId(), zone.isFlooded(), zone.isEvacuated(), niveauEau);
-            try {
-                webEngine.executeScript(script);
-                // Rafraîchir les routes après mise à jour
-                refreshRouteColors();
-            } catch (Exception ignored) {}
+        SwingUtilities.invokeLater(() -> {
+            zonePainter.updateZoneWaterLevel(zone, niveauEau);
+            routePainter.setZones(zones);
+            mapViewer.repaint();
         });
     }
 
-    /** Rafraîchit les couleurs des routes selon l'état actuel des zones. */
+    /** Rafraîchit uniquement les couleurs des routes. */
     public void refreshRouteColors() {
-        String json = zonesToJsonForRoutes();
-        String safe = json.replace("'", "\\'");
-        try {
-            webEngine.executeScript("window.refreshRouteColors('" + safe + "');");
-        } catch (Exception ignored) {}
+        SwingUtilities.invokeLater(() -> {
+            routePainter.setZones(zones);
+            mapViewer.repaint();
+        });
     }
 
+    /** Met à jour toutes les zones d'un coup. */
     public void updateAllZones(List<Zone> updatedZones) {
         this.zones = updatedZones;
-        Platform.runLater(() -> {
-            for (Zone zone : zones) {
-                String script = String.format(
-                    "window.updateZone(%d,%b,%b,%.2f);",
-                    zone.getId(), zone.isFlooded(), zone.isEvacuated(),
-                    zone.isFlooded() ? 1.5 : 0.0);
-                try { webEngine.executeScript(script); } catch (Exception ignored) {}
-            }
-            refreshRouteColors();
+        SwingUtilities.invokeLater(() -> {
+            zonePainter.setZones(updatedZones);
+            routePainter.setZones(updatedZones);
+            mapViewer.repaint();
         });
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // INTERFACES
+    // NAVIGATION
+    // ─────────────────────────────────────────────────────────────────────
+
+    public void zoomIn() {
+        SwingUtilities.invokeLater(() -> {
+            int z = mapViewer.getZoom();
+            if (z > 1) mapViewer.setZoom(z - 1);
+        });
+    }
+
+    public void zoomOut() {
+        SwingUtilities.invokeLater(() -> {
+            int z = mapViewer.getZoom();
+            if (z < 17) mapViewer.setZoom(z + 1);
+        });
+    }
+
+    public void setZoom(int level) {
+        SwingUtilities.invokeLater(() -> mapViewer.setZoom(level));
+    }
+
+    public void resetView() {
+        SwingUtilities.invokeLater(() -> {
+            mapViewer.setAddressLocation(LYON_CENTER);
+            mapViewer.setZoom(DEFAULT_ZOOM);
+        });
+    }
+
+    public void flyTo(double lat, double lng) {
+        SwingUtilities.invokeLater(() -> {
+            mapViewer.setAddressLocation(new GeoPosition(lat, lng));
+            mapViewer.setZoom(2);
+        });
+    }
+
+    public void panTo(double lat, double lng) {
+        SwingUtilities.invokeLater(() ->
+            mapViewer.setAddressLocation(new GeoPosition(lat, lng)));
+    }
+
+    public void focusZone(Zone zone) {
+        if (zone == null) return;
+        SwingUtilities.invokeLater(() -> {
+            mapViewer.setAddressLocation(new GeoPosition(zone.getLatitude(), zone.getLongitude()));
+            mapViewer.setZoom(2);
+            selectZone(zone);
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SÉLECTION
+    // ─────────────────────────────────────────────────────────────────────
+
+    public void selectZone(Zone zone) {
+        if (zone == null) return;
+        zonePainter.setSelectedZone(zone);
+        mapViewer.repaint();
+        if (onZoneSelected != null) onZoneSelected.accept(zone);
+    }
+
+    public void highlightZone(int id) {
+        zones.stream()
+             .filter(z -> z.getId() == id)
+             .findFirst()
+             .ifPresent(this::selectZone);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // GESTION DU CLIC CARTE
+    // ─────────────────────────────────────────────────────────────────────
+
+    private void handleMapClick(Point screenPoint) {
+        GeoPosition clickPos = mapViewer.convertPointToGeoPosition(screenPoint);
+        double lat = clickPos.getLatitude();
+        double lng = clickPos.getLongitude();
+
+        // Trouver la zone la plus proche du clic (rayon ~500 m ≈ 0.0045°)
+        Zone closest = null;
+        double minDist = Double.MAX_VALUE;
+
+        for (Zone z : zones) {
+            double dLat = z.getLatitude()  - lat;
+            double dLng = z.getLongitude() - lng;
+            double dist = Math.sqrt(dLat * dLat + dLng * dLng);
+            if (dist < 0.007 && dist < minDist) {
+                minDist = dist;
+                closest = z;
+            }
+        }
+
+        if (closest != null) {
+            selectZone(closest);
+            zonePainter.showPopup(closest, mapViewer, screenPoint);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // INTERFACES Observer / ZoneUpdateListener
     // ─────────────────────────────────────────────────────────────────────
 
     @Override
@@ -141,54 +303,6 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     @Override
     public void onSimulationUpdated() {
         for (Zone zone : zones) updateZoneColor(zone);
-        Platform.runLater(this::refreshRouteColors);
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // SÉRIALISATION JSON
-    // ─────────────────────────────────────────────────────────────────────
-
-    private String zonesToJson() {
-        StringBuilder json = new StringBuilder("[");
-        for (int i = 0; i < zones.size(); i++) {
-            Zone z = zones.get(i);
-            String name = z.getName().replaceAll("[^a-zA-Z0-9 ]", "");
-            String desc = z.getDescription().replaceAll("[^a-zA-Z0-9 ]", "");
-            json.append(String.format(
-                "{\"id\":%d,\"lat\":%f,\"lng\":%f,\"name\":\"%s\"," +
-                "\"pop\":%d,\"alt\":%f,\"desc\":\"%s\",\"flooded\":%b}",
-                z.getId(), z.getLatitude(), z.getLongitude(), name,
-                z.getPopulation(), z.getAltitude(), desc, z.isFlooded()));
-            if (i < zones.size() - 1) json.append(",");
-        }
-        json.append("]");
-        return json.toString();
-    }
-
-    /** JSON allégé pour le rafraîchissement des routes. */
-    private String zonesToJsonForRoutes() {
-        StringBuilder json = new StringBuilder("[");
-        for (int i = 0; i < zones.size(); i++) {
-            Zone z = zones.get(i);
-            json.append(String.format(
-                "{\"id\":%d,\"lat\":%f,\"lng\":%f,\"alt\":%f,\"flooded\":%b}",
-                z.getId(), z.getLatitude(), z.getLongitude(),
-                z.getAltitude(), z.isFlooded()));
-            if (i < zones.size() - 1) json.append(",");
-        }
-        json.append("]");
-        return json.toString();
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // UTILITAIRE
-    // ─────────────────────────────────────────────────────────────────────
-    private String escapeJs(String raw) {
-        if (raw == null) return "";
-        return raw.replace("\\", "\\\\")
-                  .replace("\n", "\\n")
-                  .replace("\r", "\\r")
-                  .replace("'",  "\\'")
-                  .replace("\"", "\\\"");
+        refreshRouteColors();
     }
 }

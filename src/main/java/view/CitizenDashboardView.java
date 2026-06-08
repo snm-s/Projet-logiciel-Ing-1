@@ -74,7 +74,7 @@ public class CitizenDashboardView extends BorderPane {
         btnAlerts.setOnAction(e -> this.setCenter(new CitizenAlertsView()));
         
         Button btnMapView = createSidebarButton("🗺️  Carte", false);
-        btnMapView.setOnAction(e -> this.setCenter(mapComponent.getWebView()));
+        btnMapView.setOnAction(e -> this.setCenter(mapComponent.getSwingNode()));
 
         Button btnDashboard = createSidebarButton("🏠  Tableau de bord", true);
         btnDashboard.setOnAction(e -> this.setCenter(dashboardContent));

@@ -194,7 +194,7 @@ public class SimulationView extends BorderPane {
 
         // 2. Ajouter la carte au stack
         if (mapView != null) {
-            stack.getChildren().add(mapView.getWebView());
+            stack.getChildren().add(mapView.getSwingNode());
         }
 
         // 3. Créer et ajouter les panneaux D'UI par-dessus

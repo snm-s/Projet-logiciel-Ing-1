@@ -60,7 +60,7 @@ public class RescueDashboardView extends BorderPane {
         btnAlerts.setOnAction(e -> this.setCenter(new AdminAlertsView()));
         
         Button btnMapView = createSidebarButton("🗺️  Carte", false);
-        btnMapView.setOnAction(e -> this.setCenter(mapComponent.getWebView()));
+        btnMapView.setOnAction(e -> this.setCenter(mapComponent.getSwingNode()));
         
         
         

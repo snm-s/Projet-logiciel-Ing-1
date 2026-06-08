@@ -7,6 +7,7 @@ import controller.AdminPage.AdminController;
 import javafx.animation.FadeTransition;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
+import javafx.embed.swing.SwingNode;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -245,7 +246,21 @@ public class AdminDashboardView extends BorderPane {
 
         // Carte (zones.json)
         MapView mapView = new MapView(new ZoneManager().getZones());
-        mapView.getWebView().setPrefSize(1000, 380);
+        SwingNode sn = mapView.getSwingNode();
+
+        // Utilisez les méthodes JavaFX pour forcer la taille du conteneur
+        sn.minWidth(1000);
+        sn.maxHeight(380);
+        sn.maxWidth(1000);
+        sn.maxHeight(380);
+
+        javafx.application.Platform.runLater(() -> {
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                mapView.getMapViewer().setZoom(12);
+                mapView.getMapViewer().setAddressLocation(new org.jxmapviewer.viewer.GeoPosition(45.7640, 4.8357));
+                mapView.getMapViewer().repaint();
+            });
+        });
 
         // Lier un détecteur de niveau d'eau qui alimente le système d'alertes
         model.simulation.FloodSimulation localSim = new model.simulation.FloodSimulation();
@@ -268,7 +283,7 @@ public class AdminDashboardView extends BorderPane {
         recentLbl.setTextFill(Color.web(TEXT_PRIMARY));
         tableBox.getChildren().addAll(recentLbl, buildTable(ctrl.getAllAgents(), true));
 
-        root.getChildren().addAll(titleRow, kpis, bottomRow, mapView.getWebView(), tableBox);
+        root.getChildren().addAll(titleRow, kpis, bottomRow, mapView.getSwingNode(), tableBox);
 
         fadeIn(root);
         contentArea.getChildren().setAll(scrollWrap(root));
