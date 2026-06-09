@@ -10,7 +10,12 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
-import javafx.scene.layout.*;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.SVGPath;
@@ -85,16 +90,16 @@ public class CitizenDashboardView extends BorderPane {
         names.getChildren().addAll(full, role);
         profile.getChildren().addAll(avatar, names);
 
-        Button btnDashboard = sidebarButton("🏠  Tableau de bord");
+        Button btnDashboard = sidebarButton("Tableau de bord", "dashboard");
         btnDashboard.setOnAction(e -> { setActive(btnDashboard); showPage(dashboardContent); });
 
-        Button btnMap = sidebarButton("🗺️  Carte");
+        Button btnMap = sidebarButton("Carte", "map");
         btnMap.setOnAction(e -> { setActive(btnMap); showPage(buildMapPage(null)); });
 
-        Button btnRoutes = sidebarButton("🔀  Mes trajets");
+        Button btnRoutes = sidebarButton("Mes trajets", "route");
         btnRoutes.setOnAction(e -> { setActive(btnRoutes); showPage(new CitizenRoutesView(controller, user, mapComponent)); });
 
-        Button btnAlerts = sidebarButton("⚠️  Alertes");
+        Button btnAlerts = sidebarButton("Alertes", "alert");
         btnAlerts.setOnAction(e -> {
             setActive(btnAlerts);
             CitizenAlertsView alertsView = new CitizenAlertsView();
@@ -102,22 +107,22 @@ public class CitizenDashboardView extends BorderPane {
             showPage(alertsView);
         });
 
-        Button btnHistory = sidebarButton("🕘  Historique");
+        Button btnHistory = sidebarButton("Historique", "history");
         btnHistory.setOnAction(e -> { setActive(btnHistory); showPage(new CitizenHistoryView(controller)); });
 
-        Button btnRefuges = sidebarButton("🏫  Refuges");
+        Button btnRefuges = sidebarButton("Refuges", "home");
         btnRefuges.setOnAction(e -> { setActive(btnRefuges); showPage(new CitizenRefugesView(controller, user, this::openRouteToRefuge)); });
 
-        Button btnProfile = sidebarButton("👤  Profil");
+        Button btnProfile = sidebarButton("Profil", "user");
         btnProfile.setOnAction(e -> { setActive(btnProfile); showPage(new CitizenProfileView(controller, user)); });
 
-        Button btnSettings = sidebarButton("⚙️  Paramètres");
+        Button btnSettings = sidebarButton("Paramètres", "settings");
         btnSettings.setOnAction(e -> { setActive(btnSettings); showPage(new CitizenSettingsView()); });
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
-        Button logout = sidebarButton("🚪  Déconnexion");
+        Button logout = sidebarButton("Déconnexion", "logout");
         logout.setOnAction(e -> { Main.currentUser = null; Main.showWelcomeView(); });
 
         sidebar.getChildren().addAll(brand, profile, btnDashboard, btnMap, btnRoutes, btnAlerts, btnHistory, btnRefuges, btnProfile, btnSettings, spacer, logout);
@@ -277,22 +282,90 @@ public class CitizenDashboardView extends BorderPane {
         if (activeButton != null) activeButton.setStyle(sidebarStyle(true));
     }
 
-    private Button sidebarButton(String text) {
+    private Button sidebarButton(String text, String iconType) {
         Button btn = new Button(text);
+        btn.setGraphic(createSidebarIcon(iconType));
         btn.setMaxWidth(Double.MAX_VALUE);
         btn.setAlignment(Pos.CENTER_LEFT);
-        btn.setPadding(new Insets(11, 15, 11, 15));
-        btn.setFont(Font.font("Segoe UI", 13));
+        btn.setGraphicTextGap(14);
+        btn.setPadding(new Insets(13, 16, 13, 16));
+        btn.setFont(Font.font("Segoe UI", FontWeight.SEMI_BOLD, 13));
         btn.setStyle(sidebarStyle(false));
-        btn.setOnMouseEntered(e -> { if (btn != activeButton) btn.setStyle("-fx-background-color:rgba(255,255,255,0.08); -fx-text-fill:white; -fx-background-radius:9; -fx-cursor:hand;"); });
-        btn.setOnMouseExited(e -> { if (btn != activeButton) btn.setStyle(sidebarStyle(false)); });
+    
+        btn.setOnMouseEntered(e -> {
+            if (btn != activeButton) {
+                btn.setStyle("-fx-background-color:rgba(255,255,255,0.07);"
+                        + "-fx-text-fill:white;"
+                        + "-fx-background-radius:12;"
+                        + "-fx-border-color:rgba(255,255,255,0.08);"
+                        + "-fx-border-radius:12;"
+                        + "-fx-cursor:hand;");
+            }
+        });
+    
+        btn.setOnMouseExited(e -> {
+            if (btn != activeButton) btn.setStyle(sidebarStyle(false));
+        });
+    
         return btn;
+    }
+
+    private Node createSidebarIcon(String type) {
+        SVGPath icon = new SVGPath();
+    
+        switch (type) {
+            case "dashboard":
+                icon.setContent("M3 3 H10 V10 H3 Z M14 3 H21 V10 H14 Z M3 14 H10 V21 H3 Z M14 14 H21 V21 H14 Z");
+                break;
+            case "map":
+                icon.setContent("M12 21 C12 21 5 14 5 8 A7 7 0 0 1 19 8 C19 14 12 21 12 21 Z M12 10 A2 2 0 1 0 12 6 A2 2 0 0 0 12 10");
+                break;
+            case "route":
+                icon.setContent("M6 4 A2 2 0 1 0 6 8 A2 2 0 0 0 6 4 M18 16 A2 2 0 1 0 18 20 A2 2 0 0 0 18 16 M6 8 V11 Q6 14 9 14 H15 Q18 14 18 16");
+                break;
+            case "alert":
+                icon.setContent("M12 3 L22 20 H2 Z M12 9 V14 M12 17 V18");
+                break;
+            case "history":
+                icon.setContent("M12 5 A7 7 0 1 1 6 8 M6 8 H3 M6 8 V5 M12 8 V13 L16 15");
+                break;
+            case "home":
+                icon.setContent("M3 11 L12 3 L21 11 V21 H15 V15 H9 V21 H3 Z");
+                break;
+            case "user":
+                icon.setContent("M12 12 A4 4 0 1 0 12 4 A4 4 0 0 0 12 12 M4 21 Q12 15 20 21");
+                break;
+            case "settings":
+                icon.setContent("M12 8 A4 4 0 1 0 12 16 A4 4 0 0 0 12 8 M12 2 V5 M12 19 V22 M4.9 4.9 L7 7 M17 17 L19.1 19.1 M2 12 H5 M19 12 H22 M4.9 19.1 L7 17 M17 7 L19.1 4.9");
+                break;
+            case "logout":
+                icon.setContent("M10 4 H5 V20 H10 M14 8 L18 12 L14 16 M18 12 H8");
+                break;
+        }
+    
+        icon.setStroke(Color.web("#b8c7dd"));
+        icon.setStrokeWidth(1.8);
+        icon.setFill(Color.TRANSPARENT);
+    
+        StackPane box = new StackPane(icon);
+        box.setPrefSize(22, 22);
+        return box;
     }
 
     private String sidebarStyle(boolean active) {
         return active
-                ? "-fx-background-color:linear-gradient(to right, #0b5cbf, #1683ff); -fx-text-fill:white; -fx-background-radius:9; -fx-font-weight:bold; -fx-cursor:hand;"
-                : "-fx-background-color:transparent; -fx-text-fill:#b8c7dd; -fx-background-radius:9; -fx-cursor:hand;";
+                ? "-fx-background-color:linear-gradient(to right, #0b5cbf, #1683ff);"
+                + "-fx-text-fill:white;"
+                + "-fx-background-radius:12;"
+                + "-fx-font-weight:bold;"
+                + "-fx-cursor:hand;"
+                + "-fx-effect:dropshadow(gaussian, rgba(14,115,235,0.35), 18, 0, 0, 4);"
+                : "-fx-background-color:rgba(255,255,255,0.025);"
+                + "-fx-text-fill:#b8c7dd;"
+                + "-fx-background-radius:12;"
+                + "-fx-border-color:rgba(255,255,255,0.07);"
+                + "-fx-border-radius:12;"
+                + "-fx-cursor:hand;";
     }
 
     private VBox miniCard(String title, String value, String icon) {
