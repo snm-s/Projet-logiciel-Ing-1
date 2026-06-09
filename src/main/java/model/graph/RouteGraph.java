@@ -7,6 +7,7 @@ import model.algorithms.EvacuationPath;
 import model.algorithms.EvacuationRouter;
 import model.enums.CitizenState;
 import model.zone.Zone;
+import model.zone.Shelter;
 import org.jxmapviewer.viewer.GeoPosition;
 
 import java.io.InputStream;
@@ -109,9 +110,17 @@ public class RouteGraph {
      * @return le mouvement créé, ou null si aucun chemin possible
      */
     public AgentMovement planEvacuation(Agent agent, Zone from, List<Zone> zones) {
+        // IMPORTANT : le but d'une évacuation est un vrai refuge, pas une zone aléatoire.
+        // On ne garde donc que les objets Shelter chargés depuis zones.json.
         List<Zone> safeZones = zones.stream()
+            .filter(z -> z instanceof Shelter)
             .filter(z -> !z.isFlooded() && z.getId() != from.getId())
             .collect(Collectors.toList());
+
+        if (safeZones.isEmpty()) {
+            LOG.warning("Aucun refuge disponible dans zones.json : évacuation impossible depuis " + from.getName());
+            return null;
+        }
 
         EvacuationPath path = router.findNearestSafe(from, safeZones);
         if (path == null) {
@@ -200,11 +209,15 @@ public class RouteGraph {
 
     /** Met à jour les flux selon les populations inondées. */
     public void simulateFlows() {
-        for (Edge edge : edges) {
-            int flow = 0;
-            if (edge.getFromZone().isFlooded()) flow += edge.getFromZone().getPopulation() / 10;
-            if (edge.getToZone().isFlooded())   flow += edge.getToZone().getPopulation() / 10;
-            edge.setCurrentFlow(flow);
+        // Les consignes parlent de capacité d'arête en nombre d'agents.
+        // On affiche donc la congestion selon les agents réellement en déplacement,
+        // pas selon la population théorique des quartiers.
+        for (Edge edge : edges) edge.setCurrentFlow(0);
+        for (AgentMovement mv : activeMovements) {
+            if (mv == null || mv.getPath() == null) continue;
+            for (Edge edge : mv.getPath().getEdges()) {
+                edge.addFlow(1);
+            }
         }
     }
 

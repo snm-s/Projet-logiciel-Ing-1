@@ -1,172 +1,212 @@
 package view;
 
-import model.graph.EdgeState;
+import model.algorithms.EvacuationPath;
 import model.graph.Edge;
-//import model.graph.Edge.State;
+import model.graph.EdgeState;
 import model.graph.RouteGraph;
-import model.zone.Zone;
 import org.jxmapviewer.JXMapViewer;
 import org.jxmapviewer.painter.Painter;
 import org.jxmapviewer.viewer.GeoPosition;
 
-import java.awt.*;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.Stroke;
 import java.awt.geom.GeneralPath;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Painter JXMapViewer pour les routes inter-zones.
- * Lit le {@link RouteGraph} injecté et trace chaque arête selon son état.
+ * Dessine le vrai graphe RouteGraph sur la carte.
  *
- * <ul>
- *   <li>SAFE    → vert plein 2.5px</li>
- *   <li>AT_RISK → orange tirets 10-5, 2px</li>
- *   <li>FLOODED → rouge tirets 6-4, 3px</li>
- * </ul>
- *
- * Suit le tracé réel (waypoints OSRM) si disponible,
- * sinon ligne droite entre les deux zones.
+ * Version lisible :
+ * - les arêtes du réseau sont fines et transparentes ;
+ * - les arêtes dangereuses restent visibles, mais ne masquent plus la carte ;
+ * - le chemin Dijkstra sélectionné est dessiné en bleu épais ;
+ * - la congestion est indiquée par un petit point au milieu de l'arête, pas par 50 gros labels.
  */
 public class RoutePainter implements Painter<JXMapViewer> {
 
-    private RouteGraph   routeGraph;
-    private JXMapViewer  mapViewer;
+    private RouteGraph routeGraph;
+    private EvacuationPath highlightedPath;
+    private JXMapViewer mapViewer;
 
-    // ─── Couleurs ──────────────────────────────────────────────────────────
-    private static final Color ROUTE_SAFE    = new Color(34,  197, 94,  210);
-    private static final Color ROUTE_RISK    = new Color(245, 158, 11,  210);
-    private static final Color ROUTE_FLOODED = new Color(239, 68,  68,  230);
-
-    // ─────────────────────────────────────────────────────────────────────
+    private static final Color SAFE       = new Color(34, 197, 94, 140);
+    private static final Color RISK       = new Color(245, 158, 11, 150);
+    private static final Color FLOODED    = new Color(239, 68, 68, 170);
+    private static final Color CONGESTED  = new Color(234, 179, 8, 170);
+    private static final Color OVERLOADED = new Color(185, 28, 28, 185);
+    private static final Color PATH_BLUE  = new Color(14, 115, 235, 235);
 
     public RoutePainter() {}
 
-    public void setRouteGraph(RouteGraph rg) { 
-        this.routeGraph = rg; 
-        System.out.println("Graphe reçu avec " + (routeGraph != null ? routeGraph.getEdges().size() : "null") + " arêtes.");
+    public void setRouteGraph(RouteGraph routeGraph) {
+        this.routeGraph = routeGraph;
     }
-    
-    public void setMapViewer(JXMapViewer mv)  { this.mapViewer  = mv; }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // PAINT
-    // ─────────────────────────────────────────────────────────────────────
+    public void setMapViewer(JXMapViewer mapViewer) {
+        this.mapViewer = mapViewer;
+    }
+
+    public void setHighlightedPath(EvacuationPath path) {
+        this.highlightedPath = path;
+    }
+
+    public void clearHighlightedPath() {
+        this.highlightedPath = null;
+    }
 
     @Override
-    public void paint(Graphics2D g2, JXMapViewer map, int w, int h) {
-        if (routeGraph == null) return;
-
-        g2 = (Graphics2D) g2.create();
+    public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
+        Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        
-        /*
-        Rectangle rect = map.getViewportBounds();
-        g2.translate(-rect.x, -rect.y);
-        */
 
-        for (Edge edge : routeGraph.getEdges()) {
-            drawEdge(g2, map, edge);
+        if (routeGraph != null) {
+            for (Edge edge : routeGraph.getEdges()) {
+                drawEdge(g2, map, edge, false);
+            }
+        }
+
+        if (highlightedPath != null && !highlightedPath.isEmpty()) {
+            for (Edge edge : highlightedPath.getEdges()) {
+                drawEdge(g2, map, edge, true);
+            }
         }
 
         g2.dispose();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // DESSIN D'UNE ARÊTE
-    // ─────────────────────────────────────────────────────────────────────
-
-    private void drawEdge(Graphics2D g2, JXMapViewer map, Edge edge) {
+    private void drawEdge(Graphics2D g2, JXMapViewer map, Edge edge, boolean highlighted) {
         try {
-            List<GeoPosition> waypoints = edge.getWaypoints();
-            if (waypoints.size() < 2) {
-                // Fallback : ligne droite entre les deux zones
-                waypoints = new ArrayList<>();
-                waypoints.add(new GeoPosition(
-                    edge.getFromZone().getLatitude(), edge.getFromZone().getLongitude()));
-                waypoints.add(new GeoPosition(
-                    edge.getToZone().getLatitude(), edge.getToZone().getLongitude()));
+            List<GeoPosition> points = cleanWaypoints(edge);
+            if (points.size() < 2) return;
+
+            GeneralPath path = buildPath(map, points);
+
+            if (highlighted) {
+                g2.setColor(new Color(14, 115, 235, 80));
+                g2.setStroke(new BasicStroke(10f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.draw(path);
+
+                g2.setColor(PATH_BLUE);
+                g2.setStroke(new BasicStroke(4.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f, new float[]{14, 8}, 0));
+                g2.draw(path);
+
+                drawArrow(g2, map, points, PATH_BLUE);
+                return;
             }
 
-            // Construire le chemin pixel
-            GeneralPath path = buildPath(map, waypoints);
-
-            // Style selon l'état
-            RouteStyle style = resolveStyle(edge.getState());
+            RouteStyle style = styleFor(edge.getState());
             g2.setColor(style.color);
             g2.setStroke(style.stroke);
             g2.draw(path);
 
-            // Indicateur de capacité (petite barre d'occupation) au milieu
-            drawCapacityIndicator(g2, map, edge, waypoints);
-
-        } catch (Exception ignored) {}
+            drawSmallCapacityDot(g2, map, edge, points);
+        } catch (Exception ignored) {
+        }
     }
 
-    /** Construit le chemin vectoriel depuis la liste de waypoints GPS. */
-    private GeneralPath buildPath(JXMapViewer map, List<GeoPosition> waypoints) {
+    private List<GeoPosition> cleanWaypoints(Edge edge) {
+        List<GeoPosition> points = edge.getWaypoints();
+        if (points != null && points.size() >= 2) return points;
+
+        List<GeoPosition> fallback = new ArrayList<>();
+        fallback.add(new GeoPosition(edge.getFromZone().getLatitude(), edge.getFromZone().getLongitude()));
+        fallback.add(new GeoPosition(edge.getToZone().getLatitude(), edge.getToZone().getLongitude()));
+        return fallback;
+    }
+
+    private GeneralPath buildPath(JXMapViewer map, List<GeoPosition> points) {
         GeneralPath path = new GeneralPath();
         boolean first = true;
-        for (GeoPosition gp : waypoints) {
+
+        for (GeoPosition gp : points) {
             Point2D pt = map.convertGeoPositionToPoint(gp);
-            if (first) { path.moveTo(pt.getX(), pt.getY()); first = false; }
-            else         path.lineTo(pt.getX(), pt.getY());
+            if (first) {
+                path.moveTo(pt.getX(), pt.getY());
+                first = false;
+            } else {
+                path.lineTo(pt.getX(), pt.getY());
+            }
         }
+
         return path;
     }
 
-    /**
-     * Dessine un petit segment coloré au milieu de l'arête pour indiquer
-     * le taux d'occupation (blanc = vide, orange = saturé).
-     */
-    private void drawCapacityIndicator(Graphics2D g2, JXMapViewer map,
-                                        Edge edge, List<GeoPosition> waypoints) {
-        if (edge.getCapacityMax() <= 0) return;
-        try {
-            // Point médian
-            int mid = waypoints.size() / 2;
-            Point2D pt = map.convertGeoPositionToPoint(waypoints.get(mid));
+    private void drawSmallCapacityDot(Graphics2D g2, JXMapViewer map, Edge edge, List<GeoPosition> points) {
+        if (edge.getCapacityMax() <= 0 || edge.getCurrentFlow() <= 0) return;
 
-            double ratio = (double) edge.getCurrentFlow() / edge.getCapacityMax();
-            if (ratio <= 0.05) return; // pas d'agents = rien à afficher
+        double ratio = (double) edge.getCurrentFlow() / edge.getCapacityMax();
+        if (ratio < 0.25) return;
 
-            // Couleur du taux de remplissage
-            Color barColor = ratio > 0.8 ? new Color(239, 68, 68, 200)
-                           : ratio > 0.5 ? new Color(245, 158, 11, 200)
-                           : new Color(34, 197, 94, 200);
+        GeoPosition mid = points.get(points.size() / 2);
+        Point2D p = map.convertGeoPositionToPoint(mid);
 
-            int barW = (int) (20 * ratio);
-            g2.setColor(new Color(0, 0, 0, 120));
-            g2.fillRoundRect((int) pt.getX() - 11, (int) pt.getY() - 5, 22, 8, 3, 3);
-            g2.setColor(barColor);
-            g2.fillRoundRect((int) pt.getX() - 10, (int) pt.getY() - 4, barW, 6, 2, 2);
-        } catch (Exception ignored) {}
+        Color c = ratio > 1.0 ? OVERLOADED : ratio > 0.75 ? CONGESTED : RISK;
+        int r = ratio > 1.0 ? 7 : 5;
+
+        g2.setColor(new Color(0, 0, 0, 120));
+        g2.fillOval((int) p.getX() - r - 2, (int) p.getY() - r - 2, (r + 2) * 2, (r + 2) * 2);
+        g2.setColor(c);
+        g2.fillOval((int) p.getX() - r, (int) p.getY() - r, r * 2, r * 2);
+        g2.setColor(Color.WHITE);
+        g2.setStroke(new BasicStroke(1.2f));
+        g2.drawOval((int) p.getX() - r, (int) p.getY() - r, r * 2, r * 2);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // STYLES
-    // ─────────────────────────────────────────────────────────────────────
+    private void drawArrow(Graphics2D g2, JXMapViewer map, List<GeoPosition> points, Color color) {
+        if (points.size() < 2) return;
 
-    
-    private RouteStyle resolveStyle(EdgeState state) {
-        // Note : state.color utilise la couleur définie dans votre enum
-        Color color = state.color; 
-        
+        GeoPosition a = points.get(Math.max(0, points.size() / 2 - 1));
+        GeoPosition b = points.get(Math.min(points.size() - 1, points.size() / 2));
+
+        Point2D p1 = map.convertGeoPositionToPoint(a);
+        Point2D p2 = map.convertGeoPositionToPoint(b);
+
+        double dx = p2.getX() - p1.getX();
+        double dy = p2.getY() - p1.getY();
+        double len = Math.sqrt(dx * dx + dy * dy);
+        if (len < 1) return;
+
+        double ux = dx / len;
+        double uy = dy / len;
+        double mx = (p1.getX() + p2.getX()) / 2.0;
+        double my = (p1.getY() + p2.getY()) / 2.0;
+
+        int size = 9;
+        int[] xs = {
+                (int) (mx + ux * size),
+                (int) (mx - ux * size - uy * size * 0.6),
+                (int) (mx - ux * size + uy * size * 0.6)
+        };
+        int[] ys = {
+                (int) (my + uy * size),
+                (int) (my - uy * size + ux * size * 0.6),
+                (int) (my - uy * size - ux * size * 0.6)
+        };
+
+        g2.setColor(color);
+        g2.fillPolygon(xs, ys, 3);
+    }
+
+    private RouteStyle styleFor(EdgeState state) {
+        if (state == null) {
+            return new RouteStyle(SAFE, new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        }
+
         return switch (state) {
-            case FLOODED -> new RouteStyle(color, 
-                new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f, new float[]{6, 4}, 0));
-                
-            case OVERLOADED -> new RouteStyle(color, 
-                new BasicStroke(4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)); // Très épais
-                
-            case CONGESTED -> new RouteStyle(color, 
-                new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)); // Épais
-                
-            case AT_RISK -> new RouteStyle(color, 
-                new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f, new float[]{10, 5}, 0));
-                
-            case SAFE -> new RouteStyle(color, 
-                new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            case FLOODED -> new RouteStyle(FLOODED,
+                    new BasicStroke(2.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f, new float[]{8, 6}, 0));
+            case OVERLOADED -> new RouteStyle(OVERLOADED,
+                    new BasicStroke(3.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            case CONGESTED -> new RouteStyle(CONGESTED,
+                    new BasicStroke(2.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            case AT_RISK -> new RouteStyle(RISK,
+                    new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f, new float[]{10, 6}, 0));
+            case SAFE -> new RouteStyle(SAFE,
+                    new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         };
     }
 

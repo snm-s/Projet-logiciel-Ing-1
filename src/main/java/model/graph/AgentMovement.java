@@ -70,10 +70,15 @@ public class AgentMovement {
 
         progress = Math.min(1.0, progress + speed * deltaSeconds);
         currentPosition = path.interpolatePosition(progress);
+        updateAgentPosition(currentPosition);
 
         if (progress >= 1.0) {
             status = Status.ARRIVED;
-            // Mettre à jour la position de l'agent sur le nœud d'arrivée
+            // Mettre à jour la position de l'agent sur le refuge d'arrivée
+            Zone destination = path.getDestination();
+            if (destination != null) {
+                updateAgentPosition(new GeoPosition(destination.getLatitude(), destination.getLongitude()));
+            }
             updateAgentEdgeFlow(-1); // libérer la capacité
             return true;
         }
@@ -87,12 +92,21 @@ public class AgentMovement {
     public void start() {
         if (status != Status.PENDING) return;
         status = Status.MOVING;
+        updateAgentPosition(currentPosition);
         updateAgentEdgeFlow(+1); // occuper la capacité
     }
 
     // ─────────────────────────────────────────────────────────────────────
     // UTILITAIRES
     // ─────────────────────────────────────────────────────────────────────
+
+
+    /** Synchronise la position géographique du modèle Agent avec le déplacement. */
+    private void updateAgentPosition(GeoPosition pos) {
+        if (pos != null && agent != null) {
+            agent.setPosition(new Node(pos.getLatitude(), pos.getLongitude()));
+        }
+    }
 
     /** L'itinéraire est-il encore franchissable (aucune arête FLOODED) ? */
     private boolean isPathStillCrossable() {

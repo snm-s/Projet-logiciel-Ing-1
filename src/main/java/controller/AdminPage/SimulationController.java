@@ -199,13 +199,15 @@ public class SimulationController {
     // ─────────────────────────────────────────────────────────────────────
 
     public int getPopulationARisque() {
-        return modele.getZones().stream().filter(Zone::isFlooded)
-            .mapToInt(Zone::getPopulation).sum();
+        // Dans l'interface on affiche les agents de la simulation, pas la population théorique des quartiers.
+        if (mapController != null) return (int) mapController.countCitizensAtRisk();
+        return (int) modele.getAgents().stream().filter(a -> a instanceof Citizen).count();
     }
 
     public int getPopulationEnSecurite() {
-        return modele.getZones().stream().filter(z -> !z.isFlooded())
-            .mapToInt(Zone::getPopulation).sum();
+        // Citoyens réellement arrivés au refuge.
+        if (mapController != null) return (int) mapController.countCitizensSafe();
+        return 0;
     }
 
     public long getNombreZonesInondees() {

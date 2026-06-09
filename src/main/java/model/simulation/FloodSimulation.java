@@ -155,11 +155,16 @@ public class FloodSimulation {
     }
 
     public int getNombreAgents() {
-        return agentsActifs;
+        return agents == null ? 0 : agents.size();
     }
 
     public int getNombreAgentsEvacues() {
-        return agentsEvacues;
+        if (agents == null) return 0;
+        return (int) agents.stream()
+            .filter(a -> a instanceof model.agent.Citizen)
+            .map(a -> (model.agent.Citizen) a)
+            .filter(c -> c.getState() == model.enums.CitizenState.SAFE)
+            .count();
     }
 
     public int getNombreZonesInondees() {
