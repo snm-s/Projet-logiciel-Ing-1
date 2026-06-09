@@ -3,6 +3,7 @@ package view;
 import java.util.Map;
 
 import app.Main;
+import controller.AdminPage.AdminAlertsController;
 import controller.AdminPage.AdminController;
 import javafx.animation.FadeTransition;
 import javafx.collections.ObservableList;
@@ -26,6 +27,7 @@ import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -39,15 +41,11 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.util.Duration;
 import model.agent.Agent;
+import model.simulation.FloodSimulation;
 import model.zone.ZoneManager;
 
-/**
- * AdminDashboardView extends BorderPane
- * Utilisable directement : new Scene(new AdminDashboardView(), 1400, 820)
- */
 public class AdminDashboardView extends BorderPane {
 
-    // ── Palette ────────────────────────────────────────────────────────────────
     private static final String BG_DARK = "#0d1b2a";
     private static final String BG_PANEL = "#132337";
     private static final String BG_CARD = "#1a2f45";
@@ -61,15 +59,21 @@ public class AdminDashboardView extends BorderPane {
     private static final String TEXT_MUTED = "#8eaabf";
     private static final String BORDER = "#1e3a52";
 
-    // ── État ──────────────────────────────────────────────────────────────────
     private final AdminController ctrl;
+    private final FloodSimulation simulation;
+
     private String currentSection = "dashboard";
     private VBox sidebarBox;
     private StackPane contentArea;
 
-    // ── Constructeur (appelé par Main : new AdminDashboardView()) ─────────────
     public AdminDashboardView(AdminController controller) {
+        this(controller, Main.getSharedSimulation());
+    }
+
+    public AdminDashboardView(AdminController controller, FloodSimulation simulation) {
         this.ctrl = controller;
+        this.simulation = simulation;
+
         this.setStyle("-fx-background-color: " + BG_DARK + ";");
         this.setTop(buildTopBar());
         this.setLeft(buildSidebar());
@@ -81,9 +85,6 @@ public class AdminDashboardView extends BorderPane {
         showDashboard();
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // BARRE DU HAUT
-    // ══════════════════════════════════════════════════════════════════════════
     private HBox buildTopBar() {
         HBox bar = new HBox(16);
         bar.setAlignment(Pos.CENTER_LEFT);
@@ -109,16 +110,20 @@ public class AdminDashboardView extends BorderPane {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Label timerLbl = new Label("⏱  Simulation en cours");
+        Label timerLbl = new Label("Simulation en cours");
         timerLbl.setFont(Font.font("Segoe UI", 13));
         timerLbl.setTextFill(Color.web(ACCENT_CYAN));
 
-        // Bouton Simulation
-        Button simBtn = btn("▶️  Simulation", ACCENT_CYAN);
+        Button simBtn = btn("Simulation", ACCENT_CYAN);
         simBtn.setOnAction(e -> Main.showSimulationView());
 
-        // Bouton Déconnexion
-        Button logoutBtn = btn("⎋  Déconnexion", BG_CARD);
+        Button refreshBtn = btn("Actualiser", ACCENT_BLUE);
+        refreshBtn.setOnAction(e -> {
+            ctrl.loadAgents();
+            refreshAll();
+        });
+
+        Button logoutBtn = btn("Déconnexion", BG_CARD);
         logoutBtn.setStyle("-fx-background-color: " + BG_CARD
                 + "; -fx-text-fill: " + TEXT_MUTED
                 + "; -fx-border-color: " + BORDER
@@ -128,33 +133,27 @@ public class AdminDashboardView extends BorderPane {
             Main.showLoginView();
         });
 
-        // Bouton Actualiser
-        Button refreshBtn = btn("↻  Actualiser", ACCENT_BLUE);
-        refreshBtn.setOnAction(e -> {
-            ctrl.loadAgents();
-            refreshAll();
-        });
-
         bar.getChildren().addAll(logo, titles, spacer, timerLbl, simBtn, refreshBtn, logoutBtn);
         return bar;
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // SIDEBAR
-    // ══════════════════════════════════════════════════════════════════════════
     private VBox buildSidebar() {
         sidebarBox = new VBox(4);
-        sidebarBox.setPrefWidth(200);
+        sidebarBox.setPrefWidth(210);
+        sidebarBox.setMinWidth(210);
         sidebarBox.setPadding(new Insets(20, 12, 20, 12));
         sidebarBox.setStyle("-fx-background-color: " + BG_SIDEBAR
                 + "; -fx-border-color: " + BORDER + "; -fx-border-width: 0 1 0 0;");
 
         sidebarBox.getChildren().addAll(
-                navBtn("🗺", "Tableau de bord", "dashboard"),
-                navBtn("🏠", "Citoyens", "citizens"),
-                navBtn("🚒", "Agents secours", "rescue"),
-                navBtn("🛡", "Admins", "admins"),
-                navBtn("📊", "Statistiques", "stats"));
+                navBtn("▦", "Tableau de bord", "dashboard"),
+                navBtn("⌂", "Citoyens", "citizens"),
+                navBtn("✚", "Agents secours", "rescue"),
+                navBtn("◆", "Admins", "admins"),
+                navBtn("!", "Alertes", "alerts"),
+                navBtn("▥", "Statistiques", "stats")
+        );
+
         return sidebarBox;
     }
 
@@ -165,90 +164,98 @@ public class AdminDashboardView extends BorderPane {
         b.setFont(Font.font("Segoe UI", 13));
         b.setPadding(new Insets(10, 14, 10, 14));
         b.setStyle(navStyle(section.equals(currentSection)));
+
         b.setOnAction(e -> {
             currentSection = section;
             refreshNavStyles();
+
             switch (section) {
                 case "dashboard" -> showDashboard();
                 case "citizens" -> showAgentList("citizen", "Citoyens");
                 case "rescue" -> showAgentList("rescueAgent", "Agents de Secours");
                 case "admins" -> showAgentList("admin", "Administrateurs");
+                case "alerts" -> showAlerts();
                 case "stats" -> showStats();
             }
         });
+
         return b;
     }
 
     private String navStyle(boolean active) {
         return active
                 ? "-fx-background-color: " + ACCENT_BLUE + "22; -fx-text-fill: " + ACCENT_CYAN
-                        + "; -fx-background-radius: 6; -fx-cursor: hand;"
+                + "; -fx-background-radius: 6; -fx-cursor: hand;"
                 : "-fx-background-color: transparent; -fx-text-fill: " + TEXT_MUTED
-                        + "; -fx-background-radius: 6; -fx-cursor: hand;";
+                + "; -fx-background-radius: 6; -fx-cursor: hand;";
     }
 
     private void refreshNavStyles() {
         for (Node n : sidebarBox.getChildren()) {
             if (n instanceof Button b) {
                 String txt = b.getText();
+
                 boolean active = (currentSection.equals("dashboard") && txt.contains("Tableau"))
                         || (currentSection.equals("citizens") && txt.contains("Citoyens"))
                         || (currentSection.equals("rescue") && txt.contains("secours"))
                         || (currentSection.equals("admins") && txt.contains("Admins"))
+                        || (currentSection.equals("alerts") && txt.contains("Alertes"))
                         || (currentSection.equals("stats") && txt.contains("Statistiques"));
+
                 b.setStyle(navStyle(active));
             }
         }
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // VUE DASHBOARD
-    // ══════════════════════════════════════════════════════════════════════════
     private void showDashboard() {
         VBox root = new VBox(20);
         root.setPadding(new Insets(24));
         root.setStyle("-fx-background-color: " + BG_DARK + ";");
 
-        // Titre + bienvenue
         HBox titleRow = new HBox(16);
         titleRow.setAlignment(Pos.CENTER_LEFT);
+
         Label titleLbl = new Label("Tableau de bord");
         titleLbl.setFont(Font.font("Segoe UI", FontWeight.BOLD, 22));
         titleLbl.setTextFill(Color.web(TEXT_PRIMARY));
+
         String nom = Main.currentUser != null
                 ? Main.currentUser.getFirstName() + " " + Main.currentUser.getLastName()
                 : "Administrateur";
+
         Label welcomeLbl = new Label("Connecté en tant que : " + nom);
         welcomeLbl.setFont(Font.font("Segoe UI", 13));
         welcomeLbl.setTextFill(Color.web(TEXT_MUTED));
+
         titleRow.getChildren().addAll(titleLbl, welcomeLbl);
 
-        // KPI cards
-        HBox kpis = new HBox(16);
-        kpis.getChildren().addAll(
-                kpiCard("Total agents", String.valueOf(ctrl.getTotalAgents()), ACCENT_CYAN, "👥"),
-                kpiCard("Citoyens", String.valueOf(ctrl.getTotalCitizens()), ACCENT_BLUE, "🏠"),
-                kpiCard("Agents secours", String.valueOf(ctrl.getTotalRescueAgents()), ACCENT_GREEN, "🚒"),
-                kpiCard("À risque", String.valueOf(ctrl.getAtRiskCount()), ACCENT_ORANGE, "⚠"),
-                kpiCard("Sauvés", String.valueOf(ctrl.getSavedCount()), ACCENT_GREEN, "✅"),
-                kpiCard("En intervention", String.valueOf(ctrl.getActiveRescueCount()), ACCENT_RED, "🔴"));
-        for (Node n : kpis.getChildren())
-            HBox.setHgrow(n, Priority.ALWAYS);
+        FlowPane kpis = new FlowPane();
+        kpis.setHgap(16);
+        kpis.setVgap(16);
+        kpis.setPrefWrapLength(1100);
 
-        // Graphique + panneaux état
+        kpis.getChildren().addAll(
+                kpiCard("Total agents", String.valueOf(ctrl.getTotalAgents()), ACCENT_CYAN, "AG"),
+                kpiCard("Citoyens", String.valueOf(ctrl.getTotalCitizens()), ACCENT_BLUE, "CI"),
+                kpiCard("Agents secours", String.valueOf(ctrl.getTotalRescueAgents()), ACCENT_GREEN, "SE"),
+                kpiCard("Citoyens à risque", String.valueOf(ctrl.getAtRiskCount()), ACCENT_ORANGE, "!"),
+                kpiCard("Citoyens sauvés", String.valueOf(ctrl.getSavedCount()), ACCENT_GREEN, "OK"),
+                kpiCard("En intervention", String.valueOf(ctrl.getActiveRescueCount()), ACCENT_RED, "IN")
+        );
+
         HBox bottomRow = new HBox(16);
         VBox chart = buildStateChart();
         HBox.setHgrow(chart, Priority.ALWAYS);
+
         bottomRow.getChildren().addAll(
                 chart,
                 statusPanel("Statut Agents Secours", ctrl.getRescueStateBreakdown(), ACCENT_GREEN),
-                statusPanel("Statut Citoyens", ctrl.getCitizenStateBreakdown(), ACCENT_BLUE));
+                statusPanel("Statut Citoyens", ctrl.getCitizenStateBreakdown(), ACCENT_BLUE)
+        );
 
-        // Carte (zones.json)
         MapView mapView = new MapView(new ZoneManager().getZones());
         SwingNode sn = mapView.getSwingNode();
 
-        // Utilisez les méthodes JavaFX pour forcer la taille du conteneur
         sn.minWidth(1000);
         sn.maxHeight(380);
         sn.maxWidth(1000);
@@ -262,11 +269,7 @@ public class AdminDashboardView extends BorderPane {
             });
         });
 
-        // Lier un détecteur de niveau d'eau qui alimente le système d'alertes
-        model.simulation.FloodSimulation localSim = new model.simulation.FloodSimulation();
-        model.sensor.WaterLevelDetector detector = new model.sensor.WaterLevelDetector(localSim.getAlertSystem());
-        // Polling initial pour démonstration : met à jour la carte et crée des alertes
-        // si nécessaire
+        model.sensor.WaterLevelDetector detector = new model.sensor.WaterLevelDetector(simulation.getAlertSystem());
         detector.pollRandom((zone, lvl) -> {
             try {
                 mapView.updateZoneWithWaterLevel(zone, lvl);
@@ -274,13 +277,14 @@ public class AdminDashboardView extends BorderPane {
             }
         });
 
-        // Tableau des derniers agents
         VBox tableBox = new VBox(10);
         tableBox.setPadding(new Insets(16));
         tableBox.setStyle("-fx-background-color: " + BG_PANEL + "; -fx-background-radius: 10;");
+
         Label recentLbl = new Label("Derniers agents enregistrés");
         recentLbl.setFont(Font.font("Segoe UI", FontWeight.BOLD, 15));
         recentLbl.setTextFill(Color.web(TEXT_PRIMARY));
+
         tableBox.getChildren().addAll(recentLbl, buildTable(ctrl.getAllAgents(), true));
 
         root.getChildren().addAll(titleRow, kpis, bottomRow, mapView.getSwingNode(), tableBox);
@@ -289,27 +293,42 @@ public class AdminDashboardView extends BorderPane {
         contentArea.getChildren().setAll(scrollWrap(root));
     }
 
-    // ── KPI card ──────────────────────────────────────────────────────────────
+    private void showAlerts() {
+        AdminAlertsView alertsView = new AdminAlertsView();
+        new AdminAlertsController(alertsView, simulation.getAlertSystem());
+
+        fadeIn(alertsView);
+        contentArea.getChildren().setAll(alertsView);
+    }
+
     private VBox kpiCard(String label, String value, String accent, String icon) {
-        VBox card = new VBox(6);
-        card.setPadding(new Insets(18, 20, 18, 20));
+        VBox card = new VBox(8);
+        card.setPadding(new Insets(18));
+        card.setPrefWidth(180);
+        card.setMinWidth(180);
         card.setStyle("-fx-background-color: " + BG_CARD + "; -fx-background-radius: 10;"
                 + "-fx-border-color: " + accent + "44; -fx-border-radius: 10; -fx-border-width: 1;");
 
         HBox header = new HBox(8);
         header.setAlignment(Pos.CENTER_LEFT);
+
         Label iconLbl = new Label(icon);
-        iconLbl.setFont(Font.font(18));
+        iconLbl.setFont(Font.font("Segoe UI", FontWeight.BOLD, 13));
+        iconLbl.setTextFill(Color.web(accent));
+
         Label lbl = new Label(label);
-        lbl.setFont(Font.font("Segoe UI", 11));
+        lbl.setFont(Font.font("Segoe UI", 12));
         lbl.setTextFill(Color.web(TEXT_MUTED));
+        lbl.setWrapText(true);
+        lbl.setMaxWidth(130);
+
         header.getChildren().addAll(iconLbl, lbl);
 
         Label val = new Label(value);
-        val.setFont(Font.font("Segoe UI", FontWeight.BOLD, 32));
-        val.setTextFill(Color.web(accent));
+        val.setFont(Font.font("Segoe UI", FontWeight.BOLD, 34));
+        val.setTextFill(Color.web(TEXT_PRIMARY));
 
-        Rectangle bar = new Rectangle(40, 3);
+        Rectangle bar = new Rectangle(46, 3);
         bar.setArcWidth(3);
         bar.setArcHeight(3);
         bar.setFill(Color.web(accent));
@@ -318,7 +337,6 @@ public class AdminDashboardView extends BorderPane {
         return card;
     }
 
-    // ── BarChart états citoyens ───────────────────────────────────────────────
     private VBox buildStateChart() {
         VBox box = new VBox(10);
         box.setPadding(new Insets(16));
@@ -330,6 +348,7 @@ public class AdminDashboardView extends BorderPane {
 
         CategoryAxis xAxis = new CategoryAxis();
         xAxis.setTickLabelFill(Color.web(TEXT_MUTED));
+
         NumberAxis yAxis = new NumberAxis();
         yAxis.setTickLabelFill(Color.web(TEXT_MUTED));
 
@@ -337,27 +356,30 @@ public class AdminDashboardView extends BorderPane {
         chart.setLegendVisible(false);
         chart.setStyle("-fx-background-color: transparent;");
         chart.setHorizontalGridLinesVisible(false);
-        chart.setPrefHeight(200);
+        chart.setPrefHeight(210);
 
         XYChart.Series<String, Number> series = new XYChart.Series<>();
+
         ctrl.getCitizenStateBreakdown()
                 .forEach((state, count) -> series.getData().add(new XYChart.Data<>(state, count)));
+
         chart.getData().add(series);
 
         box.getChildren().addAll(title, chart);
         return box;
     }
 
-    // ── Panneau status ────────────────────────────────────────────────────────
     private VBox statusPanel(String title, Map<String, Long> data, String accent) {
-        VBox box = new VBox(8);
+        VBox box = new VBox(10);
         box.setPadding(new Insets(16));
+        box.setPrefWidth(260);
+        box.setMinWidth(260);
         box.setStyle("-fx-background-color: " + BG_PANEL + "; -fx-background-radius: 10;");
-        box.setPrefWidth(220);
 
         Label lbl = new Label(title);
-        lbl.setFont(Font.font("Segoe UI", FontWeight.BOLD, 14));
+        lbl.setFont(Font.font("Segoe UI", FontWeight.BOLD, 15));
         lbl.setTextFill(Color.web(TEXT_PRIMARY));
+        lbl.setWrapText(true);
         box.getChildren().add(lbl);
 
         long total = data.values().stream().mapToLong(Long::longValue).sum();
@@ -372,22 +394,29 @@ public class AdminDashboardView extends BorderPane {
             Label stateLbl = new Label(state);
             stateLbl.setFont(Font.font("Segoe UI", 12));
             stateLbl.setTextFill(Color.web(TEXT_MUTED));
-            HBox.setHgrow(stateLbl, Priority.ALWAYS);
+            stateLbl.setPrefWidth(120);
+            stateLbl.setWrapText(true);
+
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
 
             Label countLbl = new Label(count + (total > 0 ? " (" + (count * 100 / total) + "%)" : ""));
             countLbl.setFont(Font.font("Segoe UI", FontWeight.BOLD, 12));
             countLbl.setTextFill(Color.web(accent));
 
-            row.getChildren().addAll(dot, stateLbl, countLbl);
+            row.getChildren().addAll(dot, stateLbl, spacer, countLbl);
             box.getChildren().add(row);
 
             StackPane track = new StackPane();
             track.setStyle("-fx-background-color: " + BORDER + "; -fx-background-radius: 3;");
             track.setPrefHeight(4);
+            track.setMaxWidth(Double.MAX_VALUE);
+
             Region fill = new Region();
             fill.setPrefHeight(4);
-            fill.setPrefWidth(total > 0 ? ((double) count / total) * 170 : 0);
+            fill.setPrefWidth(total > 0 ? ((double) count / total) * 200 : 0);
             fill.setStyle("-fx-background-color: " + stateColor(state) + "; -fx-background-radius: 3;");
+
             StackPane.setAlignment(fill, Pos.CENTER_LEFT);
             track.getChildren().add(fill);
             box.getChildren().add(track);
@@ -396,9 +425,6 @@ public class AdminDashboardView extends BorderPane {
         return box;
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // VUE LISTE D'AGENTS
-    // ══════════════════════════════════════════════════════════════════════════
     private void showAgentList(String type, String sectionTitle) {
         ObservableList<Agent> source = switch (type) {
             case "citizen" -> ctrl.getCitizens();
@@ -411,7 +437,6 @@ public class AdminDashboardView extends BorderPane {
         root.setPadding(new Insets(24));
         root.setStyle("-fx-background-color: " + BG_DARK + ";");
 
-        // En-tête
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
 
@@ -429,20 +454,22 @@ public class AdminDashboardView extends BorderPane {
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         TextField search = new TextField();
-        search.setPromptText("🔍  Rechercher…");
-        search.setPrefWidth(240);
+        search.setPromptText("Rechercher…");
+        search.setPrefWidth(260);
         search.setStyle("-fx-background-color: " + BG_CARD + "; -fx-text-fill: " + TEXT_PRIMARY
                 + "; -fx-prompt-text-fill: " + TEXT_MUTED
                 + "; -fx-border-color: " + BORDER + "; -fx-border-radius: 6; -fx-background-radius: 6;");
 
         header.getChildren().addAll(titleLbl, badge, spacer, search);
 
-        // Table avec filtre live
         TableView<Agent> table = buildTable(source, false);
+
         FilteredList<Agent> filtered = new FilteredList<>(source, a -> true);
         table.setItems(filtered);
+
         search.textProperty().addListener((obs, o, q) -> {
             String lq = q == null ? "" : q.toLowerCase();
+
             filtered.setPredicate(a -> lq.isBlank()
                     || String.valueOf(a.getId()).contains(lq)
                     || (a.getFirstName() != null && a.getFirstName().toLowerCase().contains(lq))
@@ -451,21 +478,28 @@ public class AdminDashboardView extends BorderPane {
                     || AdminController.stateOf(a).toLowerCase().contains(lq));
         });
 
-        // Toolbar
         HBox toolbar = new HBox(10);
-        Button delBtn = btn("🗑  Supprimer la sélection", ACCENT_RED);
+
+        Button delBtn = btn("Supprimer la sélection", ACCENT_RED);
         delBtn.setOnAction(e -> {
             Agent sel = table.getSelectionModel().getSelectedItem();
-            if (sel == null)
-                return;
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+
+            if (sel == null) return;
+
+            Alert confirm = new Alert(
+                    Alert.AlertType.CONFIRMATION,
                     "Supprimer " + sel.getFirstName() + " " + sel.getLastName() + " ?",
-                    ButtonType.YES, ButtonType.NO);
+                    ButtonType.YES,
+                    ButtonType.NO
+            );
+
             confirm.showAndWait().ifPresent(bt -> {
-                if (bt == ButtonType.YES)
+                if (bt == ButtonType.YES) {
                     ctrl.deleteAgent(sel);
+                }
             });
         });
+
         toolbar.getChildren().add(delBtn);
 
         VBox tableBox = new VBox(10);
@@ -481,69 +515,82 @@ public class AdminDashboardView extends BorderPane {
         contentArea.getChildren().setAll(scrollWrap(root));
     }
 
-    // ── TableView Agent ───────────────────────────────────────────────────────
     private TableView<Agent> buildTable(ObservableList<Agent> items, boolean limitRows) {
         TableView<Agent> table = new TableView<>();
         table.setStyle("-fx-background-color: " + BG_CARD + "; -fx-text-fill: " + TEXT_PRIMARY
                 + "; -fx-border-color: " + BORDER + ";");
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        table.setPrefHeight(limitRows ? 240 : 520);
+        table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+        table.setPrefHeight(limitRows ? 260 : 520);
 
         TableColumn<Agent, String> colId = strCol("ID", a -> String.valueOf(a.getId()), 60);
-        TableColumn<Agent, String> colType = strCol("Type", a -> AdminController.typeOf(a), 110);
-        TableColumn<Agent, String> colFirst = strCol("Prénom", Agent::getFirstName, 120);
-        TableColumn<Agent, String> colLast = strCol("Nom", Agent::getLastName, 120);
-        TableColumn<Agent, String> colEmail = strCol("Email", Agent::getEmail, 200);
+        TableColumn<Agent, String> colType = strCol("Type", a -> AdminController.typeOf(a), 130);
+        TableColumn<Agent, String> colFirst = strCol("Prénom", Agent::getFirstName, 130);
+        TableColumn<Agent, String> colLast = strCol("Nom", Agent::getLastName, 130);
+        TableColumn<Agent, String> colEmail = strCol("Email", Agent::getEmail, 220);
         TableColumn<Agent, String> colPhone = strCol("Tél.", Agent::getPhone, 120);
-        TableColumn<Agent, String> colCity = strCol("Ville", Agent::getCity, 110);
+        TableColumn<Agent, String> colCity = strCol("Ville", Agent::getCity, 120);
 
-        // État (badge coloré)
         TableColumn<Agent, String> colState = new TableColumn<>("État");
-        colState.setPrefWidth(130);
+        colState.setPrefWidth(150);
         colState.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(
                 AdminController.stateOf(c.getValue())));
+
         colState.setCellFactory(tc -> new TableCell<>() {
             @Override
             protected void updateItem(String state, boolean empty) {
                 super.updateItem(state, empty);
+
                 if (empty || state == null || state.isBlank()) {
                     setText(null);
                     setGraphic(null);
                     return;
                 }
+
                 Label badge = new Label(state);
                 badge.setPadding(new Insets(2, 8, 2, 8));
                 badge.setFont(Font.font("Segoe UI", FontWeight.BOLD, 11));
                 badge.setTextFill(Color.WHITE);
                 badge.setStyle("-fx-background-color: " + stateColor(state)
                         + "; -fx-background-radius: 10;");
+
                 setGraphic(badge);
                 setText(null);
             }
         });
 
-        // Position (via toString() de Node)
         TableColumn<Agent, String> colPos = strCol("Position",
-                a -> a.getPosition() != null ? a.getPosition().toString() : "—", 160);
+                a -> a.getPosition() != null ? a.getPosition().toString() : "—", 220);
 
-        // Sauvé
         TableColumn<Agent, String> colSaved = strCol("Sauvé",
-                a -> a.isSaved() ? "✅" : "—", 65);
+                a -> a.isSaved() ? "Oui" : "—", 80);
 
-        table.getColumns().addAll(colId, colType, colFirst, colLast,
-                colEmail, colPhone, colCity, colState, colPos, colSaved);
+        table.getColumns().addAll(
+                colId,
+                colType,
+                colFirst,
+                colLast,
+                colEmail,
+                colPhone,
+                colCity,
+                colState,
+                colPos,
+                colSaved
+        );
 
         ObservableList<Agent> data = (limitRows && items.size() > 8)
                 ? javafx.collections.FXCollections.observableArrayList(items.subList(0, 8))
                 : items;
+
         table.setItems(data);
 
         table.setRowFactory(tv -> {
             TableRow<Agent> row = new TableRow<>();
             row.setStyle("-fx-background-color: transparent;");
+
             row.hoverProperty().addListener((obs, old, hover) -> row.setStyle(hover
                     ? "-fx-background-color: " + ACCENT_BLUE + "22;"
                     : "-fx-background-color: transparent;"));
+
             return row;
         });
 
@@ -551,26 +598,37 @@ public class AdminDashboardView extends BorderPane {
     }
 
     private TableColumn<Agent, String> strCol(String title,
-            java.util.function.Function<Agent, String> fn, double width) {
+                                              java.util.function.Function<Agent, String> fn,
+                                              double width) {
         TableColumn<Agent, String> col = new TableColumn<>(title);
         col.setPrefWidth(width);
-        col.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(
-                fn.apply(c.getValue())));
+        col.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(fn.apply(c.getValue())));
+
         col.setCellFactory(tc -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-                setText(empty || item == null ? null : item);
-                setTextFill(Color.web(TEXT_PRIMARY));
+
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+
+                Label lbl = new Label(item);
+                lbl.setTextFill(Color.web(TEXT_PRIMARY));
+                lbl.setWrapText(false);
+                lbl.setMaxWidth(tc.getWidth() - 12);
+
+                setGraphic(lbl);
+                setText(null);
                 setStyle("-fx-background-color: transparent;");
             }
         });
+
         return col;
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // VUE STATISTIQUES
-    // ══════════════════════════════════════════════════════════════════════════
     private void showStats() {
         VBox root = new VBox(20);
         root.setPadding(new Insets(24));
@@ -582,7 +640,8 @@ public class AdminDashboardView extends BorderPane {
 
         HBox panels = new HBox(16,
                 statusPanel("États Citoyens", ctrl.getCitizenStateBreakdown(), ACCENT_BLUE),
-                statusPanel("États Agents Secours", ctrl.getRescueStateBreakdown(), ACCENT_GREEN));
+                statusPanel("États Agents Secours", ctrl.getRescueStateBreakdown(), ACCENT_GREEN)
+        );
 
         GridPane grid = new GridPane();
         grid.setHgap(16);
@@ -608,16 +667,14 @@ public class AdminDashboardView extends BorderPane {
         Label lbl = new Label(label);
         lbl.setFont(Font.font("Segoe UI", 13));
         lbl.setTextFill(Color.web(TEXT_MUTED));
+
         Label val = new Label(value);
         val.setFont(Font.font("Segoe UI", FontWeight.BOLD, 15));
         val.setTextFill(Color.web(color));
+
         grid.add(lbl, 0, row);
         grid.add(val, 1, row);
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // UTILITAIRES
-    // ══════════════════════════════════════════════════════════════════════════
 
     private void refreshAll() {
         switch (currentSection) {
@@ -625,6 +682,7 @@ public class AdminDashboardView extends BorderPane {
             case "citizens" -> showAgentList("citizen", "Citoyens");
             case "rescue" -> showAgentList("rescueAgent", "Agents de Secours");
             case "admins" -> showAgentList("admin", "Administrateurs");
+            case "alerts" -> showAlerts();
             case "stats" -> showStats();
         }
     }
@@ -635,11 +693,14 @@ public class AdminDashboardView extends BorderPane {
         b.setTextFill(Color.WHITE);
         b.setPadding(new Insets(8, 16, 8, 16));
         b.setStyle("-fx-background-color: " + color + "; -fx-background-radius: 6; -fx-cursor: hand;");
+
         b.setOnMouseEntered(e -> b.setStyle(
                 "-fx-background-color: derive(" + color + ", 20%);"
                         + " -fx-background-radius: 6; -fx-cursor: hand;"));
+
         b.setOnMouseExited(e -> b.setStyle(
                 "-fx-background-color: " + color + "; -fx-background-radius: 6; -fx-cursor: hand;"));
+
         return b;
     }
 
@@ -658,12 +719,17 @@ public class AdminDashboardView extends BorderPane {
     }
 
     private String stateColor(String state) {
-        if (state == null)
+        if (state == null) {
             return TEXT_MUTED;
+        }
+
         return switch (state.toUpperCase()) {
             case "CALME" -> ACCENT_GREEN;
+            case "CALM" -> ACCENT_GREEN;
             case "PANIQUE" -> ACCENT_ORANGE;
+            case "STRESSED" -> ACCENT_ORANGE;
             case "BLESSE" -> ACCENT_RED;
+            case "INJURED" -> ACCENT_RED;
             case "DISPONIBLE" -> ACCENT_CYAN;
             case "EN_INTERVENTION" -> ACCENT_RED;
             case "EN_ROUTE" -> ACCENT_BLUE;
