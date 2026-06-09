@@ -156,6 +156,14 @@ public class LoginView extends StackPane {
         leftColumn.getChildren().addAll(backButton, brandHeader, formGroup, footerGroup);
         StackPane.setAlignment(leftColumn, Pos.CENTER_LEFT);
         this.getChildren().addAll(backgroundFiller, gradientOverlay, leftColumn);
+
+        loginButton.setDefaultButton(true);
+
+        emailField.setOnAction(e -> loginButton.fire());
+
+        passwordField.setOnAction(e -> loginButton.fire());
+
+        visiblePasswordField.setOnAction(e -> loginButton.fire());
     }
 
     public Button getBackButton() { return backButton; }
