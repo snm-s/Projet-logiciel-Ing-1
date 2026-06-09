@@ -95,34 +95,34 @@ public class RescueDashboardView extends BorderPane {
         names.getChildren().addAll(full, role);
         profile.getChildren().addAll(avatar, names);
 
-        Button btnDashboard = sidebarButton("🏠  Tableau de bord");
+        Button btnDashboard = sidebarButton("Tableau de bord", "dashboard");
         btnDashboard.setOnAction(e -> { setActive(btnDashboard); showPage(dashboardContent); });
 
-        Button btnMap = sidebarButton("🗺️  Carte opérationnelle");
+        Button btnMap = sidebarButton("Carte opérationnelle", "map");
         btnMap.setOnAction(e -> { setActive(btnMap); showPage(buildMapPage()); });
 
-        Button btnAgents = sidebarButton("👥  Agents");
+        Button btnAgents = sidebarButton("Agents", "agents");
         btnAgents.setOnAction(e -> { setActive(btnAgents); showPage(new RescueAgentsView()); });
 
-        Button btnAlerts = sidebarButton("⚠️  Alertes");
+        Button btnAlerts = sidebarButton("Alertes", "alert");
         btnAlerts.setOnAction(e -> { setActive(btnAlerts); showPage(new RescueAlertsView(controller)); });
 
-        Button btnResources = sidebarButton("📦  Ressources");
+        Button btnResources = sidebarButton("Ressources", "resources");
         btnResources.setOnAction(e -> { setActive(btnResources); showPage(new RescueResourcesView()); });
 
-        Button btnMissions = sidebarButton("📋  Missions");
+        Button btnMissions = sidebarButton("Missions", "missions");
         btnMissions.setOnAction(e -> { setActive(btnMissions); showPage(new RescueMissionsView(mapComponent, controller)); });
 
-        Button btnProfile = sidebarButton("👤  Profil");
+        Button btnProfile = sidebarButton("Profil", "user");
         btnProfile.setOnAction(e -> { setActive(btnProfile); showPage(new RescueProfileView()); });
 
-        Button btnSettings = sidebarButton("⚙️  Paramètres");
+        Button btnSettings = sidebarButton("Paramètres", "settings");
         btnSettings.setOnAction(e -> { setActive(btnSettings); showPage(new RescueSettingsView()); });
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
-        Button logout = sidebarButton("🚪  Déconnexion");
+        Button logout = sidebarButton("Déconnexion", "logout");
         logout.setOnAction(e -> { Main.currentUser = null; Main.showWelcomeView(); });
 
         sidebar.getChildren().addAll(
@@ -284,22 +284,90 @@ public class RescueDashboardView extends BorderPane {
         if (activeButton != null) activeButton.setStyle(sidebarStyle(true));
     }
 
-    private Button sidebarButton(String text) {
+    private Button sidebarButton(String text, String iconType) {
         Button btn = new Button(text);
+        btn.setGraphic(createSidebarIcon(iconType));
         btn.setMaxWidth(Double.MAX_VALUE);
         btn.setAlignment(Pos.CENTER_LEFT);
-        btn.setPadding(new Insets(11, 15, 11, 15));
-        btn.setFont(Font.font("Segoe UI", 13));
+        btn.setGraphicTextGap(14);
+        btn.setPadding(new Insets(13, 16, 13, 16));
+        btn.setFont(Font.font("Segoe UI", FontWeight.SEMI_BOLD, 13));
         btn.setStyle(sidebarStyle(false));
-        btn.setOnMouseEntered(e -> { if (btn != activeButton) btn.setStyle("-fx-background-color:rgba(255,255,255,0.08); -fx-text-fill:white; -fx-background-radius:9; -fx-cursor:hand;"); });
-        btn.setOnMouseExited(e -> { if (btn != activeButton) btn.setStyle(sidebarStyle(false)); });
+    
+        btn.setOnMouseEntered(e -> {
+            if (btn != activeButton) {
+                btn.setStyle("-fx-background-color:rgba(255,255,255,0.07);"
+                        + "-fx-text-fill:white;"
+                        + "-fx-background-radius:12;"
+                        + "-fx-border-color:rgba(255,255,255,0.08);"
+                        + "-fx-border-radius:12;"
+                        + "-fx-cursor:hand;");
+            }
+        });
+    
+        btn.setOnMouseExited(e -> {
+            if (btn != activeButton) btn.setStyle(sidebarStyle(false));
+        });
+    
         return btn;
+    }
+
+    private Node createSidebarIcon(String type) {
+        SVGPath icon = new SVGPath();
+    
+        switch (type) {
+            case "dashboard":
+                icon.setContent("M3 3 H10 V10 H3 Z M14 3 H21 V10 H14 Z M3 14 H10 V21 H3 Z M14 14 H21 V21 H14 Z");
+                break;
+            case "map":
+                icon.setContent("M12 21 C12 21 5 14 5 8 A7 7 0 0 1 19 8 C19 14 12 21 12 21 Z M12 10 A2 2 0 1 0 12 6 A2 2 0 0 0 12 10");
+                break;
+            case "agents":
+                icon.setContent("M8 11 A3 3 0 1 0 8 5 A3 3 0 0 0 8 11 M16 11 A3 3 0 1 0 16 5 A3 3 0 0 0 16 11 M3 21 Q8 15 13 21 M11 21 Q16 15 21 21");
+                break;
+            case "alert":
+                icon.setContent("M12 3 L22 20 H2 Z M12 9 V14 M12 17 V18");
+                break;
+            case "resources":
+                icon.setContent("M4 7 L12 3 L20 7 V17 L12 21 L4 17 Z M4 7 L12 11 L20 7 M12 11 V21");
+                break;
+            case "missions":
+                icon.setContent("M6 3 H18 V21 H6 Z M9 7 H15 M9 11 H15 M9 15 H13");
+                break;
+            case "user":
+                icon.setContent("M12 12 A4 4 0 1 0 12 4 A4 4 0 0 0 12 12 M4 21 Q12 15 20 21");
+                break;
+            case "settings":
+                icon.setContent("M12 8 A4 4 0 1 0 12 16 A4 4 0 0 0 12 8 M12 2 V5 M12 19 V22 M4.9 4.9 L7 7 M17 17 L19.1 19.1 M2 12 H5 M19 12 H22 M4.9 19.1 L7 17 M17 7 L19.1 4.9");
+                break;
+            case "logout":
+                icon.setContent("M10 4 H5 V20 H10 M14 8 L18 12 L14 16 M18 12 H8");
+                break;
+        }
+    
+        icon.setStroke(Color.web("#b8c7dd"));
+        icon.setStrokeWidth(1.8);
+        icon.setFill(Color.TRANSPARENT);
+    
+        StackPane box = new StackPane(icon);
+        box.setPrefSize(22, 22);
+        return box;
     }
 
     private String sidebarStyle(boolean active) {
         return active
-                ? "-fx-background-color:linear-gradient(to right, #0b5cbf, #1683ff); -fx-text-fill:white; -fx-background-radius:9; -fx-font-weight:bold; -fx-cursor:hand;"
-                : "-fx-background-color:transparent; -fx-text-fill:#b8c7dd; -fx-background-radius:9; -fx-cursor:hand;";
+                ? "-fx-background-color:linear-gradient(to right, #b91c1c, #ef4444);"
+                + "-fx-text-fill:white;"
+                + "-fx-background-radius:12;"
+                + "-fx-font-weight:bold;"
+                + "-fx-cursor:hand;"
+                + "-fx-effect:dropshadow(gaussian, rgba(239,68,68,0.35), 18, 0, 0, 4);"
+                : "-fx-background-color:rgba(255,255,255,0.025);"
+                + "-fx-text-fill:#b8c7dd;"
+                + "-fx-background-radius:12;"
+                + "-fx-border-color:rgba(255,255,255,0.07);"
+                + "-fx-border-radius:12;"
+                + "-fx-cursor:hand;";
     }
 
     private VBox miniCard(String title, String value, String color) {
