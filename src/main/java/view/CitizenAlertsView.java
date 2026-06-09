@@ -46,6 +46,8 @@ public class CitizenAlertsView extends BorderPane {
     private final ObservableList<Alert> allAlerts = FXCollections.observableArrayList();
 
     private VBox alertsContainer;
+    private VBox topAlertSlot;
+
     private Label tabToutes;
     private Label tabActives;
     private Label tabResolues;
@@ -88,6 +90,9 @@ public class CitizenAlertsView extends BorderPane {
             HBox.setHgrow(node, Priority.ALWAYS);
         }
 
+        topAlertSlot = new VBox();
+        updateTopAlertCard();
+
         VBox mainCard = glassCard(22);
 
         HBox topRow = new HBox(18);
@@ -123,7 +128,7 @@ public class CitizenAlertsView extends BorderPane {
         mainCard.getChildren().addAll(topRow, separator(), scroll);
         VBox.setVgrow(mainCard, Priority.ALWAYS);
 
-        root.getChildren().addAll(header, stats, buildTopAlertCard(), mainCard);
+        root.getChildren().addAll(header, stats, topAlertSlot, mainCard);
         VBox.setVgrow(mainCard, Priority.ALWAYS);
 
         refreshView();
@@ -148,6 +153,12 @@ public class CitizenAlertsView extends BorderPane {
         return header;
     }
 
+    private void updateTopAlertCard() {
+        if (topAlertSlot == null) return;
+
+        topAlertSlot.getChildren().setAll(buildTopAlertCard());
+    }
+
     private VBox buildTopAlertCard() {
         VBox card = glassCard(22);
 
@@ -161,8 +172,9 @@ public class CitizenAlertsView extends BorderPane {
         VBox texts = new VBox(6);
 
         Label small = label("Alerte prioritaire", MUTED, 12, true);
+
         Label title = label(
-                latest != null ? latest.getDescription() : "Aucune alerte active",
+                latest != null ? cleanText(latest.getDescription(), "Alerte active") : "Aucune alerte active",
                 WHITE,
                 22,
                 true
@@ -171,7 +183,11 @@ public class CitizenAlertsView extends BorderPane {
 
         Label desc = label(
                 latest != null
-                        ? latest.getLocalisation() + " • " + latest.getSeverity() + " • " + latest.getTime()
+                        ? cleanText(latest.getLocalisation(), "Localisation inconnue")
+                        + " • "
+                        + cleanText(latest.getSeverity(), "Sévérité inconnue")
+                        + " • "
+                        + cleanText(latest.getTime(), "--:--")
                         : "Aucune situation urgente n’est publiée actuellement.",
                 LIGHT,
                 13,
@@ -184,7 +200,7 @@ public class CitizenAlertsView extends BorderPane {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Label status = badge(latest != null ? latest.getStatus() : "Stable", latest != null ? RED : GREEN);
+        Label status = badge(latest != null ? latest.getStatus() : "Stable", latest != null ? getStatusColor(latest.getStatus()) : GREEN);
 
         row.getChildren().addAll(icon, texts, spacer, status);
         card.getChildren().add(row);
@@ -225,6 +241,7 @@ public class CitizenAlertsView extends BorderPane {
 
     public void refreshView() {
         updateCounts();
+        updateTopAlertCard();
         refreshCards();
     }
 
@@ -303,7 +320,7 @@ public class CitizenAlertsView extends BorderPane {
         VBox titleBox = new VBox(4);
         Label type = label(formatType(alert.getType()), MUTED, 12, true);
 
-        Label description = label(alert.getDescription(), WHITE, 18, true);
+        Label description = label(cleanText(alert.getDescription(), "Alerte"), WHITE, 18, true);
         description.setWrapText(true);
 
         titleBox.getChildren().addAll(type, description);
@@ -341,7 +358,7 @@ public class CitizenAlertsView extends BorderPane {
         );
 
         Label t = label(title, MUTED, 11, true);
-        Label v = label(value == null || value.isBlank() ? "--" : value, WHITE, 13, false);
+        Label v = label(cleanText(value, "--"), WHITE, 13, false);
         v.setWrapText(true);
 
         box.getChildren().addAll(t, v);
@@ -581,7 +598,7 @@ public class CitizenAlertsView extends BorderPane {
     }
 
     private Label badge(String text, String color) {
-        Label badge = label(text == null ? "--" : text, WHITE, 11, true);
+        Label badge = label(cleanText(text, "--"), WHITE, 11, true);
         badge.setPadding(new Insets(6, 11, 6, 11));
         badge.setStyle(
                 "-fx-background-color:" + color + ";" +
@@ -623,10 +640,18 @@ public class CitizenAlertsView extends BorderPane {
     }
 
     private Label label(String text, String color, int size, boolean bold) {
-        Label label = new Label(text);
+        Label label = new Label(cleanText(text, ""));
         label.setTextFill(Color.web(color));
         label.setFont(Font.font("Segoe UI", bold ? FontWeight.BOLD : FontWeight.NORMAL, size));
         return label;
+    }
+
+    private String cleanText(String value, String fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+
+        return value;
     }
 
     public ObservableList<Alert> getAllAlerts() {
@@ -640,5 +665,6 @@ public class CitizenAlertsView extends BorderPane {
     public void setController(controller.CitizenPage.CitizenAlertsController controller) {
         this.controller = controller;
         updateCounts();
+        updateTopAlertCard();
     }
 }
