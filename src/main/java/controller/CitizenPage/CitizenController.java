@@ -1,12 +1,17 @@
 package controller.CitizenPage;
 
+import java.util.Comparator;
 import java.util.List;
 
 import model.agent.Agent;
 import model.agent.Citizen;
 import model.alert.Alert;
+import model.alert.AlertSystem;
+import model.graph.Node;
 import model.graph.Route;
 import model.simulation.FloodSimulation;
+import model.zone.Zone;
+import model.zone.ZoneManager;
 
 public class CitizenController {
 
@@ -16,103 +21,125 @@ public class CitizenController {
         this.simulation = simulation;
     }
 
-    public List<model.zone.Zone> getZones() {
-        // Charger les zones depuis zones.json via ZoneManager (plus fiable que la simulation)
-        return new model.zone.ZoneManager().getZones();
+    public FloodSimulation getSimulation() {
+        return simulation;
     }
 
-    // ── Identité ────────────────────────────────────────────────────────────────
+    public AlertSystem getAlertSystem() {
+        return simulation.getAlertSystem();
+    }
 
-    /** Prénom de l'utilisateur connecté, ou valeur par défaut. */
+    public List<Zone> getZones() {
+        return new ZoneManager().getZones();
+    }
+
     public String getFirstName(Agent user) {
-        return (user != null && user.getFirstName() != null) ? user.getFirstName() : "Citoyen";
+        return user != null && user.getFirstName() != null && !user.getFirstName().isBlank()
+                ? user.getFirstName()
+                : "Citoyen";
     }
 
-    /** Nom complet (prénom + nom) de l'utilisateur connecté. */
     public String getFullName(Agent user) {
         String firstName = getFirstName(user);
-        String lastName  = (user != null && user.getLastName() != null) ? user.getLastName() : "";
-        return lastName.isEmpty() ? firstName : firstName + " " + lastName;
+        String lastName = user != null && user.getLastName() != null ? user.getLastName() : "";
+        return lastName.isBlank() ? firstName : firstName + " " + lastName;
     }
 
-    // ── État ────────────────────────────────────────────────────────────────────
-
-    /**
-     * Retourne le nom de l'état du citoyen (ex. "CALME", "PANIQUE").
-     *
-     * @throws IllegalStateException si l'utilisateur n'est pas un Citizen.
-     */
     public String getCitizenState(Agent user) {
         if (user instanceof Citizen c) {
-            return (c.getState() != null) ? c.getState().name() : "CALM";
+            return c.getState() != null ? c.getState().name() : "CALME";
         }
-        throw new IllegalStateException("L'utilisateur connecté n'est pas un citoyen !");
+        return "CALME";
     }
 
-    /** Vrai si l'état est PANIQUE ou FOLIE (utile pour colorer l'avatar). */
     public boolean isCitizenInPanic(Agent user) {
         String state = getCitizenState(user);
-        return "STRESSED".equalsIgnoreCase(state);
+        return "PANIQUE".equalsIgnoreCase(state) || "FOLIE".equalsIgnoreCase(state);
     }
 
-    // ── Position & navigation ───────────────────────────────────────────────────
+    public Zone getNearestZone(Agent user) {
+        if (user == null || user.getPosition() == null) {
+            return getZones().isEmpty() ? null : getZones().get(0);
+        }
 
-    /** Libellé de la position actuelle de l'agent. */
+        double lat = user.getPosition().getLat();
+        double lng = user.getPosition().getLng();
+
+        return getZones().stream()
+                .min(Comparator.comparingDouble(z -> distance(lat, lng, z.getLatitude(), z.getLongitude())))
+                .orElse(null);
+    }
+
+    public Zone getNearestSafeRefuge(Agent user) {
+        Zone current = getNearestZone(user);
+        double lat = current != null ? current.getLatitude() : user != null && user.getPosition() != null ? user.getPosition().getLat() : 45.7640;
+        double lng = current != null ? current.getLongitude() : user != null && user.getPosition() != null ? user.getPosition().getLng() : 4.8357;
+
+        return getZones().stream()
+                .filter(z -> !z.isFlooded() && !z.isEvacuated())
+                .min(Comparator.comparingDouble(z -> distance(lat, lng, z.getLatitude(), z.getLongitude())))
+                .orElse(getZones().isEmpty() ? null : getZones().get(0));
+    }
+
     public String getPositionLabel(Agent user) {
-        return (user != null && user.getPosition() != null)
-                ? "Nœud #" + user.getId()
-                : "Inconnue";
+        Zone z = getNearestZone(user);
+        if (z != null) {
+            return z.getName();
+        }
+        return "Zone inconnue";
     }
 
-    /** Libellé de la destination assignée, ou message par défaut. */
+    public String getDetailedPositionLabel(Agent user) {
+        Zone z = getNearestZone(user);
+        if (z != null) {
+            return z.getName() + " — " + shortDescription(z);
+        }
+        return "Position inconnue";
+    }
+
     public String getTargetRefugeLabel(Agent user) {
-        return (user != null && user.getDestination() != null)
-                ? "Nœud #" + user.getDestination().getId()
-                : "Aucun refuge assigné";
+        Zone refuge = getNearestSafeRefuge(user);
+        if (refuge != null) {
+            return refuge.getName();
+        }
+        return "Aucun refuge assigné";
     }
 
-    /**
-     * Distance simulée vers le refuge (km).
-     * Retourne -1 si l'agent n'a pas de destination.
-     */
+    public String getTargetRefugeDetails(Agent user) {
+        Zone refuge = getNearestSafeRefuge(user);
+        if (refuge != null) {
+            return refuge.getName() + " — " + shortDescription(refuge);
+        }
+        return "Aucun refuge assigné";
+    }
+
     public double getEvacuationDistanceKm(Agent user) {
-        if (user != null && user.getDestination() != null) {
-            return 1.2; // TODO : brancher un calcul réel sur le graphe
-        }
-        return -1;
+        Zone from = getNearestZone(user);
+        Zone to = getNearestSafeRefuge(user);
+        if (from == null || to == null) return -1;
+        return distanceKm(from.getLatitude(), from.getLongitude(), to.getLatitude(), to.getLongitude());
     }
 
-    /**
-     * Temps estimé d'arrivée en minutes.
-     * Retourne -1 si impossible à calculer.
-     */
     public int getEtaMinutes(Agent user) {
-        double distKm = getEvacuationDistanceKm(user);
-        if (distKm < 0) return -1;
-        if (user.getMaxSpeed() > 0) {
-            return (int) ((distKm / user.getMaxSpeed()) * 60);
-        }
-        return 18; // vitesse par défaut
+        double d = getEvacuationDistanceKm(user);
+        if (d < 0) return -1;
+        double speed = user != null && user.getMaxSpeed() > 0 ? user.getMaxSpeed() : 4.0;
+        return Math.max(3, (int) Math.round((d / speed) * 60));
     }
 
-    /** Libellé affiché pour la distance (ex. "1.2 km" ou "Calcul..."). */
     public String getDistanceLabel(Agent user) {
         double d = getEvacuationDistanceKm(user);
-        return (d >= 0) ? d + " km" : "Calcul...";
+        return d >= 0 ? String.format("%.1f km", d) : "Calcul...";
     }
 
-    /** Libellé affiché pour l'ETA (ex. "18 min" ou "-- min"). */
     public String getEtaLabel(Agent user) {
         int eta = getEtaMinutes(user);
-        return (eta >= 0) ? eta + " min" : "-- min";
+        return eta >= 0 ? eta + " min" : "-- min";
     }
 
-    /** Libellé de statut d'itinéraire. */
     public String getRouteStatusLabel(Agent user) {
-        return (user != null && user.isSaved()) ? "Arrivé" : "En cours";
+        return user != null && user.isSaved() ? "Arrivé" : "En cours";
     }
-
-    // ── Alertes ─────────────────────────────────────────────────────────────────
 
     public int getAlertCount() {
         return simulation.getAlertSystem().getActiveAlerts().size();
@@ -122,11 +149,31 @@ public class CitizenController {
         return simulation.getAlertSystem().getLatestAlert();
     }
 
-    // ── Itinéraire ──────────────────────────────────────────────────────────────
-
-    /** Calcule une route d'évacuation (Dijkstra/A* à brancher). */
-    public Route calculateEvacuationRoute(model.graph.Node citizenNode) {
-        // TODO : brancher Dijkstra/AStar
+    public Route calculateEvacuationRoute(Node citizenNode) {
         return new Route();
+    }
+
+    public String shortDescription(Zone zone) {
+        if (zone == null || zone.getDescription() == null || zone.getDescription().isBlank()) {
+            return "secteur surveillé";
+        }
+        String d = zone.getDescription();
+        return d.length() > 42 ? d.substring(0, 41) + "…" : d;
+    }
+
+    private double distance(double lat1, double lng1, double lat2, double lng2) {
+        double dLat = lat1 - lat2;
+        double dLng = lng1 - lng2;
+        return Math.sqrt(dLat * dLat + dLng * dLng);
+    }
+
+    private double distanceKm(double lat1, double lon1, double lat2, double lon2) {
+        final double r = 6371.0;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 }
