@@ -2,6 +2,7 @@ package controller.CitizenPage;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import model.agent.Agent;
 import model.agent.Citizen;
@@ -10,6 +11,7 @@ import model.alert.AlertSystem;
 import model.graph.Node;
 import model.graph.Route;
 import model.simulation.FloodSimulation;
+import model.zone.Shelter;
 import model.zone.Zone;
 import model.zone.ZoneManager;
 
@@ -31,6 +33,19 @@ public class CitizenController {
 
     public List<Zone> getZones() {
         return new ZoneManager().getZones();
+    }
+
+    public List<Shelter> getShelters() {
+        return getZones().stream()
+                .filter(z -> z instanceof Shelter)
+                .map(z -> (Shelter) z)
+                .collect(Collectors.toList());
+    }
+
+    public List<Shelter> getSheltersSortedByDistance(Agent user) {
+        return getShelters().stream()
+                .sorted(Comparator.comparingDouble(shelter -> getDistanceFromUserKm(user, shelter)))
+                .collect(Collectors.toList());
     }
 
     public String getFirstName(Agent user) {
@@ -71,14 +86,10 @@ public class CitizenController {
     }
 
     public Zone getNearestSafeRefuge(Agent user) {
-        Zone current = getNearestZone(user);
-        double lat = current != null ? current.getLatitude() : user != null && user.getPosition() != null ? user.getPosition().getLat() : 45.7640;
-        double lng = current != null ? current.getLongitude() : user != null && user.getPosition() != null ? user.getPosition().getLng() : 4.8357;
-
-        return getZones().stream()
-                .filter(z -> !z.isFlooded() && !z.isEvacuated())
-                .min(Comparator.comparingDouble(z -> distance(lat, lng, z.getLatitude(), z.getLongitude())))
-                .orElse(getZones().isEmpty() ? null : getZones().get(0));
+        return getShelters().stream()
+                .filter(shelter -> !shelter.isFlooded() && !shelter.isEvacuated())
+                .min(Comparator.comparingDouble(shelter -> getDistanceFromUserKm(user, shelter)))
+                .orElse(null);
     }
 
     public String getPositionLabel(Agent user) {
@@ -114,15 +125,17 @@ public class CitizenController {
     }
 
     public double getEvacuationDistanceKm(Agent user) {
-        Zone from = getNearestZone(user);
         Zone to = getNearestSafeRefuge(user);
-        if (from == null || to == null) return -1;
-        return distanceKm(from.getLatitude(), from.getLongitude(), to.getLatitude(), to.getLongitude());
+        if (to == null) {
+            return -1;
+        }
+        return getDistanceFromUserKm(user, to);
     }
 
     public int getEtaMinutes(Agent user) {
         double d = getEvacuationDistanceKm(user);
         if (d < 0) return -1;
+
         double speed = user != null && user.getMaxSpeed() > 0 ? user.getMaxSpeed() : 4.0;
         return Math.max(3, (int) Math.round((d / speed) * 60));
     }
@@ -134,6 +147,51 @@ public class CitizenController {
 
     public String getEtaLabel(Agent user) {
         int eta = getEtaMinutes(user);
+        return eta >= 0 ? eta + " min" : "-- min";
+    }
+
+    public double getDistanceFromUserKm(Agent user, Zone zone) {
+        if (zone == null) {
+            return -1;
+        }
+
+        if (user != null && user.getPosition() != null) {
+            return distanceKm(
+                    user.getPosition().getLat(),
+                    user.getPosition().getLng(),
+                    zone.getLatitude(),
+                    zone.getLongitude()
+            );
+        }
+
+        Zone nearest = getNearestZone(user);
+        if (nearest != null) {
+            return distanceKm(
+                    nearest.getLatitude(),
+                    nearest.getLongitude(),
+                    zone.getLatitude(),
+                    zone.getLongitude()
+            );
+        }
+
+        return -1;
+    }
+
+    public String getDistanceFromUserLabel(Agent user, Zone zone) {
+        double d = getDistanceFromUserKm(user, zone);
+        return d >= 0 ? String.format("%.1f km", d) : "Distance inconnue";
+    }
+
+    public int getEtaToZoneMinutes(Agent user, Zone zone) {
+        double d = getDistanceFromUserKm(user, zone);
+        if (d < 0) return -1;
+
+        double speed = user != null && user.getMaxSpeed() > 0 ? user.getMaxSpeed() : 4.0;
+        return Math.max(3, (int) Math.round((d / speed) * 60));
+    }
+
+    public String getEtaToZoneLabel(Agent user, Zone zone) {
+        int eta = getEtaToZoneMinutes(user, zone);
         return eta >= 0 ? eta + " min" : "-- min";
     }
 
@@ -157,8 +215,9 @@ public class CitizenController {
         if (zone == null || zone.getDescription() == null || zone.getDescription().isBlank()) {
             return "secteur surveillé";
         }
+
         String d = zone.getDescription();
-        return d.length() > 42 ? d.substring(0, 41) + "…" : d;
+        return d.length() > 58 ? d.substring(0, 57) + "…" : d;
     }
 
     private double distance(double lat1, double lng1, double lat2, double lng2) {
@@ -169,11 +228,14 @@ public class CitizenController {
 
     private double distanceKm(double lat1, double lon1, double lat2, double lon2) {
         final double r = 6371.0;
+
         double dLat = Math.toRadians(lat2 - lat1);
         double dLon = Math.toRadians(lon2 - lon1);
+
         double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
                 + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
                 * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
         return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 }
