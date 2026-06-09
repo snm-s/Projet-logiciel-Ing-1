@@ -1,39 +1,511 @@
 package view;
 
+import java.util.function.Consumer;
+
+import app.Main;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Slider;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import model.agent.Agent;
+import model.agent.Citizen;
+import model.auth.UserService;
 
 public class CitizenSettingsView extends BorderPane {
+
+    private static final String WHITE = "#ffffff";
+    private static final String LIGHT = "#b8c7dd";
+    private static final String MUTED = "#7f91aa";
+    private static final String BLUE = "#1683ff";
+    private static final String BLUE_DARK = "#0e73eb";
+    private static final String GREEN = "#22c55e";
+    private static final String RED = "#ef4444";
+    private static final String CARD_BG = "rgba(8,22,42,0.72)";
+
+    private final Agent user;
+    private final Citizen citizen;
+    private final Consumer<Double> displayScaleCallback;
+
+    private CheckBox mobilityReducedCheck;
+    private CheckBox emergencyAlertsCheck;
+    private CheckBox soundNotificationsCheck;
+    private CheckBox routeUpdatesCheck;
+    private CheckBox backgroundLocationCheck;
+    private Slider displayScaleSlider;
+    private Label scaleValueLabel;
+    private Label statusLabel;
+    private Label mobilityBadge;
+
     public CitizenSettingsView() {
-        setStyle("-fx-background-color:transparent;");
-        setPadding(new Insets(26));
-        VBox root = new VBox(18);
-        root.getChildren().add(label("Paramètres", "#ffffff", 24, true));
-        VBox card = new VBox(14);
-        card.setPadding(new Insets(20));
-        card.setStyle("-fx-background-color:rgba(8,22,42,0.72); -fx-background-radius:18; -fx-border-color:rgba(255,255,255,0.18); -fx-border-radius:18;");
-        CheckBox notif = new CheckBox("Recevoir les alertes importantes");
-        notif.setTextFill(Color.web("#ffffff")); notif.setSelected(true);
-        CheckBox sound = new CheckBox("Activer le son des notifications");
-        sound.setTextFill(Color.web("#ffffff"));
-        Label zoomLabel = label("Taille d'affichage", "#b8c7dd", 13, false);
-        Slider zoom = new Slider(80, 130, 100);
-        zoom.setShowTickLabels(true); zoom.setShowTickMarks(true);
-        card.getChildren().addAll(notif, sound, zoomLabel, zoom);
-        root.getChildren().add(card);
-        setCenter(root);
+        this(Main.currentUser, null);
     }
+
+    public CitizenSettingsView(Agent user, Consumer<Double> displayScaleCallback) {
+        this.user = user;
+        this.citizen = user instanceof Citizen ? (Citizen) user : null;
+        this.displayScaleCallback = displayScaleCallback;
+
+        setStyle("-fx-background-color: transparent;");
+        setPadding(new Insets(0));
+
+        VBox page = new VBox(22);
+        page.setPadding(new Insets(30));
+
+        VBox header = new VBox(6);
+        Label title = label("Paramètres", WHITE, 28, true);
+        Label subtitle = label("Modifiez vos préférences puis enregistrez pour les conserver dans votre profil.", LIGHT, 14, false);
+        header.getChildren().addAll(title, subtitle);
+
+        if (citizen == null) {
+            VBox errorCard = glassCard(20);
+            errorCard.getChildren().addAll(
+                    label("Profil non compatible", WHITE, 18, true),
+                    label("Cette page est réservée aux comptes citoyens.", LIGHT, 13, false)
+            );
+            page.getChildren().addAll(header, errorCard);
+        } else {
+            page.getChildren().addAll(
+                    header,
+                    buildProfileCard(),
+                    buildSettingsGrid(),
+                    buildSaveBar()
+            );
+        }
+
+        ScrollPane scroll = new ScrollPane(page);
+        scroll.setFitToWidth(true);
+        scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+        setCenter(scroll);
+    }
+
+    private VBox buildProfileCard() {
+        VBox card = glassCard(20);
+
+        HBox row = new HBox(16);
+        row.setAlignment(Pos.CENTER_LEFT);
+
+        StackPane avatar = new StackPane();
+        Circle circle = new Circle(34);
+        circle.setFill(Color.web(BLUE));
+
+        Label initials = label(getInitials(getFullName()), WHITE, 16, true);
+        avatar.getChildren().addAll(circle, initials);
+
+        VBox profileText = new VBox(4);
+        Label name = label(getFullName(), WHITE, 20, true);
+        Label email = label(nonEmpty(user.getEmail(), "Email non renseigné"), LIGHT, 13, false);
+
+        HBox badges = new HBox(8);
+
+        mobilityBadge = badge(
+                citizen.isMobilityReduced() ? "PMR activé" : "Mobilité standard",
+                citizen.isMobilityReduced() ? RED : GREEN
+        );
+
+        badges.getChildren().addAll(
+                badge("Citoyen", BLUE),
+                mobilityBadge
+        );
+
+        profileText.getChildren().addAll(name, email, badges);
+        row.getChildren().addAll(avatar, profileText);
+
+        card.getChildren().add(row);
+        return card;
+    }
+
+    private HBox buildSettingsGrid() {
+        HBox grid = new HBox(18);
+
+        VBox leftColumn = new VBox(18);
+        VBox rightColumn = new VBox(18);
+
+        leftColumn.getChildren().addAll(
+                buildProfileSection(),
+                buildAccessibilitySection()
+        );
+
+        rightColumn.getChildren().addAll(
+                buildNotificationSection(),
+                buildPrivacyInfoSection()
+        );
+
+        grid.getChildren().addAll(leftColumn, rightColumn);
+        HBox.setHgrow(leftColumn, Priority.ALWAYS);
+        HBox.setHgrow(rightColumn, Priority.ALWAYS);
+
+        return grid;
+    }
+
+    private VBox buildProfileSection() {
+        VBox wrapper = sectionWrapper("Mon profil");
+        VBox card = (VBox) wrapper.getChildren().get(1);
+
+        mobilityReducedCheck = settingCheckBox(citizen.isMobilityReduced());
+
+        card.getChildren().addAll(
+                infoRow("Adresse", nonEmpty(user.getAddress(), "Non renseignée")),
+                infoRow("Ville", nonEmpty(user.getCity(), "Non renseignée")),
+                settingRow("♿", "Mobilité réduite", "Enregistre le statut PMR dans le profil", mobilityReducedCheck)
+        );
+
+        return wrapper;
+    }
+
+    private VBox buildNotificationSection() {
+        VBox wrapper = sectionWrapper("Notifications");
+        VBox card = (VBox) wrapper.getChildren().get(1);
+
+        emergencyAlertsCheck = settingCheckBox(citizen.isEmergencyAlertsEnabled());
+        soundNotificationsCheck = settingCheckBox(citizen.isSoundNotificationsEnabled());
+        routeUpdatesCheck = settingCheckBox(citizen.isRouteUpdatesEnabled());
+        backgroundLocationCheck = settingCheckBox(citizen.isBackgroundLocationEnabled());
+
+        card.getChildren().addAll(
+                settingRow("!", "Alertes importantes", "Notification des situations urgentes", emergencyAlertsCheck),
+                settingRow("◉", "Son des notifications", "Jouer un son lors des alertes", soundNotificationsCheck),
+                settingRow("↻", "Mises à jour itinéraire", "Recalcul automatique du trajet", routeUpdatesCheck),
+                settingRow("⌖", "Localisation arrière-plan", "Mise à jour continue de la position", backgroundLocationCheck)
+        );
+
+        return wrapper;
+    }
+
+    private VBox buildAccessibilitySection() {
+        VBox wrapper = sectionWrapper("Affichage");
+        VBox card = (VBox) wrapper.getChildren().get(1);
+
+        double savedScale = citizen.getDisplayScale();
+        if (savedScale <= 0) {
+            savedScale = 100.0;
+        }
+
+        VBox zoomBox = new VBox(10);
+        zoomBox.setPadding(new Insets(16));
+
+        HBox titleRow = new HBox(10);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
+
+        VBox texts = new VBox(3);
+        texts.getChildren().addAll(
+                label("Taille d'affichage", WHITE, 15, true),
+                label("Agrandit ou réduit la zone centrale de l’application", MUTED, 12, false)
+        );
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        scaleValueLabel = label(Math.round(savedScale) + "%", BLUE, 14, true);
+        titleRow.getChildren().addAll(lineIcon("Aa"), texts, spacer, scaleValueLabel);
+
+        displayScaleSlider = new Slider(80, 130, savedScale);
+        displayScaleSlider.setShowTickLabels(true);
+        displayScaleSlider.setShowTickMarks(true);
+        displayScaleSlider.setMajorTickUnit(25);
+        displayScaleSlider.setBlockIncrement(5);
+
+        displayScaleSlider.valueProperty().addListener((obs, oldValue, newValue) -> {
+            double rounded = (double) Math.round(newValue.doubleValue());
+            scaleValueLabel.setText((int) rounded + "%");
+
+            if (displayScaleCallback != null) {
+                displayScaleCallback.accept(rounded);
+            }
+        });
+
+        zoomBox.getChildren().addAll(titleRow, displayScaleSlider);
+        card.getChildren().add(zoomBox);
+
+        return wrapper;
+    }
+
+    private VBox buildPrivacyInfoSection() {
+        VBox wrapper = sectionWrapper("Confidentialité");
+        VBox card = (VBox) wrapper.getChildren().get(1);
+
+        card.getChildren().addAll(
+                infoRow("Données sauvegardées", "Profil, mobilité, notifications"),
+                infoRow("Fichier", "dataUser/users.json"),
+                infoRow("Action", "Le bouton Enregistrer modifie réellement le JSON")
+        );
+
+        return wrapper;
+    }
+
+    private HBox buildSaveBar() {
+        HBox bar = new HBox(12);
+        bar.setAlignment(Pos.CENTER_LEFT);
+        bar.setPadding(new Insets(18));
+        bar.setStyle(
+                "-fx-background-color: rgba(8,22,42,0.78);" +
+                        "-fx-background-radius: 18;" +
+                        "-fx-border-color: rgba(255,255,255,0.16);" +
+                        "-fx-border-radius: 18;"
+        );
+
+        statusLabel = label("Aucune modification enregistrée pour le moment.", MUTED, 13, false);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Button resetButton = darkButton("Réinitialiser");
+        resetButton.setOnAction(event -> resetValues());
+
+        Button saveButton = blueButton("Enregistrer les modifications");
+        saveButton.setOnAction(event -> saveSettings());
+
+        bar.getChildren().addAll(statusLabel, spacer, resetButton, saveButton);
+        return bar;
+    }
+
+    private void saveSettings() {
+        if (citizen == null) {
+            return;
+        }
+
+        double roundedScale = (double) Math.round(displayScaleSlider.getValue());
+
+        citizen.setMobilityReduced(mobilityReducedCheck.isSelected());
+        citizen.setEmergencyAlertsEnabled(emergencyAlertsCheck.isSelected());
+        citizen.setSoundNotificationsEnabled(soundNotificationsCheck.isSelected());
+        citizen.setRouteUpdatesEnabled(routeUpdatesCheck.isSelected());
+        citizen.setBackgroundLocationEnabled(backgroundLocationCheck.isSelected());
+        citizen.setDisplayScale(roundedScale);
+
+        boolean saved = UserService.updateAgent(citizen);
+
+        if (saved) {
+            Main.currentUser = citizen;
+            updateMobilityBadge();
+
+            if (displayScaleCallback != null) {
+                displayScaleCallback.accept(citizen.getDisplayScale());
+            }
+
+            statusLabel.setText("Modifications enregistrées dans dataUser/users.json ✓");
+            statusLabel.setTextFill(Color.web(GREEN));
+        } else {
+            statusLabel.setText("Impossible d’enregistrer : utilisateur introuvable dans users.json.");
+            statusLabel.setTextFill(Color.web(RED));
+        }
+    }
+
+    private void resetValues() {
+        if (citizen == null) {
+            return;
+        }
+
+        mobilityReducedCheck.setSelected(citizen.isMobilityReduced());
+        emergencyAlertsCheck.setSelected(citizen.isEmergencyAlertsEnabled());
+        soundNotificationsCheck.setSelected(citizen.isSoundNotificationsEnabled());
+        routeUpdatesCheck.setSelected(citizen.isRouteUpdatesEnabled());
+        backgroundLocationCheck.setSelected(citizen.isBackgroundLocationEnabled());
+        displayScaleSlider.setValue(citizen.getDisplayScale() <= 0 ? 100.0 : citizen.getDisplayScale());
+
+        updateMobilityBadge();
+
+        if (displayScaleCallback != null) {
+            displayScaleCallback.accept(citizen.getDisplayScale() <= 0 ? 100.0 : citizen.getDisplayScale());
+        }
+
+        statusLabel.setText("Modifications annulées.");
+        statusLabel.setTextFill(Color.web(MUTED));
+    }
+
+    private void updateMobilityBadge() {
+        if (mobilityBadge == null || citizen == null) {
+            return;
+        }
+
+        boolean isPmr = citizen.isMobilityReduced();
+
+        mobilityBadge.setText(isPmr ? "PMR activé" : "Mobilité standard");
+        mobilityBadge.setStyle(
+                "-fx-background-color: " + (isPmr ? RED : GREEN) + ";" +
+                        "-fx-background-radius: 999;"
+        );
+    }
+
+    private VBox sectionWrapper(String titleText) {
+        VBox wrapper = new VBox(10);
+
+        Label title = label(titleText.toUpperCase(), MUTED, 12, true);
+        title.setStyle("-fx-letter-spacing: 2px;");
+
+        VBox card = glassCard(0);
+        card.setSpacing(0);
+
+        wrapper.getChildren().addAll(title, card);
+        return wrapper;
+    }
+
+    private HBox settingRow(String iconText, String title, String subtitle, CheckBox checkBox) {
+        HBox row = new HBox(14);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(16));
+        row.setMinHeight(72);
+        row.setStyle(
+                "-fx-background-color: rgba(255,255,255,0.035);" +
+                        "-fx-border-color: rgba(255,255,255,0.06);" +
+                        "-fx-border-width: 0 0 1 0;"
+        );
+
+        VBox texts = new VBox(3);
+        texts.getChildren().addAll(
+                label(title, WHITE, 15, true),
+                label(subtitle, MUTED, 12, false)
+        );
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        row.getChildren().addAll(lineIcon(iconText), texts, spacer, checkBox);
+        row.setOnMouseClicked(event -> checkBox.setSelected(!checkBox.isSelected()));
+
+        return row;
+    }
+
+    private HBox infoRow(String title, String value) {
+        HBox row = new HBox(14);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(16));
+        row.setMinHeight(66);
+        row.setStyle(
+                "-fx-background-color: rgba(255,255,255,0.035);" +
+                        "-fx-border-color: rgba(255,255,255,0.06);" +
+                        "-fx-border-width: 0 0 1 0;"
+        );
+
+        VBox texts = new VBox(3);
+        texts.getChildren().addAll(
+                label(title, WHITE, 15, true),
+                label(value, MUTED, 12, false)
+        );
+
+        row.getChildren().addAll(lineIcon("i"), texts);
+        return row;
+    }
+
+    private CheckBox settingCheckBox(boolean selected) {
+        CheckBox checkBox = new CheckBox();
+        checkBox.setSelected(selected);
+        checkBox.setFocusTraversable(false);
+        checkBox.setStyle("-fx-cursor: hand;");
+        checkBox.setOnMouseClicked(event -> event.consume());
+        return checkBox;
+    }
+
+    private StackPane lineIcon(String text) {
+        StackPane icon = new StackPane();
+        icon.setPrefSize(38, 38);
+        icon.setMinSize(38, 38);
+        icon.setMaxSize(38, 38);
+        icon.setStyle(
+                "-fx-background-color: rgba(22,131,255,0.12);" +
+                        "-fx-background-radius: 12;" +
+                        "-fx-border-color: rgba(255,255,255,0.08);" +
+                        "-fx-border-radius: 12;"
+        );
+
+        Label symbol = label(text, WHITE, text.length() > 1 ? 13 : 17, true);
+        icon.getChildren().add(symbol);
+
+        return icon;
+    }
+
+    private Label badge(String text, String color) {
+        Label badge = label(text, WHITE, 11, true);
+        badge.setPadding(new Insets(6, 10, 6, 10));
+        badge.setStyle(
+                "-fx-background-color: " + color + ";" +
+                        "-fx-background-radius: 999;"
+        );
+        return badge;
+    }
+
+    private VBox glassCard(double padding) {
+        VBox card = new VBox(14);
+        card.setPadding(new Insets(padding));
+        card.setStyle(
+                "-fx-background-color: " + CARD_BG + ";" +
+                        "-fx-background-radius: 18;" +
+                        "-fx-border-color: rgba(255,255,255,0.16);" +
+                        "-fx-border-radius: 18;" +
+                        "-fx-border-width: 1;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.18), 18, 0, 0, 6);"
+        );
+        return card;
+    }
+
+    private Button blueButton(String text) {
+        Button button = new Button(text);
+        button.setPadding(new Insets(10, 16, 10, 16));
+        button.setStyle(
+                "-fx-background-color: linear-gradient(to right, " + BLUE_DARK + ", " + BLUE + ");" +
+                        "-fx-text-fill: white;" +
+                        "-fx-background-radius: 10;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-cursor: hand;"
+        );
+        return button;
+    }
+
+    private Button darkButton(String text) {
+        Button button = new Button(text);
+        button.setPadding(new Insets(10, 16, 10, 16));
+        button.setStyle(
+                "-fx-background-color: rgba(255,255,255,0.07);" +
+                        "-fx-text-fill: " + LIGHT + ";" +
+                        "-fx-border-color: rgba(255,255,255,0.16);" +
+                        "-fx-border-radius: 10;" +
+                        "-fx-background-radius: 10;" +
+                        "-fx-cursor: hand;"
+        );
+        return button;
+    }
+
+    private String getFullName() {
+        String firstName = nonEmpty(user.getFirstName(), "");
+        String lastName = nonEmpty(user.getLastName(), "");
+        String fullName = (firstName + " " + lastName).trim();
+        return fullName.isBlank() ? "Citoyen" : fullName;
+    }
+
+    private String getInitials(String fullName) {
+        if (fullName == null || fullName.isBlank()) {
+            return "C";
+        }
+
+        String[] parts = fullName.trim().split("\\s+");
+
+        if (parts.length == 1) {
+            return parts[0].substring(0, 1).toUpperCase();
+        }
+
+        return (parts[0].substring(0, 1) + parts[1].substring(0, 1)).toUpperCase();
+    }
+
+    private String nonEmpty(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
+    }
+
     private Label label(String text, String color, int size, boolean bold) {
-        Label l = new Label(text);
-        l.setTextFill(Color.web(color));
-        l.setFont(Font.font("Segoe UI", bold ? FontWeight.BOLD : FontWeight.NORMAL, size));
-        return l;
+        Label label = new Label(text);
+        label.setTextFill(Color.web(color));
+        label.setFont(Font.font("Segoe UI", bold ? FontWeight.BOLD : FontWeight.NORMAL, size));
+        return label;
     }
 }
