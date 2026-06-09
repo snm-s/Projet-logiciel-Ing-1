@@ -23,6 +23,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import model.agent.Agent;
 import model.alert.Alert;
+import model.zone.Shelter;
 import model.zone.Zone;
 
 public class CitizenDashboardView extends BorderPane {
@@ -32,7 +33,11 @@ public class CitizenDashboardView extends BorderPane {
     private static final String GLASS = "rgba(8, 22, 42, 0.72)";
     private static final String BLUE = "#0e73eb";
     private static final String BLUE_2 = "#1683ff";
+    private static final String GREEN = "#22c55e";
+    private static final String RED = "#ef4444";
+    private static final String ORANGE = "#f59e0b";
     private static final String LIGHT = "#b8c7dd";
+    private static final String MUTED = "#7f91aa";
     private static final String WHITE = "#ffffff";
     private static final String BORDER_GLASS = "rgba(255,255,255,0.18)";
 
@@ -79,25 +84,37 @@ public class CitizenDashboardView extends BorderPane {
         profile.setPadding(new Insets(12));
         profile.setStyle(glassStyle(14));
 
-        Circle avatar = new Circle(20, controller.isCitizenInPanic(user) ? Color.web("#ef4444") : Color.web(BLUE));
+        Circle avatar = new Circle(20, controller.isCitizenInPanic(user) ? Color.web(RED) : Color.web(BLUE));
+
         VBox names = new VBox(2);
         Label full = new Label(controller.getFullName(user));
         full.setTextFill(Color.WHITE);
         full.setFont(Font.font("Segoe UI", FontWeight.BOLD, 14));
+
         Label role = new Label("Citoyen • " + controller.getCitizenState(user).toLowerCase());
         role.setTextFill(Color.web(LIGHT));
         role.setFont(Font.font("Segoe UI", 11));
+
         names.getChildren().addAll(full, role);
         profile.getChildren().addAll(avatar, names);
 
         Button btnDashboard = sidebarButton("Tableau de bord", "dashboard");
-        btnDashboard.setOnAction(e -> { setActive(btnDashboard); showPage(dashboardContent); });
+        btnDashboard.setOnAction(e -> {
+            setActive(btnDashboard);
+            showPage(dashboardContent);
+        });
 
         Button btnMap = sidebarButton("Carte", "map");
-        btnMap.setOnAction(e -> { setActive(btnMap); showPage(buildMapPage(null)); });
+        btnMap.setOnAction(e -> {
+            setActive(btnMap);
+            showPage(buildMapPage(null));
+        });
 
         Button btnRoutes = sidebarButton("Mes trajets", "route");
-        btnRoutes.setOnAction(e -> { setActive(btnRoutes); showPage(new CitizenRoutesView(controller, user, mapComponent)); });
+        btnRoutes.setOnAction(e -> {
+            setActive(btnRoutes);
+            showPage(new CitizenRoutesView(controller, user, mapComponent));
+        });
 
         Button btnAlerts = sidebarButton("Alertes", "alert");
         btnAlerts.setOnAction(e -> {
@@ -108,24 +125,53 @@ public class CitizenDashboardView extends BorderPane {
         });
 
         Button btnHistory = sidebarButton("Historique", "history");
-        btnHistory.setOnAction(e -> { setActive(btnHistory); showPage(new CitizenHistoryView(controller)); });
+        btnHistory.setOnAction(e -> {
+            setActive(btnHistory);
+            showPage(new CitizenHistoryView(controller));
+        });
 
         Button btnRefuges = sidebarButton("Refuges", "home");
-        btnRefuges.setOnAction(e -> { setActive(btnRefuges); showPage(new CitizenRefugesView(controller, user, this::openRouteToRefuge)); });
+        btnRefuges.setOnAction(e -> {
+            setActive(btnRefuges);
+            showPage(new CitizenRefugesView(controller, user, this::openRouteToRefuge));
+        });
 
         Button btnProfile = sidebarButton("Profil", "user");
-        btnProfile.setOnAction(e -> { setActive(btnProfile); showPage(new CitizenProfileView(controller, user)); });
+        btnProfile.setOnAction(e -> {
+            setActive(btnProfile);
+            showPage(new CitizenProfileView(controller, user));
+        });
 
         Button btnSettings = sidebarButton("Paramètres", "settings");
-        btnSettings.setOnAction(e -> { setActive(btnSettings); showPage(new CitizenSettingsView()); });
+        btnSettings.setOnAction(e -> {
+            setActive(btnSettings);
+            showPage(new CitizenSettingsView());
+        });
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
         Button logout = sidebarButton("Déconnexion", "logout");
-        logout.setOnAction(e -> { Main.currentUser = null; Main.showWelcomeView(); });
+        logout.setOnAction(e -> {
+            Main.currentUser = null;
+            Main.showWelcomeView();
+        });
 
-        sidebar.getChildren().addAll(brand, profile, btnDashboard, btnMap, btnRoutes, btnAlerts, btnHistory, btnRefuges, btnProfile, btnSettings, spacer, logout);
+        sidebar.getChildren().addAll(
+                brand,
+                profile,
+                btnDashboard,
+                btnMap,
+                btnRoutes,
+                btnAlerts,
+                btnHistory,
+                btnRefuges,
+                btnProfile,
+                btnSettings,
+                spacer,
+                logout
+        );
+
         setActive(btnDashboard);
         return sidebar;
     }
@@ -134,65 +180,286 @@ public class CitizenDashboardView extends BorderPane {
         VBox root = new VBox(22);
         root.setPadding(new Insets(30));
 
-        Label welcome = title("Bonjour, " + controller.getFirstName(user) + " !", 26);
-        Label sub = muted("Votre position, vos alertes et votre refuge recommandé.", 14);
-        VBox header = new VBox(4, welcome, sub);
+        VBox header = new VBox(6);
+        Label welcome = title("Bonjour, " + controller.getFirstName(user) + " !", 30);
+        Label sub = muted("Vue d’ensemble de votre sécurité, de votre position et de votre itinéraire d’évacuation.", 14);
+        header.getChildren().addAll(welcome, sub);
 
-        HBox cards = new HBox(16);
-        cards.getChildren().addAll(
-                miniCard("Ma position", controller.getDetailedPositionLabel(user), "⌖"),
-                miniCard("Refuge conseillé", controller.getTargetRefugeDetails(user), "⌂"),
-                miniCard("Temps estimé", controller.getEtaLabel(user), "◷"),
-                miniCard("Distance", controller.getDistanceLabel(user), "⇢")
+        HBox hero = new HBox(18);
+        hero.getChildren().addAll(buildSafetyOverview(), buildRecommendedShelterPanel());
+
+        HBox.setHgrow(hero.getChildren().get(0), Priority.ALWAYS);
+        HBox.setHgrow(hero.getChildren().get(1), Priority.ALWAYS);
+
+        Zone nearestRefuge = controller.getNearestSafeRefuge(user);
+
+        String refugeAltitude = nearestRefuge != null
+                ? String.format("%.0f m", nearestRefuge.getAltitude())
+                : "--";
+
+        String refugeCapacity = nearestRefuge instanceof Shelter shelter
+                ? shelter.getCapacity() + " places"
+                : "--";
+
+        HBox cardsLine1 = new HBox(16);
+        cardsLine1.getChildren().addAll(
+                miniCard("Position actuelle", controller.getPositionLabel(user), "⌖", BLUE_2),
+                miniCard("Refuge recommandé", controller.getTargetRefugeLabel(user), "⌂", GREEN),
+                miniCard("Distance refuge", controller.getDistanceLabel(user), "⇢", GREEN),
+                miniCard("Temps estimé", controller.getEtaLabel(user), "◷", ORANGE)
         );
-        for (Node n : cards.getChildren()) HBox.setHgrow(n, Priority.ALWAYS);
+
+        HBox cardsLine2 = new HBox(16);
+        cardsLine2.getChildren().addAll(
+                miniCard("Alertes actives", String.valueOf(controller.getAlertCount()), "!", RED),
+                miniCard("État citoyen", controller.getCitizenState(user), "✓", BLUE_2),
+                miniCard("Altitude refuge", refugeAltitude, "△", ORANGE),
+                miniCard("Capacité refuge", refugeCapacity, "▣", BLUE_2)
+        );
+
+        for (Node n : cardsLine1.getChildren()) {
+            HBox.setHgrow(n, Priority.ALWAYS);
+        }
+
+        for (Node n : cardsLine2.getChildren()) {
+            HBox.setHgrow(n, Priority.ALWAYS);
+        }
 
         HBox middle = new HBox(18);
+        middle.getChildren().addAll(buildAlertPanel(), buildRoutePanel());
+        HBox.setHgrow(middle.getChildren().get(0), Priority.ALWAYS);
+        HBox.setHgrow(middle.getChildren().get(1), Priority.ALWAYS);
+
+        VBox quickActions = buildQuickActions();
+
+        root.getChildren().addAll(header, hero, cardsLine1, cardsLine2, middle, quickActions);
+
+        ScrollPane sp = new ScrollPane(root);
+        sp.setFitToWidth(true);
+        sp.setStyle("-fx-background:transparent; -fx-background-color:transparent;");
+
+        VBox wrapper = new VBox(sp);
+        VBox.setVgrow(sp, Priority.ALWAYS);
+        return wrapper;
+    }
+
+    private VBox buildSafetyOverview() {
+        VBox card = glassCard(22);
+
+        HBox top = new HBox(16);
+        top.setAlignment(Pos.CENTER_LEFT);
+
+        StackPane icon = roundIcon(controller.isCitizenInPanic(user) ? "!" : "✓", controller.isCitizenInPanic(user) ? RED : GREEN, 66);
+
+        VBox texts = new VBox(5);
+        Label small = label("État de sécurité", MUTED, 12, true);
+        Label title = label(controller.isCitizenInPanic(user) ? "Situation à surveiller" : "Situation stable", WHITE, 24, true);
+
+        Label desc = label(
+                controller.isCitizenInPanic(user)
+                        ? "Votre état indique une situation de stress. Suivez les consignes et rejoignez un refuge si nécessaire."
+                        : "Aucune situation critique détectée pour votre profil actuellement.",
+                LIGHT,
+                13,
+                false
+        );
+        desc.setWrapText(true);
+
+        texts.getChildren().addAll(small, title, desc);
+        top.getChildren().addAll(icon, texts);
+
+        HBox statusLine = new HBox(10);
+        statusLine.getChildren().addAll(
+                badge("Profil : " + controller.getCitizenState(user), BLUE),
+                badge(controller.getRouteStatusLabel(user), GREEN)
+        );
+
+        card.getChildren().addAll(top, statusLine);
+        return card;
+    }
+
+    private VBox buildRecommendedShelterPanel() {
+        VBox card = glassCard(22);
+
+        Zone refuge = controller.getNearestSafeRefuge(user);
+
+        Label small = label("Refuge recommandé", MUTED, 12, true);
+        Label name = label(refuge != null ? refuge.getName() : "Aucun refuge disponible", WHITE, 22, true);
+        name.setWrapText(true);
+
+        Label desc = label(
+                refuge != null ? controller.shortDescription(refuge) : "Aucun refuge accessible n’a été trouvé.",
+                LIGHT,
+                13,
+                false
+        );
+        desc.setWrapText(true);
+
+        HBox infos = new HBox(10);
+        infos.getChildren().addAll(
+                compactInfo("Distance", controller.getDistanceLabel(user)),
+                compactInfo("Temps", controller.getEtaLabel(user)),
+                compactInfo("Altitude", refuge != null ? String.format("%.0f m", refuge.getAltitude()) : "--")
+        );
+
+        for (Node n : infos.getChildren()) {
+            HBox.setHgrow(n, Priority.ALWAYS);
+        }
+
+        Button btn = blueButton("Voir l’itinéraire");
+        btn.setDisable(refuge == null);
+        btn.setOnAction(e -> {
+            if (refuge != null) {
+                openRouteToRefuge(refuge);
+            }
+        });
+
+        card.getChildren().addAll(small, name, desc, infos, btn);
+        return card;
+    }
+
+    private VBox buildAlertPanel() {
         VBox alertPanel = glassCard(20);
-        alertPanel.setPrefWidth(430);
-        Label alertTitle = label("⚠ Consignes d'évacuation", "#ffb4b4", 15, true);
+
+        HBox titleRow = new HBox(10);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
+        StackPane icon = smallLineIcon("!", RED);
+
+        VBox titleTexts = new VBox(3);
+        Label alertTitle = label("Dernière alerte", WHITE, 18, true);
+        Label alertSub = label("Consigne prioritaire à consulter", MUTED, 12, false);
+        titleTexts.getChildren().addAll(alertTitle, alertSub);
+
+        titleRow.getChildren().addAll(icon, titleTexts);
+
         Alert latest = controller.getLatestCriticalAlert();
-        Label alertTxt = muted(latest != null ? latest.getDescription() + " — " + latest.getLocalisation() : "Aucune alerte critique personnalisée. Restez attentif aux consignes officielles.", 13);
+
+        Label alertTxt = label(
+                latest != null
+                        ? latest.getDescription() + " — " + latest.getLocalisation()
+                        : "Aucune alerte critique personnalisée pour le moment. Restez attentif aux consignes officielles.",
+                LIGHT,
+                13,
+                false
+        );
         alertTxt.setWrapText(true);
+
         Hyperlink link = new Hyperlink("Voir toutes les alertes");
         link.setTextFill(Color.web(BLUE_2));
+        link.setFont(Font.font("Segoe UI", FontWeight.BOLD, 13));
         link.setOnAction(e -> {
             CitizenAlertsView alertsView = new CitizenAlertsView();
             new CitizenAlertsController(alertsView, controller.getAlertSystem());
             showPage(alertsView);
         });
-        alertPanel.getChildren().addAll(alertTitle, alertTxt, link);
 
+        alertPanel.getChildren().addAll(titleRow, alertTxt, link);
+        return alertPanel;
+    }
+
+    private VBox buildRoutePanel() {
         VBox routePanel = glassCard(20);
-        routePanel.setPrefWidth(430);
-        Label routeTitle = title("Plan de route assigné", 16);
-        routePanel.getChildren().addAll(
-                routeTitle,
-                muted("🟢 Départ : " + controller.getPositionLabel(user), 13),
-                muted("🔴 Refuge : " + controller.getTargetRefugeLabel(user), 13),
-                muted("📍 Statut : " + controller.getRouteStatusLabel(user), 13)
+
+        HBox titleRow = new HBox(10);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
+
+        StackPane icon = smallLineIcon("↗", BLUE_2);
+
+        VBox titleTexts = new VBox(3);
+        Label routeTitle = label("Plan d’évacuation", WHITE, 18, true);
+        Label routeSub = label("Trajet conseillé vers la zone sécurisée", MUTED, 12, false);
+        titleTexts.getChildren().addAll(routeTitle, routeSub);
+
+        titleRow.getChildren().addAll(icon, titleTexts);
+
+        VBox steps = new VBox(10);
+        steps.getChildren().addAll(
+                routeStep("Départ", controller.getPositionLabel(user), BLUE_2),
+                routeStep("Arrivée", controller.getTargetRefugeLabel(user), GREEN),
+                routeStep("Statut", controller.getRouteStatusLabel(user), ORANGE)
         );
 
         Button btnMap = blueButton("Suivre sur la carte");
         btnMap.setOnAction(e -> openRouteToRefuge(controller.getNearestSafeRefuge(user)));
-        routePanel.getChildren().add(btnMap);
 
-        middle.getChildren().addAll(alertPanel, routePanel);
+        routePanel.getChildren().addAll(titleRow, steps, btnMap);
+        return routePanel;
+    }
 
-        VBox bottom = glassCard(18);
-        Label bottomTitle = title("Carte rapide", 16);
-        Label bottomText = muted("La carte permet de sélectionner des zones, de visualiser les routes et d'afficher votre itinéraire vers un refuge.", 13);
-        bottomText.setWrapText(true);
-        bottom.getChildren().addAll(bottomTitle, bottomText);
+    private VBox buildQuickActions() {
+        VBox card = glassCard(20);
 
-        root.getChildren().addAll(header, cards, middle, bottom);
+        Label title = label("Actions rapides", WHITE, 18, true);
+        Label subtitle = label("Accédez rapidement aux pages utiles de votre espace citoyen.", LIGHT, 13, false);
 
-        ScrollPane sp = new ScrollPane(root);
-        sp.setFitToWidth(true);
-        sp.setStyle("-fx-background:transparent; -fx-background-color:transparent;");
-        VBox wrapper = new VBox(sp);
-        VBox.setVgrow(sp, Priority.ALWAYS);
-        return wrapper;
+        HBox actions = new HBox(12);
+        actions.getChildren().addAll(
+                actionButton("Voir la carte", "⌖", () -> showPage(buildMapPage(null))),
+                actionButton("Mes refuges", "⌂", () -> showPage(new CitizenRefugesView(controller, user, this::openRouteToRefuge))),
+                actionButton("Mes trajets", "⇢", () -> showPage(new CitizenRoutesView(controller, user, mapComponent))),
+                actionButton("Mon profil", "◎", () -> showPage(new CitizenProfileView(controller, user)))
+        );
+
+        for (Node n : actions.getChildren()) {
+            HBox.setHgrow(n, Priority.ALWAYS);
+        }
+
+        card.getChildren().addAll(title, subtitle, actions);
+        return card;
+    }
+
+    private Button actionButton(String text, String icon, Runnable action) {
+        Button button = new Button(icon + "  " + text);
+        button.setMaxWidth(Double.MAX_VALUE);
+        button.setPadding(new Insets(13, 16, 13, 16));
+        button.setStyle(
+                "-fx-background-color: rgba(255,255,255,0.055);" +
+                        "-fx-text-fill: white;" +
+                        "-fx-background-radius: 12;" +
+                        "-fx-border-color: rgba(255,255,255,0.12);" +
+                        "-fx-border-radius: 12;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-cursor: hand;"
+        );
+        button.setOnAction(e -> action.run());
+        return button;
+    }
+
+    private HBox routeStep(String label, String value, String color) {
+        HBox row = new HBox(12);
+        row.setAlignment(Pos.CENTER_LEFT);
+
+        StackPane dot = new StackPane();
+        dot.setPrefSize(12, 12);
+        dot.setMinSize(12, 12);
+        dot.setMaxSize(12, 12);
+        dot.setStyle("-fx-background-color:" + color + "; -fx-background-radius:999;");
+
+        VBox text = new VBox(2);
+        text.getChildren().addAll(
+                label(label, MUTED, 11, true),
+                label(value, WHITE, 13, false)
+        );
+
+        row.getChildren().addAll(dot, text);
+        return row;
+    }
+
+    private VBox compactInfo(String title, String value) {
+        VBox box = new VBox(3);
+        box.setPadding(new Insets(10));
+        box.setStyle(
+                "-fx-background-color:rgba(255,255,255,0.045);" +
+                        "-fx-background-radius:12;" +
+                        "-fx-border-color:rgba(255,255,255,0.06);" +
+                        "-fx-border-radius:12;"
+        );
+
+        box.getChildren().addAll(
+                label(value, WHITE, 15, true),
+                label(title, MUTED, 11, true)
+        );
+        return box;
     }
 
     private BorderPane buildMapPage(Zone selectedRefuge) {
@@ -206,13 +473,17 @@ public class CitizenDashboardView extends BorderPane {
 
         HBox toolbar = new HBox(10);
         toolbar.setAlignment(Pos.CENTER_LEFT);
+
         Button zoomIn = blueButton("+ Zoom");
         Button zoomOut = darkButton("- Zoom");
         Button reset = darkButton("Recentrer");
+
         zoomIn.setOnAction(e -> mapComponent.zoomIn());
         zoomOut.setOnAction(e -> mapComponent.zoomOut());
         reset.setOnAction(e -> mapComponent.resetView());
+
         toolbar.getChildren().addAll(zoomIn, zoomOut, reset);
+
         top.getChildren().addAll(title, sub, toolbar);
         top.setPadding(new Insets(0, 0, 14, 0));
 
@@ -225,6 +496,7 @@ public class CitizenDashboardView extends BorderPane {
         page.setTop(top);
         page.setCenter(mapBox);
         page.setBottom(refugesBottom);
+
         BorderPane.setMargin(refugesBottom, new Insets(14, 0, 0, 0));
 
         if (selectedRefuge != null) {
@@ -238,32 +510,47 @@ public class CitizenDashboardView extends BorderPane {
     private VBox buildRefugeStrip() {
         VBox box = glassCard(16);
         Label title = title("Refuges disponibles", 16);
+
         HBox list = new HBox(12);
+
         for (Zone z : controller.getZones()) {
-            if (!z.isFlooded()) {
+            if (z instanceof Shelter && !z.isFlooded() && !z.isEvacuated()) {
                 list.getChildren().add(refugeChip(z));
             }
         }
+
         if (list.getChildren().isEmpty()) {
             list.getChildren().add(muted("Aucun refuge accessible pour le moment.", 13));
         }
+
         ScrollPane scroll = new ScrollPane(list);
         scroll.setFitToHeight(true);
         scroll.setStyle("-fx-background:transparent; -fx-background-color:transparent;");
+
         box.getChildren().addAll(title, scroll);
         return box;
     }
 
     private VBox refugeChip(Zone z) {
-        VBox chip = new VBox(5);
-        chip.setPrefWidth(180);
+        VBox chip = new VBox(6);
+        chip.setPrefWidth(190);
         chip.setPadding(new Insets(12));
-        chip.setStyle("-fx-background-color:rgba(255,255,255,0.06); -fx-background-radius:12; -fx-border-color:rgba(255,255,255,0.12); -fx-border-radius:12;");
-        Label name = label("🏫 " + z.getName(), WHITE, 13, true);
-        Label pop = muted("Population : " + z.getPopulation(), 11);
+        chip.setStyle(
+                "-fx-background-color:rgba(255,255,255,0.06);" +
+                        "-fx-background-radius:12;" +
+                        "-fx-border-color:rgba(255,255,255,0.12);" +
+                        "-fx-border-radius:12;"
+        );
+
+        Label name = label("⌂ " + z.getName(), WHITE, 13, true);
+        name.setWrapText(true);
+
+        Label altitude = muted("Altitude : " + String.format("%.0f m", z.getAltitude()), 11);
+
         Button btn = blueButton("Itinéraire");
         btn.setOnAction(e -> openRouteToRefuge(z));
-        chip.getChildren().addAll(name, pop, btn);
+
+        chip.getChildren().addAll(name, altitude, btn);
         return chip;
     }
 
@@ -277,9 +564,15 @@ public class CitizenDashboardView extends BorderPane {
     }
 
     private void setActive(Button selected) {
-        if (activeButton != null) activeButton.setStyle(sidebarStyle(false));
+        if (activeButton != null) {
+            activeButton.setStyle(sidebarStyle(false));
+        }
+
         activeButton = selected;
-        if (activeButton != null) activeButton.setStyle(sidebarStyle(true));
+
+        if (activeButton != null) {
+            activeButton.setStyle(sidebarStyle(true));
+        }
     }
 
     private Button sidebarButton(String text, String iconType) {
@@ -291,7 +584,7 @@ public class CitizenDashboardView extends BorderPane {
         btn.setPadding(new Insets(13, 16, 13, 16));
         btn.setFont(Font.font("Segoe UI", FontWeight.SEMI_BOLD, 13));
         btn.setStyle(sidebarStyle(false));
-    
+
         btn.setOnMouseEntered(e -> {
             if (btn != activeButton) {
                 btn.setStyle("-fx-background-color:rgba(255,255,255,0.07);"
@@ -302,17 +595,19 @@ public class CitizenDashboardView extends BorderPane {
                         + "-fx-cursor:hand;");
             }
         });
-    
+
         btn.setOnMouseExited(e -> {
-            if (btn != activeButton) btn.setStyle(sidebarStyle(false));
+            if (btn != activeButton) {
+                btn.setStyle(sidebarStyle(false));
+            }
         });
-    
+
         return btn;
     }
 
     private Node createSidebarIcon(String type) {
         SVGPath icon = new SVGPath();
-    
+
         switch (type) {
             case "dashboard":
                 icon.setContent("M3 3 H10 V10 H3 Z M14 3 H21 V10 H14 Z M3 14 H10 V21 H3 Z M14 14 H21 V21 H14 Z");
@@ -341,12 +636,15 @@ public class CitizenDashboardView extends BorderPane {
             case "logout":
                 icon.setContent("M10 4 H5 V20 H10 M14 8 L18 12 L14 16 M18 12 H8");
                 break;
+            default:
+                icon.setContent("M4 4 H20 V20 H4 Z");
+                break;
         }
-    
-        icon.setStroke(Color.web("#b8c7dd"));
+
+        icon.setStroke(Color.web(LIGHT));
         icon.setStrokeWidth(1.8);
         icon.setFill(Color.TRANSPARENT);
-    
+
         StackPane box = new StackPane(icon);
         box.setPrefSize(22, 22);
         return box;
@@ -368,19 +666,66 @@ public class CitizenDashboardView extends BorderPane {
                 + "-fx-cursor:hand;";
     }
 
-    private VBox miniCard(String title, String value, String icon) {
+    private VBox miniCard(String title, String value, String icon, String color) {
         VBox c = glassCard(16);
         c.setMinWidth(170);
-        Label i = label(icon, BLUE_2, 22, true);
-        Label t = muted(title, 12);
+
+        HBox top = new HBox(8);
+        top.setAlignment(Pos.CENTER_LEFT);
+        top.getChildren().addAll(smallLineIcon(icon, color), label(title, MUTED, 12, true));
+
         Label v = label(value, WHITE, 14, true);
         v.setWrapText(true);
-        c.getChildren().addAll(i, t, v);
+
+        c.getChildren().addAll(top, v);
         return c;
     }
 
+    private StackPane roundIcon(String text, String color, int size) {
+        StackPane icon = new StackPane();
+        icon.setPrefSize(size, size);
+        icon.setMinSize(size, size);
+        icon.setMaxSize(size, size);
+        icon.setStyle(
+                "-fx-background-color:" + color + ";" +
+                        "-fx-background-radius:999;" +
+                        "-fx-effect:dropshadow(gaussian, rgba(0,0,0,0.22), 18, 0, 0, 6);"
+        );
+
+        Label symbol = label(text, WHITE, size >= 60 ? 28 : 18, true);
+        icon.getChildren().add(symbol);
+        return icon;
+    }
+
+    private StackPane smallLineIcon(String text, String color) {
+        StackPane icon = new StackPane();
+        icon.setPrefSize(34, 34);
+        icon.setMinSize(34, 34);
+        icon.setMaxSize(34, 34);
+        icon.setStyle(
+                "-fx-background-color:rgba(22,131,255,0.12);" +
+                        "-fx-background-radius:12;" +
+                        "-fx-border-color:" + color + ";" +
+                        "-fx-border-radius:12;"
+        );
+
+        Label symbol = label(text, WHITE, text.length() > 1 ? 13 : 17, true);
+        icon.getChildren().add(symbol);
+        return icon;
+    }
+
+    private Label badge(String text, String color) {
+        Label badge = label(text, WHITE, 11, true);
+        badge.setPadding(new Insets(6, 10, 6, 10));
+        badge.setStyle(
+                "-fx-background-color: " + color + ";" +
+                        "-fx-background-radius: 999;"
+        );
+        return badge;
+    }
+
     private VBox glassCard(int padding) {
-        VBox box = new VBox(10);
+        VBox box = new VBox(12);
         box.setPadding(new Insets(padding));
         box.setStyle(glassStyle(18));
         return box;
@@ -409,13 +754,26 @@ public class CitizenDashboardView extends BorderPane {
 
     private Button blueButton(String text) {
         Button b = new Button(text);
-        b.setStyle("-fx-background-color:linear-gradient(to right, #0b5cbf, #1683ff); -fx-text-fill:white; -fx-background-radius:8; -fx-font-weight:bold; -fx-cursor:hand;");
+        b.setStyle(
+                "-fx-background-color:linear-gradient(to right, #0b5cbf, #1683ff);" +
+                        "-fx-text-fill:white;" +
+                        "-fx-background-radius:8;" +
+                        "-fx-font-weight:bold;" +
+                        "-fx-cursor:hand;"
+        );
         return b;
     }
 
     private Button darkButton(String text) {
         Button b = new Button(text);
-        b.setStyle("-fx-background-color:rgba(255,255,255,0.07); -fx-text-fill:#b8c7dd; -fx-border-color:rgba(255,255,255,0.16); -fx-border-radius:8; -fx-background-radius:8; -fx-cursor:hand;");
+        b.setStyle(
+                "-fx-background-color:rgba(255,255,255,0.07);" +
+                        "-fx-text-fill:#b8c7dd;" +
+                        "-fx-border-color:rgba(255,255,255,0.16);" +
+                        "-fx-border-radius:8;" +
+                        "-fx-background-radius:8;" +
+                        "-fx-cursor:hand;"
+        );
         return b;
     }
 
@@ -425,6 +783,7 @@ public class CitizenDashboardView extends BorderPane {
         logo.setStroke(Color.WHITE);
         logo.setStrokeWidth(2.0);
         logo.setFill(Color.TRANSPARENT);
+
         StackPane box = new StackPane(logo);
         box.setPrefSize(34, 34);
         return box;
