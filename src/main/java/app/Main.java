@@ -24,10 +24,16 @@ import controller.RescuePage.RescueController;
 public class Main extends Application {
 
     private static Stage mainStage;
-    // 🔥 Variable globale pour stocker l'agent connecté (Session)
+
     public static Agent currentUser;
     public static ListView<String> alertesListView;
     public static TextArea logArea;
+
+    private static final FloodSimulation sharedSimulation = new FloodSimulation();
+
+    public static FloodSimulation getSharedSimulation() {
+        return sharedSimulation;
+    }
 
     @Override
     public void start(Stage stage) {
@@ -71,7 +77,6 @@ public class Main extends Application {
     }
 
     public static void showSimulationView() {
-        // Initialisez le contrôleur et la vue
         SimulationController simulationController = new SimulationController();
         SimulationView simulationView = new SimulationView(simulationController);
 
@@ -80,7 +85,6 @@ public class Main extends Application {
         mainStage.setScene(scene);
     }
 
-    // 🔥 Redirection vers les vues en utilisant le constructeur vide d'origine
     public static void showDashboardView(String role) {
         if (role == null) {
             role = "citizen";
@@ -91,22 +95,19 @@ public class Main extends Application {
 
         switch (cleanRole) {
             case "admin":
-                scene = new Scene(new AdminDashboardView(new AdminController()), 1000, 650);
+                scene = new Scene(new AdminDashboardView(new AdminController(), sharedSimulation), 1000, 650);
                 mainStage.setTitle("Flood Simulation - Admin Panel");
                 break;
 
             case "rescue":
             case "rescueagent":
-                
-                 scene = new Scene(new RescueDashboardView(), 1000, 650);
-                 mainStage.setTitle("Flood Simulation - Rescue Command");
-                 break;
-                 
+                scene = new Scene(new RescueDashboardView(), 1000, 650);
+                mainStage.setTitle("Flood Simulation - Rescue Command");
+                break;
 
             case "citizen":
             default:
-                FloodSimulation mySimulation = new FloodSimulation();
-                scene = new Scene(new CitizenDashboardView(new CitizenController(mySimulation)), 1000, 650);
+                scene = new Scene(new CitizenDashboardView(new CitizenController(sharedSimulation)), 1000, 650);
                 mainStage.setTitle("Flood Simulation - Citizen Portal");
                 break;
         }
