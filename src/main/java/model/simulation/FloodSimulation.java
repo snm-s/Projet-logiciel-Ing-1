@@ -5,12 +5,11 @@ import java.util.List;
 
 import model.agent.Agent;
 import model.agent.RescueTeam;
-import model.alert.AlertSystem;
-import model.graph.Graph;
-
 import model.alert.Alert;
 import model.alert.AlertSystem;
+import model.auth.UserService;
 import model.enums.AlertType;
+import model.graph.Graph;
 import model.observer.Observer;
 import model.observer.Subject;
 import model.strategy.Strategy;
@@ -57,7 +56,10 @@ public class FloodSimulation {
 
     public FloodSimulation() {
         this.graph = new Graph();
-        this.agents = new ArrayList<>();
+        this.agents = UserService.loadAgents();
+        if (this.agents == null) {
+            this.agents = new ArrayList<>();
+        }
         this.alertSystem = new AlertSystem();
 
         this.niveauEau = DEFAULT_NIVEAU_EAU;

@@ -7,8 +7,8 @@
     "email": "admin@test.com",
     "passwordHash": "admin123",
     "position": {
-      "lat": 48.8566,
-      "lng": 2.3522
+      "lat": 45.767,
+      "lng": 4.834
     },
     "state": null,
     "destination": null
@@ -21,8 +21,8 @@
     "email": "secours@test.com",
     "passwordHash": "secours123",
     "position": {
-      "lat": 48.8615,
-      "lng": 2.3375
+      "lat": 45.7606,
+      "lng": 4.8357
     },
     "destination": null,
     "state": "DISPONIBLE"
@@ -35,8 +35,8 @@
     "email": "citoyen@test.com",
     "passwordHash": "citoyen123",
     "position": {
-      "lat": 48.8738,
-      "lng": 2.2950
+      "lat": 45.764,
+      "lng": 4.8357
     },
     "destination": null,
     "state": "CALM"
@@ -49,8 +49,8 @@
     "email": "gerard@test.com",
     "passwordHash": "pompie123",
     "position": {
-      "lat": 48.8421,
-      "lng": 2.3220
+      "lat": 45.7485,
+      "lng": 4.8467
     },
     "destination": null,
     "state": "EN_INTERVENTION"
@@ -63,8 +63,8 @@
     "email": "sophie@test.com",
     "passwordHash": "sophie123",
     "position": {
-      "lat": 48.8520,
-      "lng": 2.3698
+      "lat": 45.775,
+      "lng": 4.831
     },
     "destination": null,
     "state": "STRESSED"
@@ -77,8 +77,8 @@
     "email": "lucas@test.com",
     "passwordHash": "lucas123",
     "position": {
-      "lat": 48.8385,
-      "lng": 2.3821
+      "lat": 45.7578,
+      "lng": 4.832
     },
     "destination": null,
     "state": "CALM"
@@ -91,8 +91,8 @@
     "email": "bastien@test.com",
     "passwordHash": "major123",
     "position": {
-      "lat": 48.8830,
-      "lng": 2.3425
+      "lat": 45.785,
+      "lng": 4.852
     },
     "destination": null,
     "state": "EN_ROUTE"
@@ -105,8 +105,8 @@
     "email": "chloe@test.com",
     "passwordHash": "chloe123",
     "position": {
-      "lat": 48.8692,
-      "lng": 2.3601
+      "lat": 45.753,
+      "lng": 4.869
     },
     "destination": null,
     "state": "INJURED"
@@ -119,8 +119,8 @@
     "email": "thomas@test.com",
     "passwordHash": "thomas123",
     "position": {
-      "lat": 48.8299,
-      "lng": 2.3480
+      "lat": 45.742,
+      "lng": 4.818
     },
     "destination": null,
     "state": "CALM"
@@ -133,8 +133,8 @@
     "email": "dumas@test.com",
     "passwordHash": "dumas123",
     "position": {
-      "lat": 48.8590,
-      "lng": 2.2890
+      "lat": 45.7715,
+      "lng": 4.862
     },
     "destination": null,
     "state": "EN_ROUTE"

@@ -2,12 +2,15 @@ package view;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Point;
+import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -26,11 +29,16 @@ import org.jxmapviewer.viewer.TileFactoryInfo;
 import controller.MapController;
 import javafx.application.Platform;
 import javafx.embed.swing.SwingNode;
+import model.agent.Agent;
 import model.graph.RouteGraph;
 import model.observer.Observer;
 import model.zone.Zone;
 import model.zone.ZoneUpdateListener;
 
+/**
+ * Carte JXMapViewer.
+ * Elle garde ta vraie carte OSM en arrière-plan, dessine zones + routes + Mii agents.
+ */
 public class MapView implements ZoneUpdateListener, Observer<Zone> {
 
     private final JXMapViewer mapViewer;
@@ -40,16 +48,20 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     private ZonePainter zonePainter;
     private RoutePainter routePainter;
     private RouteHighlightPainter routeHighlightPainter;
+    private AgentPainter agentPainter;
     private CompoundPainter<JXMapViewer> compound;
 
     private MapController mapController;
     private Consumer<Zone> onZoneSelected;
+    private Consumer<Agent> onAgentSelected;
+
+    private Agent draggedAgent;
 
     private static final GeoPosition LYON_CENTER = new GeoPosition(45.7640, 4.8357);
     private static final int DEFAULT_ZOOM = 6;
 
     public MapView(List<Zone> zones) {
-        this.zones = zones;
+        this.zones = zones == null ? new ArrayList<>() : new ArrayList<>(zones);
         this.mapViewer = new JXMapViewer();
         this.swingNode = new SwingNode();
 
@@ -88,10 +100,14 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
 
         routeHighlightPainter = new RouteHighlightPainter();
 
+        agentPainter = new AgentPainter();
+        agentPainter.setAgents(List.of(), zones);
+
         compound = new CompoundPainter<>();
         compound.addPainter(routePainter);
         compound.addPainter(routeHighlightPainter);
         compound.addPainter(zonePainter);
+        compound.addPainter(agentPainter);
 
         mapViewer.setOverlayPainter(compound);
     }
@@ -102,16 +118,71 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         mapViewer.addMouseMotionListener(panListener);
         mapViewer.addMouseWheelListener(new ZoomMouseWheelListenerCursor(mapViewer));
 
-        mapViewer.addMouseListener(new MouseAdapter() {
+        MouseAdapter adapter = new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
+                Agent clickedAgent = agentPainter.findAgentAt(mapViewer, e.getPoint());
+                if (clickedAgent != null) {
+                    if (onAgentSelected != null) onAgentSelected.accept(clickedAgent);
+                    mapViewer.repaint();
+                    return;
+                }
+
                 handleMapClick(e.getPoint());
             }
-        });
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+                Agent agent = agentPainter.findAgentAt(mapViewer, e.getPoint());
+                if (agent != null) {
+                    draggedAgent = agent;
+                    agentPainter.startDrag(agent);
+                    if (onAgentSelected != null) onAgentSelected.accept(agent);
+                    mapViewer.setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
+                    mapViewer.repaint();
+                    e.consume();
+                }
+            }
+
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                if (draggedAgent != null) {
+                    GeoPosition pos = mapViewer.convertPointToGeoPosition(e.getPoint());
+                    agentPainter.dragTo(draggedAgent, pos);
+                    mapViewer.repaint();
+                    e.consume();
+                }
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (draggedAgent != null) {
+                    agentPainter.endDrag();
+                    draggedAgent = null;
+                    mapViewer.setCursor(Cursor.getDefaultCursor());
+                    mapViewer.repaint();
+                    e.consume();
+                }
+            }
+
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                Agent over = agentPainter.findAgentAt(mapViewer, e.getPoint());
+                agentPainter.setHoveredAgent(over);
+                mapViewer.setCursor(over != null
+                        ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+                        : Cursor.getDefaultCursor());
+                mapViewer.repaint();
+            }
+        };
+
+        mapViewer.addMouseListener(adapter);
+        mapViewer.addMouseMotionListener(adapter);
     }
 
     private void loadZones() {
         zonePainter.setZones(zones);
+        agentPainter.updateZones(zones);
         mapViewer.repaint();
     }
 
@@ -137,7 +208,17 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
 
     public void setRouteGraph(RouteGraph routeGraph) {
         routePainter.setRouteGraph(routeGraph);
+        agentPainter.setRouteGraph(routeGraph);
         SwingUtilities.invokeLater(mapViewer::repaint);
+    }
+
+    public void setAgents(List<Agent> agents) {
+        agentPainter.setAgents(agents, zones);
+        SwingUtilities.invokeLater(mapViewer::repaint);
+    }
+
+    public void setOnAgentSelected(Consumer<Agent> callback) {
+        this.onAgentSelected = callback;
     }
 
     public void setOnZoneSelected(Consumer<Zone> callback) {
@@ -147,6 +228,7 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     public void updateZoneColor(Zone zone) {
         SwingUtilities.invokeLater(() -> {
             zonePainter.updateZone(zone);
+            agentPainter.updateZones(zones);
             mapViewer.repaint();
         });
     }
@@ -154,6 +236,7 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     public void updateZoneWithWaterLevel(Zone zone, double niveauEau) {
         SwingUtilities.invokeLater(() -> {
             zonePainter.updateZoneWaterLevel(zone, niveauEau);
+            agentPainter.updateZones(zones);
             mapViewer.repaint();
         });
     }
@@ -163,10 +246,11 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     }
 
     public void updateAllZones(List<Zone> updatedZones) {
-        this.zones = updatedZones;
+        this.zones = updatedZones == null ? new ArrayList<>() : new ArrayList<>(updatedZones);
 
         SwingUtilities.invokeLater(() -> {
-            zonePainter.setZones(updatedZones);
+            zonePainter.setZones(this.zones);
+            agentPainter.updateZones(this.zones);
             mapViewer.repaint();
         });
     }
@@ -334,10 +418,7 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
             if (from == null || to == null) return;
 
             Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(
-                    java.awt.RenderingHints.KEY_ANTIALIASING,
-                    java.awt.RenderingHints.VALUE_ANTIALIAS_ON
-            );
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             try {
                 Point2D p1 = map.convertGeoPositionToPoint(

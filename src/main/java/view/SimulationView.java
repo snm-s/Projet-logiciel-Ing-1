@@ -1,13 +1,26 @@
 package view;
 
-import controller.MapController;
+import java.util.List;
+
 import controller.AdminPage.SimulationController;
+import controller.MapController;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.Separator;
+import javafx.scene.control.Slider;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
@@ -15,8 +28,6 @@ import javafx.scene.text.FontWeight;
 import javafx.util.Duration;
 import model.simulation.FloodSimulation;
 import model.zone.Zone;
-
-import java.util.List;
 
 /**
  * Vue principale de simulation d'inondation — dark dashboard.
@@ -158,6 +169,7 @@ public class SimulationView extends BorderPane {
         if (modele != null) {
             // ── Étape 1 : créer MapView (initialise JXMapViewer sur thread Swing en interne)
             mapView = new MapView(modele.getZones());
+            mapView.setAgents(modele.getAgents());
             modele.addZoneUpdateListener(mapView);
 
             // ── Étape 2 : ajouter le SwingNode à la scène (doit être sur thread FX — on est déjà dessus)
@@ -168,6 +180,13 @@ public class SimulationView extends BorderPane {
 
             // ── Étape 4 : injecter MapController dans SimulationController
             if (controller != null) controller.setMapController(mapController);
+
+            mapView.setOnAgentSelected(agent -> {
+                lblSelectedZone.setText(agent.getFirstName() != null ? agent.getFirstName() : "Agent #" + agent.getId());
+                lblNiveauEauZone.setText("Agent sélectionné");
+                lblStatutZone.setText(agent.getClass().getSimpleName());
+                lblStatutZone.setTextFill(Color.web(ACCENT_TEAL));
+            });
 
             // ── Étape 5 : callbacks
             mapController.setOnZoneSelected(zone -> {
