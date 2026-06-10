@@ -25,7 +25,7 @@ public class ZoneManager {
             File file = new File(filePath);
             if (!file.exists()) {
                 System.err.println("⚠️ Fichier zones non trouvé : " + filePath);
-                createDefaultZones();
+                //createDefaultZones();
                 return;
             }
             zones.clear();
@@ -59,16 +59,18 @@ public class ZoneManager {
             }
         } catch (Exception e) {
             System.err.println("❌ Erreur lors de la lecture des zones : " + e.getMessage());
-            createDefaultZones();
+            //createDefaultZones();
         }
     }
 
+    /*
     private void createDefaultZones() {
         zones.clear();
         zones.add(new Neighborhood(1, "Centre-ville", 45.7649, 4.8357, 1.2, 850, "Zone urbaine centrale"));
         zones.add(new Neighborhood(2, "Confluence", 45.7324, 4.8210, 0.8, 320, "Zone musées et publics"));
         zones.add(new Neighborhood(3, "Parc Tête d'Or", 45.7698, 4.8537, 1.5, 150, "Parc urbain"));
     }
+    */
 
     public List<Zone> getZones() {
         return new ArrayList<>(zones);
