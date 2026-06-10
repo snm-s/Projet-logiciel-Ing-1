@@ -1,9 +1,14 @@
 package app;
 
+import controller.AdminPage.AdminController;
+import controller.AdminPage.SimulationController;
+import controller.AuthPage.ForgotPasswordController;
+import controller.CitizenPage.CitizenController;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import model.agent.Agent;
 import model.simulation.FloodSimulation;
@@ -13,13 +18,8 @@ import view.ForgotPasswordView;
 import view.LoginView;
 import view.RegisterView;
 import view.RescueDashboardView;
-import view.WelcomeView;
 import view.SimulationView;
-import controller.AdminPage.AdminController;
-import controller.AdminPage.SimulationController;
-import controller.AuthPage.ForgotPasswordController;
-import controller.CitizenPage.CitizenController;
-import controller.RescuePage.RescueController;
+import view.WelcomeView;
 
 public class Main extends Application {
 
@@ -48,7 +48,10 @@ public class Main extends Application {
 
     public static void showWelcomeView() {
         WelcomeView welcomeView = new WelcomeView();
+
         Scene scene = new Scene(welcomeView, 1000, 650);
+        scene.setFill(Color.web("#060a12"));
+
         mainStage.setScene(scene);
     }
 
@@ -57,6 +60,8 @@ public class Main extends Application {
         new controller.AuthPage.LoginController(loginView, mainStage);
 
         Scene scene = new Scene(loginView, 1000, 650);
+        scene.setFill(Color.web("#060a12"));
+
         mainStage.setScene(scene);
     }
 
@@ -65,6 +70,8 @@ public class Main extends Application {
         new controller.AuthPage.RegisterController(registerView, mainStage);
 
         Scene scene = new Scene(registerView, 1000, 650);
+        scene.setFill(Color.web("#060a12"));
+
         mainStage.setScene(scene);
     }
 
@@ -73,6 +80,8 @@ public class Main extends Application {
         new ForgotPasswordController(view, mainStage, email);
 
         Scene scene = new Scene(view, 1000, 650);
+        scene.setFill(Color.web("#060a12"));
+
         mainStage.setScene(scene);
     }
 
@@ -81,6 +90,8 @@ public class Main extends Application {
         SimulationView simulationView = new SimulationView(simulationController);
 
         Scene scene = new Scene(simulationView, 1100, 700);
+        scene.setFill(Color.web("#060a12"));
+
         mainStage.setTitle("Flood Simulation - Administration");
         mainStage.setScene(scene);
     }
@@ -96,18 +107,21 @@ public class Main extends Application {
         switch (cleanRole) {
             case "admin":
                 scene = new Scene(new AdminDashboardView(new AdminController(), sharedSimulation), 1000, 650);
+                scene.setFill(Color.web("#060a12"));
                 mainStage.setTitle("Flood Simulation - Admin Panel");
                 break;
 
             case "rescue":
             case "rescueagent":
                 scene = new Scene(new RescueDashboardView(), 1000, 650);
+                scene.setFill(Color.web("#060a12"));
                 mainStage.setTitle("Flood Simulation - Rescue Command");
                 break;
 
             case "citizen":
             default:
                 scene = new Scene(new CitizenDashboardView(new CitizenController(sharedSimulation)), 1000, 650);
+                scene.setFill(Color.web("#060a12"));
                 mainStage.setTitle("Flood Simulation - Citizen Portal");
                 break;
         }
