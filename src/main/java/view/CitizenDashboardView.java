@@ -3,9 +3,9 @@ package view;
 import java.util.List;
 
 import app.Main;
-import controller.MapController;
 import controller.CitizenPage.CitizenAlertsController;
 import controller.CitizenPage.CitizenController;
+import controller.MapController;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -46,7 +46,6 @@ public class CitizenDashboardView extends BorderPane {
     private static final String BORDER_GLASS = "rgba(255,255,255,0.18)";
 
     private final CitizenController controller;
-    private controller.MapController mapControllerRef;
     private final Agent user;
 
     private VBox sidebar;
@@ -58,43 +57,32 @@ public class CitizenDashboardView extends BorderPane {
     public CitizenDashboardView(CitizenController controller) {
         this.controller = controller;
         this.user = Main.currentUser;
-        
+    
         MapController sharedMC = Main.getSharedMapController();
+    
         if (sharedMC != null) {
             this.mapComponent = sharedMC.getMapView();
         } else {
-            // Fallback si SimulationView n'a pas encore été ouverte :
-            // Créer une MapView autonome ET la brancher sur les données partagées
             this.mapComponent = Main.getSharedMapView();
-            // Synchroniser agents et graphe depuis la simulation partagée
-            List<Agent> agents = Main.getSharedSimulation().getAgents();
-            this.mapComponent.setAgents(agents);
         }
-
-        // Abonnement temps réel aux changements de zones
-        Main.getSharedSimulation().addZoneObserver(zone ->
-            Platform.runLater(() ->
-                mapComponent.updateAllZones(Main.getSharedSimulation().getZones())
-            )
-        );
-
-        // Abonnement temps réel aux changements d'agents
+    
+        this.mapComponent.setAgents(List.of(user));
+    
         Main.getSharedSimulation().addAgentObserver(updatedAgents ->
             Platform.runLater(() ->
-                mapComponent.setAgents(updatedAgents)
+                mapComponent.setAgents(List.of(user))
             )
         );
-
-
+    
         setPrefSize(1100, 650);
         setStyle("-fx-background-color:" + BG_DARK + ";");
-
+    
         setLeft(buildSidebar());
-
+    
         contentRoot = new StackPane();
         contentRoot.setStyle("-fx-background-color:linear-gradient(to bottom right, #06172b, #0b1a30, #08162a);");
         setCenter(contentRoot);
-
+    
         dashboardContent = buildDashboardContent();
         showPage(dashboardContent);
     }
@@ -534,6 +522,12 @@ public class CitizenDashboardView extends BorderPane {
             Zone from = controller.getNearestZone(user);
             mapComponent.showRoute(from, selectedRefuge);
         }
+        
+        mapComponent.setAgents(List.of(user));
+
+        mapComponent.centerOnAgent(user);
+
+        mapComponent.generateLocalGraphForAgent(user);
 
         return page;
     }
