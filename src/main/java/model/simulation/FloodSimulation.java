@@ -1,7 +1,10 @@
 package model.simulation;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import model.agent.Agent;
 import model.agent.RescueTeam;
@@ -54,6 +57,8 @@ public class FloodSimulation {
 
     private final Subject<List<Agent>> agentSubject = new Subject<>();
     private final Subject<List<Zone>>  zoneSubject  = new Subject<>();
+    
+    private final Map<Integer, Zone[]> citizenPaths = new HashMap<>();
 
 
 
@@ -83,6 +88,15 @@ public class FloodSimulation {
     
     public FloodSimulation() {
         this(app.Main.getSharedDataService());
+    }
+
+    public void registerCitizenPath(Agent agent, Zone from, Zone to) {
+        if (agent != null && from != null && to != null)
+            citizenPaths.put(agent.getId(), new Zone[]{from, to});
+    }
+
+    public Map<Integer, Zone[]> getCitizenPaths() {
+        return Collections.unmodifiableMap(citizenPaths);
     }
 
     public Graph getGraph() { return graph; }

@@ -1,5 +1,6 @@
 package controller.CitizenPage;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -176,6 +177,37 @@ public class CitizenController {
 
         return -1;
     }
+
+
+    public void registerEvacuationPath(Agent agent, Zone from, Zone to) {
+        // Enregistre le chemin dans FloodSimulation pour tracking global
+        app.Main.getSharedSimulation().registerCitizenPath(agent, from, to);
+    }
+
+    public List<String> getRouteInstructions(Agent agent, Zone from, Zone to) {
+        List<String> steps = new ArrayList<>();
+        if (from == null || to == null) return steps;
+
+        steps.add("Départ depuis " + from.getName() + " — restez calme et suivez les indications.");
+
+        List<Zone> allZones = simulation.getZones();
+        // Zones intermédiaires (entre départ et destination, non inondées)
+        allZones.stream()
+            .filter(z -> z.getId() != from.getId() && z.getId() != to.getId())
+            .filter(z -> !z.isFlooded())
+            .limit(3)
+            .forEach(z -> steps.add("Traversez " + z.getName() + 
+                (z.getAltitude() > from.getAltitude() ? " (zone en hauteur, plus sûre)" : "") + "."));
+
+        // Avertissement si zones inondées proches
+        long floodedCount = allZones.stream().filter(Zone::isFlooded).count();
+        if (floodedCount > 0)
+            steps.add("⚠ Attention : " + floodedCount + " zone(s) inondée(s) sur l'itinéraire — évitez les bas-fonds.");
+
+        steps.add("Arrivée au refuge " + to.getName() + " — signalez-vous aux secours.");
+        return steps;
+    }
+
 
     public String getDistanceFromUserLabel(Agent user, Zone zone) {
         double d = getDistanceFromUserKm(user, zone);
