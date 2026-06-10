@@ -226,7 +226,6 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
             @Override public void mouseReleased(MouseEvent e) {
                 if (draggedAgent != null) {
                     agentPainter.endDrag();
-                    agentPainter.snapAgentToNearestGraphElement(draggedAgent);
                     setInfo("Agent relâché et replacé sur le graphe : " + nameOf(draggedAgent));
                     draggedAgent = null;
                     mapViewer.setCursor(Cursor.getDefaultCursor());
@@ -281,16 +280,14 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     public void setRouteGraph(RouteGraph routeGraph) {
         this.routeGraph = routeGraph;
         routePainter.setRouteGraph(routeGraph);
-        agentPainter.setRouteGraph(routeGraph);
         graphOverlayPainter.setRouteGraph(routeGraph);
-        agentPainter.snapAgentsToGraph();
+        agentPainter.setRouteGraph(routeGraph);
         SwingUtilities.invokeLater(mapViewer::repaint);
     }
-
+    
     public void setAgents(List<Agent> agents) {
-        this.agents = agents == null ? new ArrayList<>() : agents;
+        this.agents = agents == null ? new ArrayList<>() : new ArrayList<>(agents);
         agentPainter.setAgents(this.agents, zones);
-        if (routeGraph != null) agentPainter.snapAgentsToGraph();
         SwingUtilities.invokeLater(mapViewer::repaint);
     }
 
@@ -322,7 +319,6 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         if (agent == null) return;
         if (!agents.contains(agent)) agents.add(agent);
         agentPainter.setAgents(agents, zones);
-        agentPainter.snapAgentToNearestGraphElement(agent);
         setInfo("Agent ajouté : " + nameOf(agent));
         mapViewer.repaint();
     }
@@ -416,6 +412,61 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     public void resetView() { SwingUtilities.invokeLater(() -> { mapViewer.setAddressLocation(LYON_CENTER); mapViewer.setZoom(DEFAULT_ZOOM); clearRoute(); }); }
     public void flyTo(double lat, double lng) { SwingUtilities.invokeLater(() -> { mapViewer.setAddressLocation(new GeoPosition(lat, lng)); mapViewer.setZoom(2); }); }
     public void panTo(double lat, double lng) { SwingUtilities.invokeLater(() -> mapViewer.setAddressLocation(new GeoPosition(lat, lng))); }
+
+    public void centerOnAgent(Agent agent) {
+        if (agent == null || agent.getPosition() == null) return;
+    
+        double lat = agent.getPosition().getLat();
+        double lng = agent.getPosition().getLng();
+    
+        SwingUtilities.invokeLater(() -> {
+            mapViewer.setAddressLocation(new GeoPosition(lat, lng));
+            mapViewer.setZoom(3);
+            mapViewer.repaint();
+        });
+    }
+    
+    public void generateLocalGraphForAgent(Agent agent) {
+        if (agent == null || agent.getPosition() == null) return;
+    
+        double lat = agent.getPosition().getLat();
+        double lng = agent.getPosition().getLng();
+    
+        SwingUtilities.invokeLater(() -> {
+            graphOverlayPainter.visualNodes.clear();
+            graphOverlayPainter.visualEdges.clear();
+    
+            GraphNode position = new GraphNode("Position actuelle", lat, lng, false);
+            GraphNode nord = new GraphNode("Carrefour Nord", lat + 0.003, lng, false);
+            GraphNode sud = new GraphNode("Carrefour Sud", lat - 0.003, lng, false);
+            GraphNode est = new GraphNode("Carrefour Est", lat, lng + 0.003, false);
+            GraphNode ouest = new GraphNode("Carrefour Ouest", lat, lng - 0.003, false);
+            GraphNode refuge = new GraphNode("Refuge conseillé", lat + 0.006, lng + 0.006, false);
+    
+            graphOverlayPainter.visualNodes.add(position);
+            graphOverlayPainter.visualNodes.add(nord);
+            graphOverlayPainter.visualNodes.add(sud);
+            graphOverlayPainter.visualNodes.add(est);
+            graphOverlayPainter.visualNodes.add(ouest);
+            graphOverlayPainter.visualNodes.add(refuge);
+    
+            graphOverlayPainter.visualEdges.add(new GraphEdge(position, nord, 10));
+            graphOverlayPainter.visualEdges.add(new GraphEdge(position, sud, 10));
+            graphOverlayPainter.visualEdges.add(new GraphEdge(position, est, 10));
+            graphOverlayPainter.visualEdges.add(new GraphEdge(position, ouest, 10));
+            graphOverlayPainter.visualEdges.add(new GraphEdge(est, refuge, 8));
+            graphOverlayPainter.visualEdges.add(new GraphEdge(nord, refuge, 8));
+            graphOverlayPainter.visualEdges.add(new GraphEdge(ouest, sud, 6));
+    
+            selectedGraphElement = position;
+            graphOverlayPainter.setSelected(position);
+    
+            mapViewer.setAddressLocation(new GeoPosition(lat, lng));
+            mapViewer.setZoom(3);
+            mapViewer.repaint();
+        });
+    }
+
 
     public void focusZone(Zone zone) {
         if (zone == null) return;
