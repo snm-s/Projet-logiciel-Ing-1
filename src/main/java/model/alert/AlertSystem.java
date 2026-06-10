@@ -5,12 +5,16 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import model.enums.AlertType;
+import model.enums.AlertSeverity;
+import model.observer.Observer;
+import model.alert.Alert;
+import model.graph.Node;
 
 public class AlertSystem {
 
     private final List<Alert> alerts = new ArrayList<>();
     private final List<Alert> suggestions = new ArrayList<>();
-    private final List<Runnable> listeners = new ArrayList<>();
+    private final List<Observer> observers = new ArrayList<>();
 
     public List<Alert> getAlerts() {
         return alerts;
@@ -24,24 +28,27 @@ public class AlertSystem {
 
     public Alert getLatestAlert() {
         if (alerts.isEmpty()) {
-            return new Alert(AlertType.INFO, "Aucune alerte", "Système", "Faible", "00:00", "Résolue");
+            return new Alert(AlertType.INFO, "Aucune alerte", null, AlertSeverity.LOW, "00:00", "Résolue");
+
         }
 
         return alerts.get(alerts.size() - 1);
     }
 
     public void addAlert(Alert alert) {
-        if (alert == null) return;
+        if (alert == null)
+            return;
 
         alerts.add(alert);
-        notifyListeners();
+        notifyListeners(alert);
     }
 
     public void removeAlert(Alert alert) {
-        if (alert == null) return;
+        if (alert == null)
+            return;
 
         alerts.remove(alert);
-        notifyListeners();
+        notifyListeners(alert);
     }
 
     public List<Alert> getSuggestions() {
@@ -49,17 +56,19 @@ public class AlertSystem {
     }
 
     public void addSuggestion(Alert alert) {
-        if (alert == null) return;
+        if (alert == null)
+            return;
 
         alert.setOrigin("suggestion");
         alert.setStatus("En attente");
 
         suggestions.add(alert);
-        notifyListeners();
+        notifyListeners(alert);
     }
 
     public void approveSuggestion(Alert suggestion) {
-        if (suggestion == null) return;
+        if (suggestion == null)
+            return;
 
         suggestions.remove(suggestion);
 
@@ -67,39 +76,36 @@ public class AlertSystem {
         suggestion.setStatus("Active");
 
         alerts.add(suggestion);
-        notifyListeners();
+        notifyListeners(suggestion);
     }
 
     public void rejectSuggestion(Alert suggestion) {
-        if (suggestion == null) return;
+        if (suggestion == null)
+            return;
 
         suggestions.remove(suggestion);
-        notifyListeners();
+        notifyListeners(suggestion);
     }
 
     public int countPendingSuggestions() {
         return suggestions.size();
     }
 
-    public void addListener(Runnable listener) {
-        if (listener != null && !listeners.contains(listener)) {
-            listeners.add(listener);
+    public void addListener(Observer obs) {
+        if (observers != null && !observers.contains(obs)) {
+            observers.add(obs);
         }
     }
 
-    public void removeListener(Runnable listener) {
-        listeners.remove(listener);
+    public void removeListener(Observer obs) {
+        observers.remove(obs);
     }
 
-    public void notifyChanges() {
-        notifyListeners();
-    }
+    private void notifyListeners(Alert alert) {
+        List<Observer> copy = new ArrayList<>(observers);
 
-    private void notifyListeners() {
-        List<Runnable> copy = new ArrayList<>(listeners);
-
-        for (Runnable listener : copy) {
-            listener.run();
+        for (Observer listener : copy) {
+            listener.update(alert);
         }
     }
 }

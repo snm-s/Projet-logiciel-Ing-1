@@ -20,7 +20,6 @@ import model.zone.Zone;
 import model.zone.ZoneManager;
 import model.zone.ZoneUpdateListener;
 
-
 public class FloodSimulation {
     private Graph graph;
     private List<Agent> agents;
@@ -50,18 +49,15 @@ public class FloodSimulation {
     private int agentsActifs;
     private int agentsEvacues;
     private final List<Zone> zones;
-    //private final AlertSystem alertSystem;
+    // private final AlertSystem alertSystem;
     private final List<ZoneUpdateListener> listeners;
     private final Subject<Zone> zoneObservers;
     private final SimulationDataService dataService;
 
     private final Subject<List<Agent>> agentSubject = new Subject<>();
-    private final Subject<List<Zone>>  zoneSubject  = new Subject<>();
-    
+    private final Subject<List<Zone>> zoneSubject = new Subject<>();
+
     private final Map<Integer, Zone[]> citizenPaths = new HashMap<>();
-
-
-
 
     public FloodSimulation(SimulationDataService dataService) {
         this.dataService = dataService;
@@ -71,7 +67,8 @@ public class FloodSimulation {
         this.agents = dataService.loadAgents();
         this.zones = dataService.loadZones();
 
-        if (this.agents == null) this.agents = new ArrayList<>();
+        if (this.agents == null)
+            this.agents = new ArrayList<>();
 
         this.alertSystem = new AlertSystem();
 
@@ -85,23 +82,27 @@ public class FloodSimulation {
         this.listeners = new ArrayList<>();
         this.zoneObservers = new Subject<>();
     }
-    
+
     public FloodSimulation() {
         this(app.Main.getSharedDataService());
     }
 
     public void registerCitizenPath(Agent agent, Zone from, Zone to) {
         if (agent != null && from != null && to != null)
-            citizenPaths.put(agent.getId(), new Zone[]{from, to});
+            citizenPaths.put(agent.getId(), new Zone[] { from, to });
     }
 
     public Map<Integer, Zone[]> getCitizenPaths() {
         return Collections.unmodifiableMap(citizenPaths);
     }
 
-    public Graph getGraph() { return graph; }
-    public List<Agent> getAgents() { return agents; }
+    public Graph getGraph() {
+        return graph;
+    }
 
+    public List<Agent> getAgents() {
+        return agents;
+    }
 
     public int getActiveAgentsCount() {
         return agents.size();
@@ -113,8 +114,8 @@ public class FloodSimulation {
 
     public int getActiveMissionsCount() {
         return (int) agents.stream()
-            .filter(a -> a instanceof RescueTeam && !((RescueTeam) a).isIdle())
-            .count();
+                .filter(a -> a instanceof RescueTeam && !((RescueTeam) a).isAvailable())
+                .count();
     }
 
     public void setZones(List<Zone> zones) {
@@ -122,7 +123,7 @@ public class FloodSimulation {
         if (zones != null) {
             this.zones.addAll(zones);
         }
-        notifyZoneChange();  
+        notifyZoneChange();
     }
 
     public void addZoneUpdateListener(ZoneUpdateListener listener) {
@@ -145,11 +146,9 @@ public class FloodSimulation {
         zoneSubject.notifyObservers(new ArrayList<>(zones));
     }
 
-
     public void addAgentObserver(Observer<List<Agent>> observer) {
         agentSubject.addObserver(observer);
     }
-
 
     public void removeAgentObserver(Observer<List<Agent>> observer) {
         agentSubject.removeObserver(observer);
@@ -158,10 +157,6 @@ public class FloodSimulation {
     private void notifyAgentChange() {
         agentSubject.notifyObservers(new ArrayList<>(agents));
     }
-
-
-
-
 
     public void assignStrategyToAgent(Agent agent, Strategy strategy) {
         if (agent != null) {
@@ -211,12 +206,13 @@ public class FloodSimulation {
     }
 
     public int getNombreAgentsEvacues() {
-        if (agents == null) return 0;
+        if (agents == null)
+            return 0;
         return (int) agents.stream()
-            .filter(a -> a instanceof model.agent.Citizen)
-            .map(a -> (model.agent.Citizen) a)
-            .filter(c -> c.getState() == model.enums.CitizenState.SAFE)
-            .count();
+                .filter(a -> a instanceof model.agent.Citizen)
+                .map(a -> (model.agent.Citizen) a)
+                .filter(c -> c.getState() == model.enums.CitizenState.SAFE)
+                .count();
     }
 
     public int getNombreZonesInondees() {
@@ -290,15 +286,15 @@ public class FloodSimulation {
             if (!zone.isFlooded() && niveauEau >= zone.getAltitude()) {
                 zone.setFlooded(true);
                 notifyZoneFlooded(zone);
-                
+
                 // Création de l'alerte avec le nouveau constructeur
                 alertSystem.addAlert(new Alert(
-                    AlertType.INONDATION,                                     // Type
-                    "Zone inondée : " + zone.getName(),                // Description
-                    zone.getName(),                                   // Localisation
-                    "Élevée",                                         // Sévérité (remplace ALERT_URGENCY_FLOOD)
-                    time,                                             // Heure
-                    "Active"                                          // Statut
+                        AlertType.INONDATION, // Type
+                        "Zone inondée : " + zone.getName(), // Description
+                        zone.getName(), // Localisation
+                        "Élevée", // Sévérité (remplace ALERT_URGENCY_FLOOD)
+                        time, // Heure
+                        "Active" // Statut
                 ));
             }
         }
@@ -313,12 +309,12 @@ public class FloodSimulation {
                 notifyZoneEvacuated(zone);
                 String time = java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
                 alertSystem.addAlert(new Alert(
-                    AlertType.EVACUATION,                                        // Type
-                    "Évacuation réussie dans " + zone.getName(),          // Description
-                    zone.getName(),                                       // Localisation
-                    "Faible",                                             // Sévérité (remplace l'ancien niveau numérique)
-                    time,                                                 // Heure actuelle
-                    "Résolue"                                             // Statut
+                        AlertType.EVACUATION, // Type
+                        "Évacuation réussie dans " + zone.getName(), // Description
+                        zone.getName(), // Localisation
+                        "Faible", // Sévérité (remplace l'ancien niveau numérique)
+                        time, // Heure actuelle
+                        "Résolue" // Statut
                 ));
             }
         }
@@ -354,7 +350,6 @@ public class FloodSimulation {
         notifyZoneChange();
         notifySimulationUpdated();
     }
-
 
     public void removeZone(Zone zone) {
         zones.remove(zone);
@@ -397,14 +392,9 @@ public class FloodSimulation {
         notifyAgentChange();
     }
 
-
-
-
-    
     private void persist() {
         dataService.saveAll(
-            new ArrayList<>(zones),
-            new ArrayList<>(agents)
-        );
+                new ArrayList<>(zones),
+                new ArrayList<>(agents));
     }
 }

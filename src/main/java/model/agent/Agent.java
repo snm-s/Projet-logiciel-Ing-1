@@ -21,7 +21,6 @@ import model.zone.Zone;
 )
 @JsonSubTypes({
     @JsonSubTypes.Type(value = Citizen.class, name = "citizen"),
-    @JsonSubTypes.Type(value = PMRAgent.class, name = "pmr"),
     @JsonSubTypes.Type(value = RescueAgent.class, name = "rescueAgent"),
     @JsonSubTypes.Type(value = AdminAgent.class, name = "admin")
 })
@@ -154,11 +153,6 @@ public abstract class Agent {
     }
     
     
-    public boolean isSaved() {
-        // Un agent est sauvé s'il est arrivé sur un nœud de type REFUGE (on complétera après)
-        return false; 
-    }
-
 
     public double getMaxSpeed() { 
         return maxSpeed; 
@@ -175,6 +169,5 @@ public abstract class Agent {
     public void setCongestionTolerance(double congestionTolerance) {
         this.congestionTolerance = congestionTolerance;
     }
-
 
 }

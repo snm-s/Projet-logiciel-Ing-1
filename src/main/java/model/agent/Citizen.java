@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import model.enums.CitizenState;
+import model.enums.MobilityStatus;
 import model.graph.Node;
 
 
@@ -14,7 +15,7 @@ import model.graph.Node;
 public class Citizen extends Agent {
     private CitizenState state;
 
-    private String mobilityStatus;
+    private MobilityStatus mobilityStatus;
     private HouseType houseType;
     private int floor;
     private int householdSize;
@@ -31,13 +32,13 @@ public class Citizen extends Agent {
     public Citizen() {
         super();
         this.state = CitizenState.CALM;
-        this.mobilityStatus = "normal";
+        this.mobilityStatus = MobilityStatus.NORMAL;
     }
 
     public Citizen(int id, String firstName, String lastName, Node position) {
         super(id, firstName, lastName, position);
         this.state = CitizenState.CALM;
-        this.mobilityStatus = "normal";
+        this.mobilityStatus = MobilityStatus.NORMAL;
     }
 
     @JsonIgnore
@@ -49,11 +50,11 @@ public class Citizen extends Agent {
         this.state = state;
     }
 
-    public String getMobilityStatus() {
+    public MobilityStatus getMobilityStatus() {
         return mobilityStatus;
     }
 
-    public void setMobilityStatus(String mobilityStatus) {
+    public void setMobilityStatus(MobilityStatus mobilityStatus) {
         this.mobilityStatus = mobilityStatus;
     }
 
@@ -153,27 +154,29 @@ public class Citizen extends Agent {
 
     @JsonIgnore
     public boolean isMobilityReduced() {
-        return "pmr".equalsIgnoreCase(mobilityStatus);
+        return mobilityStatus==MobilityStatus.PMR;
     }
     
+    /*
     public void setMobilityReduced(boolean mobilityReduced) {
         this.mobilityStatus = mobilityReduced ? "pmr" : "normal";
     }
+    */
 
     public void calculateMobilityStatus(LocalDate birthDate) {
         if (birthDate == null) {
-            this.mobilityStatus = "normal";
+            this.mobilityStatus = MobilityStatus.NORMAL;
             return;
         }
 
         int age = Period.between(birthDate, LocalDate.now()).getYears();
 
         if (age < 18) {
-            this.mobilityStatus = "child";
+            this.mobilityStatus = MobilityStatus.CHILD;
         } else if (age >= 65) {
-            this.mobilityStatus = "elderly";
+            this.mobilityStatus = MobilityStatus.ELDERY;
         } else {
-            this.mobilityStatus = "normal";
+            this.mobilityStatus = MobilityStatus.NORMAL;
         }
     }
 }

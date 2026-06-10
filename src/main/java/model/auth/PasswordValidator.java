@@ -1,4 +1,4 @@
-package model.validation;
+package model.auth;
 
 public class PasswordValidator {
 

@@ -6,5 +6,5 @@ public enum AlertType {
     ROUTE,
     AUTRE,
     EVACUATION;
-
+    
 }

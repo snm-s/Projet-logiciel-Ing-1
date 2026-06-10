@@ -11,6 +11,16 @@ public class RescueAgent extends Agent {
     private String teamType;
     private RescueState state;
 
+    // Constructeur vide nécessaire pour Jackson
+    public RescueAgent() {
+        super();
+        this.state = RescueState.UNAVAILABLE; // État par défaut
+    }
+
+    public RescueAgent(int id, String firstName, String lastName, Node position) {
+        super(id, firstName, lastName, position);
+        this.state = RescueState.UNAVAILABLE; // État par défaut
+    }
 
     public String getTeamType() {
         return teamType;
@@ -20,7 +30,6 @@ public class RescueAgent extends Agent {
         this.teamType = teamType;
     }
 
-  
     public RescueState getState() {
         return state;
     }
@@ -29,25 +38,8 @@ public class RescueAgent extends Agent {
         this.state = state;
     }
 
-
-
-
-
-
-    // Constructeur vide nécessaire pour Jackson
-    public RescueAgent() {
-        super();
-        this.state = RescueState.INDISPONIBLE; // État par défaut
-    }
-    
-    public RescueAgent(int id, String firstName, String lastName, Node position) {
-        super(id, firstName, lastName, position);
-        this.state = RescueState.INDISPONIBLE; // État par défaut
-    }
-
-
-    public boolean isIdle() {
+    public boolean isAvailable() {
         // Renvoie true si l'équipe n'a pas de mission en cours
-        return getDestination() == null;
+        return this.state == RescueState.AVAILABLE;
     }
 }

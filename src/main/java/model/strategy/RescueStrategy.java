@@ -21,7 +21,7 @@ public class RescueStrategy implements Strategy {
         }
 
         if (agent instanceof RescueAgent) {
-            ((RescueAgent) agent).setState(RescueState.EN_ROUTE);
+            ((RescueAgent) agent).setState(RescueState.IN_ROUTE);
         }
 
         Node flooded = Strategy.findNearestFloodedZone(agent.getPosition(), zones);

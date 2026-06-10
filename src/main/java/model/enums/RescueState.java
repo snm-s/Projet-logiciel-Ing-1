@@ -1,9 +1,9 @@
 package model.enums;
 
 public enum RescueState {
-    DISPONIBLE,
-    EN_ROUTE,
-    EN_INTERVENTION,
-    EN_FORMATION,
-    INDISPONIBLE
+    AVAILABLE,
+    IN_ROUTE,
+    IN_OPERATION,
+    IN_TRAINING,
+    UNAVAILABLE
 }

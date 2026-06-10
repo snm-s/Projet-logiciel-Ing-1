@@ -9,8 +9,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 /**
- * Gestionnaire de zones : charge les zones depuis un fichier JSON et les expose
- * en liste
+ * Gestionnaire de zones : charge les zones depuis un fichier JSON et les expose en liste
  */
 public class ZoneManager {
     private List<Zone> zones;
@@ -29,12 +28,16 @@ public class ZoneManager {
                 createDefaultZones();
                 return;
             }
-
+            zones.clear();
             Gson gson = new Gson();
             FileReader reader = new FileReader(file);
             List<ZoneData> zoneDataList = gson.fromJson(reader, new TypeToken<List<ZoneData>>() {
             }.getType());
             reader.close();
+
+            if (zoneDataList == null) {
+                throw new IllegalStateException("JSON zones invalide ou vide");
+            }
 
             if (zoneDataList != null) {
             for (ZoneData data : zoneDataList) {

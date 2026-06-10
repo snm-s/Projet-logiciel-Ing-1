@@ -16,7 +16,9 @@ public class Shelter extends Zone {
 
     public int getCapacity() { return capacity; }
     @JsonIgnore public int getCurrentOccupancy() { return currentOccupancy; }
+
     public boolean canAccommodate(int numberOfPeople) { return (currentOccupancy + numberOfPeople) <= capacity; }
+    
     public void accommodate(int numberOfPeople) {
         if (canAccommodate(numberOfPeople)) {
             currentOccupancy += numberOfPeople;

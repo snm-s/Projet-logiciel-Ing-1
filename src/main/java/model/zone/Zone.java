@@ -5,6 +5,10 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
+import model.observer.Observer;
+import java.util.ArrayList;
+import java.util.List;
+
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
 @JsonSubTypes({
@@ -12,16 +16,18 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
     @JsonSubTypes.Type(value = Shelter.class,      name = "shelter")
 })
 public abstract class Zone {
-    protected int id;
-    protected String name;
-    protected double latitude;
-    protected double longitude;
-    protected double altitude;
-    protected int population;
-    protected String description;
-    protected boolean flooded;
-    protected boolean evacuated;
+    private int id;
+    private String name;
+    private double latitude;
+    private double longitude;
+    private double altitude;
+    private int population;
+    private String description;
+    private boolean flooded;
+    private boolean evacuated;
 
+    @JsonIgnore
+    private final List<Observer> observers = new ArrayList<>();
 
 
     
@@ -83,15 +89,39 @@ public abstract class Zone {
 
     // Setters
     public void setFlooded(boolean flooded) {
-        this.flooded = flooded;
+        if (this.flooded != flooded) {
+            this.flooded = flooded;
+            notifyObservers();
+        }
     }
 
     public void setEvacuated(boolean evacuated) {
-        this.evacuated = evacuated;
+        if (this.evacuated != evacuated) {
+            this.evacuated = evacuated;
+            notifyObservers();
+        }
     }
 
     public void reset() {
         this.flooded = false;
         this.evacuated = false;
+        notifyObservers();
     }
+
+
+    public void addObserver(Observer o) {
+        observers.add(o);
+    }
+
+    public void removeObserver(Observer o) {
+        observers.remove(o);
+    }
+
+    private void notifyObservers() {
+        for (Observer o : observers) {
+            o.update(this);
+        }
+    }
+
+
 }

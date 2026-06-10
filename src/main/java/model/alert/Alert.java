@@ -1,67 +1,108 @@
 package model.alert;
 
+import model.enums.AlertSeverity;
+
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
+import model.enums.AlertStatus;
 import model.enums.AlertType;
+import model.graph.Node;
 
 public class Alert {
     private int id;
     private AlertType type;
-    private StringProperty description;
+    private String description;
 
+    private Node localisation;
+    private AlertSeverity severity;
+    private String time;
+    private String status; // "Active", "Résolue", "En attente"
+    private String origin; // "admin" | "suggestion"
 
-    private final StringProperty localisation;
-    private final StringProperty severity;
-    private final StringProperty time;
-    private final StringProperty status;   // "Active", "Résolue", "En attente"
-    private final StringProperty origin;   // "admin" | "suggestion"
-
-    public Alert(model.enums.AlertType evacuation, String description, String localisation,
-                 String severity, String time, String status) {
-        this(evacuation, description, localisation, severity, time, status, "admin");
+    public Alert(AlertType type, String description, Node localisation,
+            AlertSeverity severity, String time, String status) {
+        this(type, description, localisation, severity, time, status, "admin");
     }
 
-    public Alert(AlertType type, String description, String localisation,
-                 String severity, String time, String status, String origin) {
-        this.id           = 0;
-        this.type         = type;
-        this.description  = new SimpleStringProperty(description);
-        this.localisation = new SimpleStringProperty(localisation);
-        this.severity     = new SimpleStringProperty(severity);
-        this.time         = new SimpleStringProperty(time);
-        this.status       = new SimpleStringProperty(status);
-        this.origin       = new SimpleStringProperty(origin);
+    public Alert(AlertType type, String description, Node localisation,
+            AlertSeverity severity, String time, String status, String origin) {
+        this.id = 0;
+        this.type = type;
+        this.description = description;
+        this.localisation = localisation;
+        this.severity = severity;
+        this.time = time;
+        this.status = status;
+        this.origin = origin;
     }
-
-    // JavaFX Properties
-    public AlertType typeProperty()         { return type; }
-    public StringProperty descriptionProperty()  { return description; }
-    public StringProperty localisationProperty() { return localisation; }
-    public StringProperty severityProperty()     { return severity; }
-    public StringProperty timeProperty()         { return time; }
-    public StringProperty statusProperty()       { return status; }
-    public StringProperty originProperty()       { return origin; }
 
     // Getters
-    public int    getId()           { return id; }
-    public AlertType getType()         { return type; }
-    public String getDescription()  { return description.get(); }
-    public String getLocalisation() { return localisation.get(); }
-    public String getSeverity()     { return severity.get(); }
-    public String getTime()         { return time.get(); }
-    public String getStatus()       { return status.get(); }
-    public String getOrigin()       { return origin.get(); }
+    public int getId() {
+        return id;
+    }
+
+    public AlertType getType() {
+        return type;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public Node getLocalisation() {
+        return localisation;
+    }
+
+    public AlertSeverity getSeverity() {
+        return severity;
+    }
+
+    public String getTime() {
+        return time;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public String getOrigin() {
+        return origin;
+    }
 
     // Setters
-    public void setId(int id)              { this.id = id; }
-    public void setDescription(StringProperty description) {this.description = description;}
-    public void setType(AlertType v)          { this.type=v; }
-    public void setDescription(String v)   { description.set(v); }
-    public void setLocalisation(String v)  { localisation.set(v); }
-    public void setSeverity(String v)      { severity.set(v); }
-    public void setTime(String v)          { time.set(v); }
-    public void setStatus(String v)        { status.set(v); }
-    public void setOrigin(String v)        { origin.set(v); }
+    public void setId(int id) {
+        this.id = id;
+    }
 
-    public boolean isSuggestion() { return "suggestion".equalsIgnoreCase(origin.get()); }
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setType(AlertType v) {
+        this.type = v;
+    }
+
+    public void setLocalisation(Node v) {
+        localisation = v;
+    }
+
+    public void setSeverity(AlertSeverity v) {
+        severity = v;
+    }
+
+    public void setTime(String v) {
+        time = v;
+    }
+
+    public void setStatus(String v) {
+        status = v;
+    }
+
+    public void setOrigin(String v) {
+        origin = v;
+    }
+
+    public boolean isSuggestion() {
+        return "suggestion".equalsIgnoreCase(origin);
+    }
 }
