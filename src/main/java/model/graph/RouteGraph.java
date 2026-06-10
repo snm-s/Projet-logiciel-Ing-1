@@ -1,15 +1,5 @@
 package model.graph;
 
-import model.agent.Agent;
-import model.agent.Citizen;
-import model.agent.RescueAgent;
-import model.algorithms.EvacuationPath;
-import model.algorithms.EvacuationRouter;
-import model.enums.CitizenState;
-import model.zone.Zone;
-import model.zone.Shelter;
-import org.jxmapviewer.viewer.GeoPosition;
-
 import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -17,10 +7,25 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+
+import org.jxmapviewer.viewer.GeoPosition;
+
+import model.agent.Agent;
+import model.agent.RescueAgent;
+import model.algorithms.EvacuationPath;
+import model.algorithms.EvacuationRouter;
+import model.zone.Shelter;
+import model.zone.Zone;
 
 /**
  * Graphe de routes pour la simulation d'inondation.
@@ -81,18 +86,43 @@ public class RouteGraph {
 
     private void generateDefaultRoutes() {
         int[][] connections = {
-            {1,2,800},{1,3,1000},{1,4,600},{1,5,900},{1,9,700},
-            {2,6,500},{2,10,400},{3,7,1100},{5,7,1200},{7,8,1000},
-            {6,10,300},{4,9,800},{9,1,700},{3,8,600},{5,9,750}
+            {1, 2, 1200}, // Bellecour -> Part-Dieu
+            {1, 3, 900},  // Bellecour -> Guillotière
+            {1, 5, 900},  // Bellecour -> Confluence
+            {1, 7, 700},  // Bellecour -> Fourvière
+    
+            {2, 3, 700},  // Part-Dieu -> Guillotière
+            {2, 6, 1000}, // Part-Dieu -> Croix-Rousse
+    
+            {3, 4, 900},  // Guillotière -> Gerland
+            {4, 5, 700},  // Gerland -> Confluence
+    
+            {6, 8, 600},  // Croix-Rousse -> Refuge Croix-Rousse
+            {7, 9, 600},  // Fourvière -> Refuge Fourvière
+    
+            {6, 7, 800}   // Croix-Rousse -> Fourvière
         };
+    
         int id = 1;
+    
         for (int[] c : connections) {
             Zone from = zoneMap.get(c[0]);
-            Zone to   = zoneMap.get(c[1]);
+            Zone to = zoneMap.get(c[1]);
+    
             if (from == null || to == null) continue;
+    
             List<GeoPosition> wp = fetchOsrmRoute(from, to);
-            edges.add(new Edge(id++, from.getName() + " → " + to.getName(),
-                from, to, wp, c[2], 0, 0));
+    
+            edges.add(new Edge(
+                id++,
+                from.getName() + " → " + to.getName(),
+                from,
+                to,
+                wp,
+                c[2],
+                0,
+                0
+            ));
         }
     }
 
