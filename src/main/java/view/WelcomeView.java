@@ -1,9 +1,12 @@
 package view;
 
 import app.Main;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -11,329 +14,405 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.ClosePath;
-import javafx.scene.shape.CubicCurveTo;
-import javafx.scene.shape.LineTo;
-import javafx.scene.shape.MoveTo;
-import javafx.scene.shape.Path;
-import javafx.scene.shape.Polygon;
-import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.Circle;
+import javafx.scene.shape.Line;
 import javafx.scene.shape.SVGPath;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+import javafx.util.Duration;
 
 public class WelcomeView extends StackPane {
 
-    private static final String BLUE = "#0e73eb";
-    private static final String LIGHT = "#b8c7dd";
-    private static final String WHITE = "#ffffff";
+    private static final String TEXT = "#f4f7fb";
+    private static final String MUTED = "#8493ad";
+    private static final String BLUE = "#3b6cff";
+    private static final String BLUE_HOVER = "#4d7dff";
+    private static final String BLUE_DARK = "#244fd6";
+
+    private Circle glow1;
+    private Circle glow2;
+    private Circle glow3;
+    private Circle glow4;
+    private Circle glow5;
+    private Circle glow6;
 
     public WelcomeView() {
+        this.setMinSize(0, 0);
+        this.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        this.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        this.setStyle("-fx-background-color:#060a12;");
+
         buildUI();
     }
 
     private void buildUI() {
-        setPrefSize(1100, 650);
-
         Region background = new Region();
-
-var imageUrl = getClass().getResource("/images/imagefond.png");
-
-if (imageUrl != null) {
-    background.setStyle(
-        "-fx-background-image: url('" + imageUrl.toExternalForm() + "');" +
-        "-fx-background-size: cover;" +
-        "-fx-background-position: center;" +
-        "-fx-background-repeat: no-repeat;"
-    );
-} else {
-    background.setStyle("-fx-background-color: #06172b;");
-    System.out.println("Image introuvable : /images/imagefond.png");
-}
-
-Region overlay = new Region();
-overlay.setStyle(
-    "-fx-background-color: linear-gradient(to bottom," +
-    "rgba(2,8,18,0.08)," +
-    "rgba(3,12,25,0.18)," +
-    "rgba(3,12,25,0.35));"
-);
-
-        VBox card = new VBox(22);
-        card.setAlignment(Pos.CENTER);
-        card.setPadding(new Insets(35, 45, 35, 45));
-        card.setMaxWidth(620);
-        card.setStyle(
-            "-fx-background-color: rgba(8, 22, 42, 0.58);" +
-            "-fx-background-radius: 28;" +
-            "-fx-border-radius: 28;" +
-            "-fx-border-color: rgba(255,255,255,0.28);" +
-            "-fx-border-width: 1.2;" +
-            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 32, 0, 0, 10);"
+        background.prefWidthProperty().bind(this.widthProperty());
+        background.prefHeightProperty().bind(this.heightProperty());
+        background.setMinSize(0, 0);
+        background.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        background.setStyle(
+                "-fx-background-color:" +
+                        "radial-gradient(center 18% 20%, radius 60%, rgba(59,108,255,0.22), transparent 58%)," +
+                        "radial-gradient(center 85% 78%, radius 70%, rgba(59,108,255,0.14), transparent 60%)," +
+                        "linear-gradient(to bottom right, #060a12, #0a101b, #05070d);"
         );
 
-        StackPane logo = createLogo();
+        Pane grid = buildGrid();
+        grid.prefWidthProperty().bind(this.widthProperty());
+        grid.prefHeightProperty().bind(this.heightProperty());
+        grid.setMinSize(0, 0);
+        grid.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
 
-        Text title = new Text("SIMULATION ");
-        title.setFont(Font.font("System", FontWeight.BOLD, 34));
-        title.setFill(Color.WHITE);
+        startBackgroundAnimation();
 
-        Text titleBlue = new Text("D'INONDATION");
-        titleBlue.setFont(Font.font("System", FontWeight.BOLD, 34));
-        titleBlue.setFill(Color.web(BLUE));
+        VBox content = buildHeroContent();
+        StackPane.setAlignment(content, Pos.CENTER_LEFT);
+        StackPane.setMargin(content, new Insets(0, 0, 0, 150));
 
-        HBox titleBox = new HBox(title, titleBlue);
-        titleBox.setAlignment(Pos.CENTER);
+        getChildren().addAll(background, grid, content);
+    }
 
-        Text subtitle = new Text("Système de gestion des urgences");
-        subtitle.setFont(Font.font("System", FontWeight.LIGHT, 18));
-        subtitle.setFill(Color.web(LIGHT));
+    private Pane buildGrid() {
+        Pane pane = new Pane();
+        pane.setMouseTransparent(true);
 
-        Region line = new Region();
-        line.setPrefSize(45, 3);
-        line.setStyle("-fx-background-color: " + BLUE + "; -fx-background-radius: 20;");
+        for (int x = 0; x < 2400; x += 54) {
+            Line line = new Line(x, 0, x, 1800);
+            line.setStroke(Color.web("rgba(255,255,255,0.045)"));
+            line.setStrokeWidth(1);
+            pane.getChildren().add(line);
+        }
 
-        HBox features = new HBox(44);
-        features.setAlignment(Pos.CENTER);
-        features.getChildren().addAll(
-            createFeature(createShieldIcon(), "Anticiper", "les risques"),
-            createFeature(createPinIcon(), "Coordonner", "les secours"),
-            createFeature(createUsersIcon(), "Protéger", "les populations"),
-            createFeature(createChartIcon(), "Simuler", "les scénarios")
+        for (int y = 0; y < 1800; y += 54) {
+            Line line = new Line(0, y, 2400, y);
+            line.setStroke(Color.web("rgba(255,255,255,0.040)"));
+            line.setStrokeWidth(1);
+            pane.getChildren().add(line);
+        }
+
+        glow1 = new Circle(230, 155, 185);
+        glow1.setFill(Color.web("rgba(59,108,255,0.110)"));
+
+        glow2 = new Circle(700, 120, 125);
+        glow2.setFill(Color.web("rgba(59,108,255,0.055)"));
+
+        glow3 = new Circle(1030, 610, 215);
+        glow3.setFill(Color.web("rgba(59,108,255,0.075)"));
+
+        glow4 = new Circle(170, 700, 105);
+        glow4.setFill(Color.web("rgba(59,108,255,0.045)"));
+
+        glow5 = new Circle(1210, 250, 90);
+        glow5.setFill(Color.web("rgba(59,108,255,0.040)"));
+
+        glow6 = new Circle(1260, 860, 135);
+        glow6.setFill(Color.web("rgba(59,108,255,0.050)"));
+
+        pane.getChildren().addAll(glow1, glow2, glow3, glow4, glow5, glow6);
+        return pane;
+    }
+
+    private void startBackgroundAnimation() {
+        if (glow1 == null || glow2 == null || glow3 == null || glow4 == null || glow5 == null || glow6 == null) {
+            return;
+        }
+
+        Timeline timeline = new Timeline(
+                new KeyFrame(Duration.ZERO,
+                        new KeyValue(glow1.translateXProperty(), 0),
+                        new KeyValue(glow1.translateYProperty(), 0),
+                        new KeyValue(glow2.translateXProperty(), 0),
+                        new KeyValue(glow2.translateYProperty(), 0),
+                        new KeyValue(glow3.translateXProperty(), 0),
+                        new KeyValue(glow3.translateYProperty(), 0),
+                        new KeyValue(glow4.translateXProperty(), 0),
+                        new KeyValue(glow4.translateYProperty(), 0),
+                        new KeyValue(glow5.translateXProperty(), 0),
+                        new KeyValue(glow5.translateYProperty(), 0),
+                        new KeyValue(glow6.translateXProperty(), 0),
+                        new KeyValue(glow6.translateYProperty(), 0),
+
+                        new KeyValue(glow1.opacityProperty(), 0.75),
+                        new KeyValue(glow2.opacityProperty(), 0.55),
+                        new KeyValue(glow3.opacityProperty(), 0.68),
+                        new KeyValue(glow4.opacityProperty(), 0.42),
+                        new KeyValue(glow5.opacityProperty(), 0.38),
+                        new KeyValue(glow6.opacityProperty(), 0.45)
+                ),
+                new KeyFrame(Duration.seconds(6),
+                        new KeyValue(glow1.translateXProperty(), 55),
+                        new KeyValue(glow1.translateYProperty(), 28),
+                        new KeyValue(glow2.translateXProperty(), -40),
+                        new KeyValue(glow2.translateYProperty(), 18),
+                        new KeyValue(glow3.translateXProperty(), -62),
+                        new KeyValue(glow3.translateYProperty(), -36),
+                        new KeyValue(glow4.translateXProperty(), 22),
+                        new KeyValue(glow4.translateYProperty(), -30),
+                        new KeyValue(glow5.translateXProperty(), -25),
+                        new KeyValue(glow5.translateYProperty(), 35),
+                        new KeyValue(glow6.translateXProperty(), 30),
+                        new KeyValue(glow6.translateYProperty(), -20),
+
+                        new KeyValue(glow1.opacityProperty(), 0.90),
+                        new KeyValue(glow2.opacityProperty(), 0.72),
+                        new KeyValue(glow3.opacityProperty(), 0.83),
+                        new KeyValue(glow4.opacityProperty(), 0.58),
+                        new KeyValue(glow5.opacityProperty(), 0.50),
+                        new KeyValue(glow6.opacityProperty(), 0.62)
+                ),
+                new KeyFrame(Duration.seconds(12),
+                        new KeyValue(glow1.translateXProperty(), -20),
+                        new KeyValue(glow1.translateYProperty(), 15),
+                        new KeyValue(glow2.translateXProperty(), 35),
+                        new KeyValue(glow2.translateYProperty(), -15),
+                        new KeyValue(glow3.translateXProperty(), 18),
+                        new KeyValue(glow3.translateYProperty(), 20),
+                        new KeyValue(glow4.translateXProperty(), -18),
+                        new KeyValue(glow4.translateYProperty(), 24),
+                        new KeyValue(glow5.translateXProperty(), 20),
+                        new KeyValue(glow5.translateYProperty(), -28),
+                        new KeyValue(glow6.translateXProperty(), -22),
+                        new KeyValue(glow6.translateYProperty(), 26),
+
+                        new KeyValue(glow1.opacityProperty(), 0.78),
+                        new KeyValue(glow2.opacityProperty(), 0.56),
+                        new KeyValue(glow3.opacityProperty(), 0.70),
+                        new KeyValue(glow4.opacityProperty(), 0.47),
+                        new KeyValue(glow5.opacityProperty(), 0.40),
+                        new KeyValue(glow6.opacityProperty(), 0.48)
+                ),
+                new KeyFrame(Duration.seconds(18),
+                        new KeyValue(glow1.translateXProperty(), 0),
+                        new KeyValue(glow1.translateYProperty(), 0),
+                        new KeyValue(glow2.translateXProperty(), 0),
+                        new KeyValue(glow2.translateYProperty(), 0),
+                        new KeyValue(glow3.translateXProperty(), 0),
+                        new KeyValue(glow3.translateYProperty(), 0),
+                        new KeyValue(glow4.translateXProperty(), 0),
+                        new KeyValue(glow4.translateYProperty(), 0),
+                        new KeyValue(glow5.translateXProperty(), 0),
+                        new KeyValue(glow5.translateYProperty(), 0),
+                        new KeyValue(glow6.translateXProperty(), 0),
+                        new KeyValue(glow6.translateYProperty(), 0),
+
+                        new KeyValue(glow1.opacityProperty(), 0.75),
+                        new KeyValue(glow2.opacityProperty(), 0.55),
+                        new KeyValue(glow3.opacityProperty(), 0.68),
+                        new KeyValue(glow4.opacityProperty(), 0.42),
+                        new KeyValue(glow5.opacityProperty(), 0.38),
+                        new KeyValue(glow6.opacityProperty(), 0.45)
+                )
         );
 
-        Button loginButton = createMainButton("Se connecter", createLoginIcon());
-        Button registerButton = createSecondaryButton("S'inscrire", createUserPlusIcon());
+        timeline.setCycleCount(Animation.INDEFINITE);
+        timeline.play();
+    }
+
+    private VBox buildHeroContent() {
+        VBox left = new VBox(0);
+        left.setAlignment(Pos.CENTER_LEFT);
+        left.setMaxWidth(720);
+
+        HBox brand = new HBox(14);
+        brand.setAlignment(Pos.CENTER_LEFT);
+
+        StackPane logo = createLogoBox(46);
+
+        VBox brandText = new VBox(1);
+
+        Text brandName = new Text("Inondation");
+        brandName.setFont(Font.font("System", FontWeight.BOLD, 23));
+        brandName.setFill(Color.web(TEXT));
+
+        Text brandSub = new Text("Simulation & Gestion des urgences");
+        brandSub.setFont(Font.font("System", FontWeight.NORMAL, 13));
+        brandSub.setFill(Color.web("#536682"));
+
+        brandText.getChildren().addAll(brandName, brandSub);
+        brand.getChildren().addAll(logo, brandText);
+
+        Region spacerTop = createSpacer(75);
+
+        Text overline = new Text("PLATEFORME DE SIMULATION");
+        overline.setFont(Font.font("System", FontWeight.BOLD, 12));
+        overline.setFill(Color.web(BLUE));
+        overline.setStyle("-fx-letter-spacing:3px;");
+
+        Text title1 = new Text("Anticiper.");
+        title1.setFont(Font.font("System", FontWeight.EXTRA_BOLD, 70));
+        title1.setFill(Color.web(TEXT));
+
+        Text title2 = new Text("Alerter.");
+        title2.setFont(Font.font("System", FontWeight.EXTRA_BOLD, 70));
+        title2.setFill(Color.web("#b8c8ff"));
+
+        Text title3 = new Text("Protéger.");
+        title3.setFont(Font.font("System", FontWeight.EXTRA_BOLD, 70));
+        title3.setFill(Color.web(BLUE_HOVER));
+
+        VBox titleBox = new VBox(-9, title1, title2, title3);
+
+        Text subtitle = new Text(
+                "Une application de simulation d’inondation permettant de visualiser les zones à risque,\n" +
+                        "gérer les alertes et coordonner les citoyens avec les équipes de secours."
+        );
+        subtitle.setFont(Font.font("System", FontWeight.NORMAL, 15));
+        subtitle.setFill(Color.web(MUTED));
+        subtitle.setLineSpacing(5);
+
+        Region accent = new Region();
+        accent.setPrefWidth(315);
+        accent.setMaxWidth(315);
+        accent.setPrefHeight(3);
+        accent.setStyle(
+                "-fx-background-color:linear-gradient(to right, " + BLUE + ", rgba(59,108,255,0.12));" +
+                        "-fx-background-radius:99;"
+        );
+
+        HBox buttons = new HBox(16);
+        buttons.setAlignment(Pos.CENTER_LEFT);
+
+        Button loginButton = createPrimaryButton("Se connecter");
+        Button registerButton = createSecondaryButton("Créer un compte");
 
         loginButton.setOnAction(e -> Main.showLoginView());
         registerButton.setOnAction(e -> Main.showRegisterView());
 
-        VBox buttons = new VBox(14, loginButton, registerButton);
-        buttons.setAlignment(Pos.CENTER);
+        buttons.getChildren().addAll(loginButton, registerButton);
 
-        card.getChildren().addAll(logo, titleBox, subtitle, line, features, buttons);
-
-        VBox mission = createMissionBlock();
-        HBox footer = createFooter();
-
-        VBox content = new VBox(18, card, mission, footer);
-        content.setAlignment(Pos.CENTER);
-
-        getChildren().addAll(background, overlay, content);
-    }
-
-    private VBox createFeature(Node icon, String title, String subtitle) {
-        StackPane circle = new StackPane(icon);
-        circle.setPrefSize(58, 58);
-        circle.setStyle(
-            "-fx-background-color: rgba(14,115,235,0.18);" +
-            "-fx-background-radius: 50;" +
-            "-fx-effect: dropshadow(gaussian, rgba(14,115,235,0.25), 18, 0, 0, 0);"
+        HBox chips = new HBox(10);
+        chips.setAlignment(Pos.CENTER_LEFT);
+        chips.getChildren().addAll(
+                createChip("Simulation temps réel"),
+                createChip("Alertes"),
+                createChip("Secours")
         );
 
-        Text titleText = new Text(title);
-        titleText.setFont(Font.font("System", FontWeight.BOLD, 14));
-        titleText.setFill(Color.WHITE);
+        Region spacerBottom = createSpacer(45);
 
-        Text subText = new Text(subtitle);
-        subText.setFont(Font.font("System", FontWeight.NORMAL, 13));
-        subText.setFill(Color.web(LIGHT));
+        Text footer = new Text("Projet ING1  •  Agents & Graphes  •  CY Tech");
+        footer.setFont(Font.font("System", FontWeight.NORMAL, 12));
+        footer.setFill(Color.web("#314058"));
 
-        VBox box = new VBox(7, circle, titleText, subText);
-        box.setAlignment(Pos.CENTER);
-        return box;
-    }
-
-    private VBox createMissionBlock() {
-        StackPane drop = new StackPane(createDropIcon());
-        drop.setPrefSize(45, 32);
-
-        Text title = new Text("Notre mission");
-        title.setFont(Font.font("System", FontWeight.BOLD, 17));
-        title.setFill(Color.web(BLUE));
-
-        Text desc = new Text("Fournir des outils avancés pour anticiper, gérer et réduire\nl'impact des inondations et sauver des vies.");
-        desc.setFont(Font.font("System", FontWeight.NORMAL, 13));
-        desc.setFill(Color.web(LIGHT));
-        desc.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
-
-        VBox box = new VBox(6, drop, title, desc);
-        box.setAlignment(Pos.CENTER);
-        return box;
-    }
-
-    private HBox createFooter() {
-        HBox footer = new HBox(70);
-        footer.setAlignment(Pos.CENTER);
-        footer.getChildren().addAll(
-            createFooterItem(createLockIcon(), "Sécurisé et confidentiel"),
-            createFooterItem(createMapIcon(), "Données fiables et à jour"),
-            createFooterItem(createSmallUsersIcon(), "Conçu pour les professionnels\net les citoyens")
+        left.getChildren().addAll(
+                brand,
+                spacerTop,
+                overline,
+                createSpacer(14),
+                titleBox,
+                createSpacer(22),
+                subtitle,
+                createSpacer(24),
+                accent,
+                createSpacer(32),
+                buttons,
+                createSpacer(22),
+                chips,
+                spacerBottom,
+                footer
         );
-        return footer;
+
+        return left;
     }
 
-    private HBox createFooterItem(Node icon, String text) {
-        StackPane circle = new StackPane(icon);
-        circle.setPrefSize(32, 32);
-        circle.setStyle("-fx-background-color: rgba(14,115,235,0.18); -fx-background-radius: 50;");
+    private Button createPrimaryButton(String text) {
+        Button button = new Button(text + "     →");
+        button.setPrefWidth(230);
+        button.setPrefHeight(58);
+        button.setTextFill(Color.WHITE);
+        button.setFont(Font.font("System", FontWeight.EXTRA_BOLD, 16));
+        button.setStyle(primaryStyle(false));
+
+        button.setOnMouseEntered(e -> button.setStyle(primaryStyle(true)));
+        button.setOnMouseExited(e -> button.setStyle(primaryStyle(false)));
+
+        return button;
+    }
+
+    private Button createSecondaryButton(String text) {
+        Button button = new Button(text + "     →");
+        button.setPrefWidth(245);
+        button.setPrefHeight(58);
+        button.setTextFill(Color.web("#dce6ff"));
+        button.setFont(Font.font("System", FontWeight.EXTRA_BOLD, 16));
+        button.setStyle(secondaryStyle(false));
+
+        button.setOnMouseEntered(e -> button.setStyle(secondaryStyle(true)));
+        button.setOnMouseExited(e -> button.setStyle(secondaryStyle(false)));
+
+        return button;
+    }
+
+    private String primaryStyle(boolean hover) {
+        return "-fx-background-color:" +
+                (hover
+                        ? "linear-gradient(to right, #4778ff, #3157d7)"
+                        : "linear-gradient(to right, " + BLUE_DARK + ", " + BLUE + ")") + ";" +
+                "-fx-background-radius:16;" +
+                "-fx-cursor:hand;" +
+                "-fx-effect:dropshadow(gaussian, rgba(59,108,255,0.35), 22, 0, 0, 8);";
+    }
+
+    private String secondaryStyle(boolean hover) {
+        return "-fx-background-color:" + (hover ? "rgba(59,108,255,0.12)" : "rgba(255,255,255,0.035)") + ";" +
+                "-fx-border-color:" + (hover ? "rgba(77,125,255,0.75)" : "rgba(255,255,255,0.12)") + ";" +
+                "-fx-border-width:1.3;" +
+                "-fx-background-radius:16;" +
+                "-fx-border-radius:16;" +
+                "-fx-cursor:hand;";
+    }
+
+    private StackPane createChip(String text) {
+        StackPane chip = new StackPane();
 
         Text label = new Text(text);
-        label.setFont(Font.font("System", FontWeight.NORMAL, 12));
-        label.setFill(Color.web(LIGHT));
+        label.setFont(Font.font("System", FontWeight.BOLD, 11));
+        label.setFill(Color.web("#9fb2d4"));
 
-        HBox box = new HBox(10, circle, label);
-        box.setAlignment(Pos.CENTER);
-        return box;
-    }
-
-    private Button createMainButton(String text, Node icon) {
-        Button button = new Button(text);
-        button.setGraphic(icon);
-        button.setGraphicTextGap(12);
-        button.setPrefWidth(380);
-        button.setPrefHeight(48);
-        button.setFont(Font.font("System", FontWeight.BOLD, 16));
-        button.setTextFill(Color.WHITE);
-        button.setStyle(
-            "-fx-background-color: linear-gradient(to right, #0b5cbf, #1683ff);" +
-            "-fx-background-radius: 10;" +
-            "-fx-cursor: hand;"
+        chip.getChildren().add(label);
+        chip.setPadding(new Insets(8, 12, 8, 12));
+        chip.setStyle(
+                "-fx-background-color:rgba(255,255,255,0.045);" +
+                        "-fx-background-radius:999;" +
+                        "-fx-border-color:rgba(255,255,255,0.08);" +
+                        "-fx-border-radius:999;"
         );
 
-        button.setOnMouseEntered(e -> button.setStyle(
-            "-fx-background-color: #1683ff;" +
-            "-fx-background-radius: 10;" +
-            "-fx-cursor: hand;"
-        ));
-
-        button.setOnMouseExited(e -> button.setStyle(
-            "-fx-background-color: linear-gradient(to right, #0b5cbf, #1683ff);" +
-            "-fx-background-radius: 10;" +
-            "-fx-cursor: hand;"
-        ));
-
-        return button;
+        return chip;
     }
 
-    private Button createSecondaryButton(String text, Node icon) {
-        Button button = new Button(text);
-        button.setGraphic(icon);
-        button.setGraphicTextGap(12);
-        button.setPrefWidth(380);
-        button.setPrefHeight(48);
-        button.setFont(Font.font("System", FontWeight.BOLD, 15));
-        button.setTextFill(Color.web("#c4d2e6"));
-        button.setStyle(
-            "-fx-background-color: transparent;" +
-            "-fx-border-color: rgba(255,255,255,0.30);" +
-            "-fx-border-width: 1.5;" +
-            "-fx-background-radius: 10;" +
-            "-fx-border-radius: 10;" +
-            "-fx-cursor: hand;"
+    private StackPane createLogoBox(int size) {
+        StackPane logo = new StackPane();
+        logo.setPrefSize(size, size);
+        logo.setMinSize(size, size);
+        logo.setMaxSize(size, size);
+        logo.setStyle(
+                "-fx-background-color:linear-gradient(to bottom right, rgba(59,108,255,0.95), rgba(35,79,214,0.90));" +
+                        "-fx-background-radius:13;" +
+                        "-fx-effect:dropshadow(gaussian, rgba(59,108,255,0.35), 18, 0, 0, 5);"
         );
 
-        button.setOnMouseEntered(e -> button.setStyle(
-            "-fx-background-color: rgba(255,255,255,0.08);" +
-            "-fx-border-color: white;" +
-            "-fx-border-width: 1.5;" +
-            "-fx-background-radius: 10;" +
-            "-fx-border-radius: 10;" +
-            "-fx-text-fill: white;" +
-            "-fx-cursor: hand;"
-        ));
-
-        button.setOnMouseExited(e -> button.setStyle(
-            "-fx-background-color: transparent;" +
-            "-fx-border-color: rgba(255,255,255,0.30);" +
-            "-fx-border-width: 1.5;" +
-            "-fx-background-radius: 10;" +
-            "-fx-border-radius: 10;" +
-            "-fx-text-fill: #c4d2e6;"
-        ));
-
-        return button;
-    }
-
-    private StackPane createLogo() {
-        StackPane logoPane = new StackPane();
-        logoPane.setPrefSize(90, 80);
-    
-        SVGPath house = new SVGPath();
-        house.setContent(
-            "M20 42 L45 20 L70 42 " +
-            "M28 40 V65 H62 V40 " +
-            "M38 65 V50 H52 V65"
+        SVGPath icon = new SVGPath();
+        icon.setContent(
+                "M10 21 L21 11 L32 21 " +
+                        "M14 20 V32 H28 V20 " +
+                        "M18 32 V25 H24 V32"
         );
-        house.setStroke(Color.WHITE);
-        house.setStrokeWidth(4);
-        house.setFill(Color.TRANSPARENT);
-    
-        Path waves = new Path(
-            new MoveTo(25, 70),
-            new CubicCurveTo(35, 66, 45, 74, 55, 70),
-            new CubicCurveTo(65, 66, 75, 74, 85, 70),
-    
-            new MoveTo(25, 77),
-            new CubicCurveTo(35, 73, 45, 81, 55, 77),
-            new CubicCurveTo(65, 73, 75, 81, 85, 77)
-        );
-        waves.setStroke(Color.WHITE);
-        waves.setStrokeWidth(3);
-        waves.setFill(Color.TRANSPARENT);
-    
-        logoPane.getChildren().addAll(house, waves);
-        return logoPane;
+        icon.setStroke(Color.WHITE);
+        icon.setStrokeWidth(2.2);
+        icon.setFill(Color.TRANSPARENT);
+
+        logo.getChildren().add(icon);
+        return logo;
     }
 
-    
-    private SVGPath svg(String content, String color) {
-        SVGPath path = new SVGPath();
-        path.setContent(content);
-        path.setStroke(Color.web(color));
-        path.setStrokeWidth(2.2);
-        path.setFill(Color.TRANSPARENT);
-        return path;
-    }
-
-    private Node createShieldIcon() {
-        return svg("M10 2 L20 6 V13 C20 19 15 23 10 25 C5 23 0 19 0 13 V6 Z M10 8 V18 M6 13 H14", BLUE);
-    }
-
-    private Node createPinIcon() {
-        return svg("M10 2 C6 2 3 5 3 9 C3 15 10 23 10 23 C10 23 17 15 17 9 C17 5 14 2 10 2 Z M10 7 A2.5 2.5 0 1 1 10 12 A2.5 2.5 0 1 1 10 7", BLUE);
-    }
-
-    private Node createUsersIcon() {
-        return svg("M8 11 A4 4 0 1 1 8 3 A4 4 0 1 1 8 11 M1 22 C1 16 15 16 15 22 M18 10 A3 3 0 1 1 18 4 A3 3 0 1 1 18 10 M16 15 C21 15 24 17 24 22", BLUE);
-    }
-
-    private Node createChartIcon() {
-        return svg("M2 22 H23 M5 18 L10 13 L14 16 L21 7 M21 7 V13 M21 7 H15", BLUE);
-    }
-
-    private Node createLoginIcon() {
-        return svg("M3 12 H17 M12 7 L17 12 L12 17 M20 4 H24 V20 H20", WHITE);
-    }
-
-    private Node createUserPlusIcon() {
-        return svg("M8 10 A4 4 0 1 1 8 2 A4 4 0 1 1 8 10 M1 22 C1 16 15 16 15 22 M20 8 V18 M15 13 H25", LIGHT);
-    }
-
-    private Node createDropIcon() {
-        return svg("M10 2 C10 2 4 10 4 15 A6 6 0 1 0 16 15 C16 10 10 2 10 2 Z M1 23 C5 20 15 20 19 23", BLUE);
-    }
-
-    private Node createLockIcon() {
-        return svg("M5 11 H19 V23 H5 Z M8 11 V7 A4 4 0 0 1 16 7 V11", BLUE);
-    }
-
-    private Node createMapIcon() {
-        return svg("M3 5 L9 2 L15 5 L21 2 V20 L15 23 L9 20 L3 23 Z M9 2 V20 M15 5 V23", BLUE);
-    }
-
-    private Node createSmallUsersIcon() {
-        return svg("M8 10 A4 4 0 1 1 8 2 A4 4 0 1 1 8 10 M1 22 C1 16 15 16 15 22 M18 9 A3 3 0 1 1 18 3 A3 3 0 1 1 18 9 M16 15 C21 15 24 17 24 22", BLUE);
+    private Region createSpacer(double height) {
+        Region r = new Region();
+        r.setPrefHeight(height);
+        r.setMinHeight(height);
+        r.setMaxHeight(height);
+        return r;
     }
 }
