@@ -53,14 +53,12 @@ public class AgentPainter implements Painter<JXMapViewer> {
 
     public void setRouteGraph(RouteGraph routeGraph) {
         this.routeGraph = routeGraph;
-        snapAgentsToGraph();
     }
 
     public void setAgents(List<Agent> agents, List<Zone> zones) {
         this.agents = agents == null ? new ArrayList<>() : new ArrayList<>(agents);
         this.zones = zones == null ? new ArrayList<>() : new ArrayList<>(zones);
         ensurePositions();
-        snapAgentsToGraph();
     }
 
     public List<Agent> getAgents() {
@@ -94,7 +92,6 @@ public class AgentPainter implements Painter<JXMapViewer> {
 
     public void endDrag() {
         if (draggedAgent != null) {
-            snapAgentToNearestGraphElement(draggedAgent);
             boolean danger = isDangerAt(positionOf(draggedAgent).getLatitude(), positionOf(draggedAgent).getLongitude());
             if (!danger) setPanic(draggedAgent, false);
         }
@@ -282,11 +279,6 @@ public class AgentPainter implements Painter<JXMapViewer> {
     }
 
     private GeoPosition renderedPositionOf(Agent agent) {
-        if (agent == null) return null;
-        if (agent != draggedAgent && edgeByAgent.containsKey(agent.getId())) {
-            GeoPosition gp = positionOnEdge(edgeByAgent.get(agent.getId()), progressByAgent.getOrDefault(agent.getId(), 0.5));
-            if (gp != null) return gp;
-        }
         return positionOf(agent);
     }
 
