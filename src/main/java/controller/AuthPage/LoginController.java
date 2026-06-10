@@ -86,7 +86,7 @@ public class LoginController {
     }
 
     public Agent login(String email, String password) {
-        // 🔥 On passe directement 'password' en clair à ton UserService
+        
         return UserService.authenticate(email, password);
     }
 }
