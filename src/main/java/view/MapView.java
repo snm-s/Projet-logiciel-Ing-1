@@ -38,8 +38,10 @@ import model.graph.Edge;
 import model.graph.Node;
 import model.graph.RouteGraph;
 import model.observer.Observer;
+import model.zone.Shelter;
 import model.zone.Zone;
 import model.zone.ZoneUpdateListener;
+
 
 /**
  * Carte OSM + graphe interactif + personnages Mii.
@@ -426,46 +428,6 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         });
     }
     
-    public void generateLocalGraphForAgent(Agent agent) {
-        if (agent == null || agent.getPosition() == null) return;
-    
-        double lat = agent.getPosition().getLat();
-        double lng = agent.getPosition().getLng();
-    
-        SwingUtilities.invokeLater(() -> {
-            graphOverlayPainter.visualNodes.clear();
-            graphOverlayPainter.visualEdges.clear();
-    
-            GraphNode position = new GraphNode("Position actuelle", lat, lng, false);
-            GraphNode nord = new GraphNode("Carrefour Nord", lat + 0.003, lng, false);
-            GraphNode sud = new GraphNode("Carrefour Sud", lat - 0.003, lng, false);
-            GraphNode est = new GraphNode("Carrefour Est", lat, lng + 0.003, false);
-            GraphNode ouest = new GraphNode("Carrefour Ouest", lat, lng - 0.003, false);
-            GraphNode refuge = new GraphNode("Refuge conseillé", lat + 0.006, lng + 0.006, false);
-    
-            graphOverlayPainter.visualNodes.add(position);
-            graphOverlayPainter.visualNodes.add(nord);
-            graphOverlayPainter.visualNodes.add(sud);
-            graphOverlayPainter.visualNodes.add(est);
-            graphOverlayPainter.visualNodes.add(ouest);
-            graphOverlayPainter.visualNodes.add(refuge);
-    
-            graphOverlayPainter.visualEdges.add(new GraphEdge(position, nord, 10));
-            graphOverlayPainter.visualEdges.add(new GraphEdge(position, sud, 10));
-            graphOverlayPainter.visualEdges.add(new GraphEdge(position, est, 10));
-            graphOverlayPainter.visualEdges.add(new GraphEdge(position, ouest, 10));
-            graphOverlayPainter.visualEdges.add(new GraphEdge(est, refuge, 8));
-            graphOverlayPainter.visualEdges.add(new GraphEdge(nord, refuge, 8));
-            graphOverlayPainter.visualEdges.add(new GraphEdge(ouest, sud, 6));
-    
-            selectedGraphElement = position;
-            graphOverlayPainter.setSelected(position);
-    
-            mapViewer.setAddressLocation(new GeoPosition(lat, lng));
-            mapViewer.setZoom(3);
-            mapViewer.repaint();
-        });
-    }
 
 
     public void focusZone(Zone zone) {
@@ -566,23 +528,21 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
 
     private static class RouteHighlightPainter implements Painter<JXMapViewer> {
         private Zone from, to;
-        void setRoute(Zone from, Zone to) { this.from = from; this.to = to; }
-        void clear() { this.from = null; this.to = null; }
-        @Override public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
-            if (from == null || to == null) return;
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            try {
-                Point2D p1 = map.convertGeoPositionToPoint(new GeoPosition(from.getLatitude(), from.getLongitude()));
-                Point2D p2 = map.convertGeoPositionToPoint(new GeoPosition(to.getLatitude(), to.getLongitude()));
-                g2.setColor(new Color(14, 115, 235, 70));
-                g2.setStroke(new BasicStroke(10f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                g2.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
-                g2.setColor(new Color(14, 115, 235, 245));
-                g2.setStroke(new BasicStroke(4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1, new float[]{12, 8}, 0));
-                g2.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
-            } catch (Exception ignored) {}
-            g2.dispose();
+    
+        void setRoute(Zone from, Zone to) {
+            this.from = from;
+            this.to = to;
+        }
+    
+        void clear() {
+            this.from = null;
+            this.to = null;
+        }
+    
+        @Override
+        public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
+            // On ne dessine rien ici.
+            // Les vraies arêtes sont dessinées dans GraphOverlayPainter.
         }
     }
 
@@ -608,30 +568,71 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
             return null;
         }
 
-        @Override public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        @Override
 
-            for (GraphEdge e : visualEdges) drawVisualEdge(g2, map, e);
-            for (GraphNode n : baseNodes) drawNode(g2, map, n);
-            for (GraphNode n : visualNodes) drawNode(g2, map, n);
+    public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
 
-            if (rg != null) {
-                for (Edge e : rg.getEdges()) {
-                    Point2D a = map.convertGeoPositionToPoint(new GeoPosition(e.getFromZone().getLatitude(), e.getFromZone().getLongitude()));
-                    Point2D b = map.convertGeoPositionToPoint(new GeoPosition(e.getToZone().getLatitude(), e.getToZone().getLongitude()));
-                    int midX = (int) ((a.getX() + b.getX()) / 2);
-                    int midY = (int) ((a.getY() + b.getY()) / 2);
-                    if (selected == e) {
-                        g2.setColor(new Color(250, 204, 21, 220));
-                        g2.setStroke(new BasicStroke(5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                        g2.drawLine((int) a.getX(), (int) a.getY(), (int) b.getX(), (int) b.getY());
-                    }
-                    // Pas de gros labels partout : la congestion est visible par la couleur/épaisseur des arêtes
-                    // et par les statistiques quand l'arête est sélectionnée.
-                }
+        Graphics2D g2 = (Graphics2D) g.create();
+
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        if (rg != null) {
+
+            for (Edge e : rg.getEdges()) {
+
+                drawRealEdge(g2, map, e);
+
             }
-            g2.dispose();
+
+        }
+
+        for (GraphNode n : baseNodes) {
+            drawNode(g2, map, n);
+        }
+        
+        for (GraphNode n : visualNodes) {
+            drawNode(g2, map, n);
+        }
+
+        g2.dispose();
+
+    }
+
+        private void drawRealEdge(Graphics2D g2, JXMapViewer map, Edge e) {
+            List<GeoPosition> pts = e.getWaypoints();
+        
+            if (pts == null || pts.size() < 2) {
+                pts = List.of(
+                    new GeoPosition(e.getFromZone().getLatitude(), e.getFromZone().getLongitude()),
+                    new GeoPosition(e.getToZone().getLatitude(), e.getToZone().getLongitude())
+                );
+            }
+        
+            Color edgeColor = new Color(14, 165, 233, 220); // bleu
+            float width = 4f;
+        
+            switch (e.getState()) {
+                case SAFE -> edgeColor = new Color(14, 165, 233, 220);
+                case AT_RISK -> edgeColor = new Color(245, 158, 11, 230);
+                case CONGESTED -> edgeColor = new Color(234, 179, 8, 230);
+                case OVERLOADED -> edgeColor = new Color(185, 28, 28, 230);
+                case FLOODED -> edgeColor = new Color(239, 68, 68, 230);
+            }
+        
+            g2.setColor(edgeColor);
+            g2.setStroke(new BasicStroke(width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        
+            for (int i = 0; i < pts.size() - 1; i++) {
+                Point2D p1 = map.convertGeoPositionToPoint(pts.get(i));
+                Point2D p2 = map.convertGeoPositionToPoint(pts.get(i + 1));
+        
+                g2.drawLine(
+                    (int) p1.getX(),
+                    (int) p1.getY(),
+                    (int) p2.getX(),
+                    (int) p2.getY()
+                );
+            }
         }
 
         private void drawVisualEdge(Graphics2D g2, JXMapViewer map, GraphEdge e) {
@@ -642,19 +643,40 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
             g2.draw(new Line2D.Double(a, b));
         }
 
+    
         private void drawNode(Graphics2D g2, JXMapViewer map, GraphNode n) {
             Point2D p = map.convertGeoPositionToPoint(n.geo());
             boolean sel = selected == n || pendingEdgeStart == n;
-            int r = n.base ? 9 : 8;
-            g2.setColor(new Color(0, 0, 0, 150));
-            g2.fillOval((int) p.getX() - r - 3, (int) p.getY() - r - 3, (r + 3) * 2, (r + 3) * 2);
-            g2.setColor(sel ? new Color(250, 204, 21) : n.base ? new Color(255, 255, 255) : new Color(34, 211, 238));
+        
+            int r = n.base ? 10 : 8;
+        
+            Color nodeColor;
+        
+            if (n.zone instanceof Shelter) {
+                nodeColor = new Color(147, 51, 234); // violet = refuge
+            } else if (n.base) {
+                nodeColor = new Color(34, 211, 238); // bleu = quartier / zone normale
+            } else {
+                nodeColor = new Color(14, 165, 233); // bleu clair = nœud ajouté manuellement
+            }
+        
+            if (sel) {
+                nodeColor = new Color(250, 204, 21); // sélection en jaune
+            }
+        
+            // Ombre noire autour
+            g2.setColor(new Color(0, 0, 0, 160));
+            g2.fillOval((int) p.getX() - r - 4, (int) p.getY() - r - 4, (r + 4) * 2, (r + 4) * 2);
+        
+            // Remplissage du nœud
+            g2.setColor(nodeColor);
             g2.fillOval((int) p.getX() - r, (int) p.getY() - r, r * 2, r * 2);
-            g2.setColor(n.isCongested() ? new Color(239, 68, 68) : new Color(15, 23, 42));
-            g2.setStroke(new BasicStroke(2f));
+        
+            // Contour noir
+            g2.setColor(new Color(15, 23, 42));
+            g2.setStroke(new BasicStroke(3f));
             g2.drawOval((int) p.getX() - r, (int) p.getY() - r, r * 2, r * 2);
         }
-
         Object hitTest(JXMapViewer map, Point p) {
             for (GraphNode n : visualNodes) if (map.convertGeoPositionToPoint(n.geo()).distance(p) < 15) return n;
             for (GraphNode n : baseNodes) if (map.convertGeoPositionToPoint(n.geo()).distance(p) < 15) return n;
