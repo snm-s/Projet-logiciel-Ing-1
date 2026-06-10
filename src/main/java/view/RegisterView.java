@@ -64,6 +64,7 @@ public class RegisterView extends StackPane {
     private PasswordField password = new PasswordField(), confirmPassword = new PasswordField();
     private TextField visiblePassword = new TextField(), visibleConfirmPassword = new TextField();
     private ComboBox<String> address = new ComboBox<>();
+    private boolean addressSelectionInProgress = false;
     private TextField country = new TextField();
     private TextField city = new TextField();
     private ComboBox<String> houseType = new ComboBox<>();
@@ -458,6 +459,8 @@ public class RegisterView extends StackPane {
         applyEditableComboBoxStyle(address);
         
         address.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
+            if (addressSelectionInProgress) return;
+        
             if (newValue == null || newValue.trim().length() < 3) {
                 address.getItems().clear();
                 address.hide();
@@ -479,6 +482,17 @@ public class RegisterView extends StackPane {
                     }
                 });
             }).start();
+        });
+
+        address.valueProperty().addListener((obs, oldValue, selected) -> {
+            if (selected == null) return;
+        
+            addressSelectionInProgress = true;
+            address.getEditor().setText(selected);
+            addressSelectionInProgress = false;
+        
+            address.hide();
+            showError(errAddress, address, false, "");
         });
 
         city.setText("Lyon");
