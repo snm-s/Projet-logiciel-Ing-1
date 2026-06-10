@@ -1,5 +1,16 @@
 package model.zone;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
+@JsonSubTypes({
+    @JsonSubTypes.Type(value = Neighborhood.class, name = "neighborhood"),
+    @JsonSubTypes.Type(value = Shelter.class,      name = "shelter")
+})
 public abstract class Zone {
     protected int id;
     protected String name;
@@ -11,6 +22,9 @@ public abstract class Zone {
     protected boolean flooded;
     protected boolean evacuated;
 
+
+
+    
     public Zone(int id, String name, double latitude, double longitude, double altitude, int population,
             String description) {
         this.id = id;
@@ -23,6 +37,10 @@ public abstract class Zone {
         this.flooded = false;
         this.evacuated = false;
     }
+    
+    
+    // Constructeur requis par Jackson pour la désérialisation
+    public Zone() {}
 
     // Getters
     public int getId() {
@@ -53,10 +71,12 @@ public abstract class Zone {
         return description;
     }
 
+    @JsonIgnore
     public boolean isFlooded() {
         return flooded;
     }
 
+    @JsonIgnore
     public boolean isEvacuated() {
         return evacuated;
     }

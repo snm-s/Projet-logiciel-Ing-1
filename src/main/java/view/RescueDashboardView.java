@@ -22,6 +22,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import model.alert.Alert;
 import model.simulation.FloodSimulation;
+import model.simulation.SimulationDataService;
 import model.zone.Zone;
 
 public class RescueDashboardView extends BorderPane {
@@ -45,14 +46,16 @@ public class RescueDashboardView extends BorderPane {
     private StackPane contentRoot;
     private VBox sidebar;
     private Button activeButton;
+    private final SimulationDataService dataService;
 
     public RescueDashboardView() {
-        this(new RescueController(new FloodSimulation()));
+        this(new RescueController(Main.getSharedSimulation()));
     }
 
     public RescueDashboardView(RescueController controller) {
         this.controller = controller;
         this.mapComponent = new MapView(controller.getZones());
+        this.dataService = new SimulationDataService();
 
         setPrefSize(1100, 650);
         setStyle("-fx-background-color:" + BG_DARK + ";");

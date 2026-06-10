@@ -13,32 +13,59 @@ import model.zone.Zone;
 import view.MapView;
 
 import javafx.application.Platform;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Controller de la carte : relie MapView, RouteGraph et déplacements d'agents.
- * Version claire : les citoyens vont vers des vraies zones Shelter uniquement.
+ * Contrôleur de la carte : relie {@link MapView}, {@link RouteGraph} et les agents.
+ *
+ * <h3>Nouveautés</h3>
+ * <ul>
+ *   <li>{@link #syncAgents(List)} — remplace la liste live d'agents et rafraîchit la MapView.</li>
+ *   <li>{@link #syncZones(List)} — remplace la liste live de zones, reconstruit le graphe.</li>
+ *   <li>{@link #addAgent(Agent)} / {@link #removeAgent(int)} — mutations atomiques avec repaint.</li>
+ *   <li>La liste interne {@code agents} est mutable et partagée avec la MapView, ce qui garantit
+ *       que tout ce qui est affiché est également accessible aux {@link Citizen} et
+ *       {@link RescueAgent} qui interrogent le graphe.</li>
+ * </ul>
  */
 public class MapController {
 
-    private final MapView mapView;
-    private final List<Zone> zones;
-    private final List<Agent> agents;
-    private final RouteGraph routeGraph;
+    private final MapView        mapView;
+    /** Liste mutable partagée entre MapController, MapView et RouteGraph. */
+    private final List<Agent>    agents;
+    /** Liste mutable de zones — peut être rechargée lors d'un reset. */
+    private List<Zone>           zones;
+    private RouteGraph           routeGraph;
 
-    private Consumer<Zone> onZoneSelected;
+    private Consumer<Zone>          onZoneSelected;
     private Consumer<AgentMovement> onAgentArrived;
-    private Zone selectedZone;
+    private Zone                    selectedZone;
 
+    // ─────────────────────────────────────────────────────────────────────
     public MapController(MapView mapView, List<Zone> zones, List<Agent> agents) {
-        this.mapView = mapView;
-        this.zones = zones;
-        this.agents = agents;
-        this.routeGraph = new RouteGraph(zones);
+        this.mapView   = mapView;
+        this.zones     = new ArrayList<>(zones  != null ? zones  : List.of());
+        this.agents    = new ArrayList<>(agents != null ? agents : List.of());
 
+        this.routeGraph = new RouteGraph(this.zones);
+        initMapView();
+    }
+
+    public MapController(MapView mapView, List<Zone> zones) {
+        this(mapView, zones, List.of());
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // INITIALISATION
+    // ─────────────────────────────────────────────────────────────────────
+
+    private void initMapView() {
         mapView.setRouteGraph(routeGraph);
         mapView.setMapController(this);
+        mapView.setAgents(agents);           // injection de la liste LIVE
+
         mapView.setOnZoneSelected(zone -> {
             this.selectedZone = zone;
             if (onZoneSelected != null) Platform.runLater(() -> onZoneSelected.accept(zone));
@@ -50,9 +77,67 @@ public class MapController {
         });
     }
 
-    public MapController(MapView mapView, List<Zone> zones) {
-        this(mapView, zones, List.of());
+    // ─────────────────────────────────────────────────────────────────────
+    // SYNCHRONISATION (appelée par SimulationController)
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Remplace la liste d'agents par la liste fournie (reset ou ajout en masse).
+     * Met à jour MapView et réancre les agents sur le graphe.
+     */
+    public void syncAgents(List<Agent> newAgents) {
+        agents.clear();
+        if (newAgents != null) agents.addAll(newAgents);
+        mapView.setAgents(agents);          // MapView utilise la même liste désormais
+        mapView.refreshRouteColors();
     }
+
+    /**
+     * Remplace la liste de zones et reconstruit le {@link RouteGraph}.
+     * Utilisé lors d'un reset ou d'un ajout/suppression de zone.
+     */
+    public void syncZones(List<Zone> newZones) {
+        zones.clear();
+        if (newZones != null) zones.addAll(newZones);
+
+        // Reconstruire le graphe avec les nouvelles zones
+        routeGraph = new RouteGraph(zones);
+        mapView.setRouteGraph(routeGraph);
+
+        // Réenregistrer l'ArrivalListener sur le nouveau graphe
+        routeGraph.addArrivalListener(new RouteGraph.ArrivalListener() {
+            @Override public void onAgentArrived(AgentMovement mv) { handleAgentArrived(mv); }
+            @Override public void onAgentBlocked(AgentMovement mv) { handleAgentBlocked(mv); }
+        });
+
+        mapView.updateAllZones(zones);
+        mapView.refreshRouteColors();
+    }
+
+    /**
+     * Ajoute un agent au graphe et à la MapView (sans reconstruire toute la liste).
+     */
+    public void addAgent(Agent agent) {
+        if (agent == null || agents.contains(agent)) return;
+        agents.add(agent);
+        mapView.addAgent(agent);            // repaint + snap au graphe
+    }
+
+    /**
+     * Supprime un agent par son identifiant.
+     */
+    public boolean removeAgent(int agentId) {
+        boolean removed = agents.removeIf(a -> a.getId() == agentId);
+        if (removed) {
+            mapView.setAgents(agents);
+            mapView.refreshRouteColors();
+        }
+        return removed;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // TICK
+    // ─────────────────────────────────────────────────────────────────────
 
     public void tick(double deltaSeconds) {
         routeGraph.tick(deltaSeconds);
@@ -61,7 +146,11 @@ public class MapController {
         mapView.refreshRouteColors();
     }
 
-    /** Évacue un citoyen depuis sa zone la plus proche vers le refuge le plus proche via Dijkstra. */
+    // ─────────────────────────────────────────────────────────────────────
+    // ÉVACUATION
+    // ─────────────────────────────────────────────────────────────────────
+
+    /** Évacue un citoyen depuis sa zone la plus proche vers le refuge le plus proche. */
     public AgentMovement evacuateCitizen(Citizen citizen) {
         if (citizen == null) return null;
         Zone from = findClosestZone(citizen);
@@ -70,7 +159,8 @@ public class MapController {
 
     public AgentMovement evacuateCitizen(Citizen citizen, Zone from) {
         if (citizen == null || from == null) return null;
-        if (citizen.getState() == CitizenState.SAFE || citizen.getState() == CitizenState.ESCAPING) return null;
+        if (citizen.getState() == CitizenState.SAFE ||
+            citizen.getState() == CitizenState.ESCAPING) return null;
 
         AgentMovement mv = routeGraph.planEvacuation(citizen, from, zones);
         if (mv != null) {
@@ -88,21 +178,19 @@ public class MapController {
     }
 
     /**
-     * Évacuation de masse claire : chaque citoyen part de SA zone la plus proche
-     * et reçoit un chemin vers un Shelter. Pas de déplacement aléatoire.
+     * Évacuation de masse : chaque citoyen reçoit un chemin Dijkstra vers un refuge.
      */
     public void triggerMassEvacuation(List<Citizen> citizens) {
         if (citizens == null) return;
         int planned = 0;
         for (Citizen c : citizens) {
             if (c == null) continue;
-            AgentMovement mv = evacuateCitizen(c);
-            if (mv != null) planned++;
+            if (evacuateCitizen(c) != null) planned++;
         }
-        mapView.setGraphInfo("Évacuation vers refuges : " + planned + " citoyen(s) ont reçu un chemin Dijkstra.");
+        mapView.setGraphInfo("Évacuation → refuges : " + planned + " citoyen(s) en route (Dijkstra).");
     }
 
-    /** Bouton manuel : évacuer tous les citoyens visibles vers les refuges. */
+    /** Évacue tous les citoyens de la liste interne vers les refuges. */
     public void evacuateAllCitizensToShelters() {
         List<Citizen> citizens = agents.stream()
                 .filter(a -> a instanceof Citizen)
@@ -114,27 +202,36 @@ public class MapController {
     public EvacuationPath computeEvacuationPreview(Zone from) {
         if (from == null) return null;
         List<Zone> shelters = zones.stream()
-                .filter(z -> z instanceof Shelter)
-                .filter(z -> !z.isFlooded())
+                .filter(z -> z instanceof Shelter && !z.isFlooded())
                 .toList();
         return routeGraph.getRouter().findNearestSafe(from, shelters);
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // HANDLERS D'ÉVÉNEMENTS GRAPHE
+    // ─────────────────────────────────────────────────────────────────────
 
     private void handleAgentArrived(AgentMovement mv) {
         Agent agent = mv.getAgent();
         if (agent instanceof Citizen c) c.setState(CitizenState.SAFE);
         if (onAgentArrived != null) Platform.runLater(() -> onAgentArrived.accept(mv));
-        mapView.setGraphInfo("Arrivé au refuge : " + nameOf(agent) + " → " + mv.getDestinationZone().getName());
+        mapView.setGraphInfo("Arrivé : " + nameOf(agent) + " → " + mv.getDestinationZone().getName());
         mapView.refreshRouteColors();
     }
 
     private void handleAgentBlocked(AgentMovement mv) {
-        mapView.setGraphInfo("Agent bloqué : " + nameOf(mv.getAgent()) + " — replanification demandée.");
+        mapView.setGraphInfo("Bloqué : " + nameOf(mv.getAgent()) + " — replanification demandée.");
         mapView.refreshRouteColors();
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // HELPERS
+    // ─────────────────────────────────────────────────────────────────────
+
     private Zone findClosestZone(Agent agent) {
-        if (agent == null || agent.getPosition() == null || zones.isEmpty()) return zones.isEmpty() ? null : zones.get(0);
+        if (agent == null || agent.getPosition() == null || zones.isEmpty()) {
+            return zones.isEmpty() ? null : zones.get(0);
+        }
         double lat = agent.getPosition().getLat();
         double lng = agent.getPosition().getLng();
         Zone best = null;
@@ -148,42 +245,61 @@ public class MapController {
 
     private String nameOf(Agent a) {
         if (a == null) return "Agent";
-        String n = ((a.getFirstName() == null ? "" : a.getFirstName()) + " " + (a.getLastName() == null ? "" : a.getLastName())).trim();
+        String n = ((a.getFirstName() == null ? "" : a.getFirstName())
+                  + " "
+                  + (a.getLastName()  == null ? "" : a.getLastName())).trim();
         return n.isBlank() ? "Agent #" + a.getId() : n;
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // STATISTIQUES
+    // ─────────────────────────────────────────────────────────────────────
+
     public long countCitizensAtRisk() {
-        return agents.stream().filter(a -> a instanceof Citizen c && c.getState() != CitizenState.SAFE).count();
+        return agents.stream()
+            .filter(a -> a instanceof Citizen c && c.getState() != CitizenState.SAFE).count();
     }
 
     public long countCitizensSafe() {
-        return agents.stream().filter(a -> a instanceof Citizen c && c.getState() == CitizenState.SAFE).count();
+        return agents.stream()
+            .filter(a -> a instanceof Citizen c && c.getState() == CitizenState.SAFE).count();
     }
 
     public long countCitizensEscaping() {
-        return agents.stream().filter(a -> a instanceof Citizen c && c.getState() == CitizenState.ESCAPING).count();
+        return agents.stream()
+            .filter(a -> a instanceof Citizen c && c.getState() == CitizenState.ESCAPING).count();
     }
 
-    public long countSheltersTotal() { return zones.stream().filter(z -> z instanceof Shelter).count(); }
+    public long countSheltersTotal()      { return zones.stream().filter(z -> z instanceof Shelter).count(); }
     public long countSheltersAccessible() { return zones.stream().filter(z -> z instanceof Shelter && !z.isFlooded()).count(); }
 
-    public void zoomIn() { mapView.zoomIn(); }
-    public void zoomOut() { mapView.zoomOut(); }
-    public void setZoom(int level) { mapView.setZoom(level); }
-    public void resetView() { mapView.resetView(); }
+    // ─────────────────────────────────────────────────────────────────────
+    // NAVIGATION / VUE
+    // ─────────────────────────────────────────────────────────────────────
+
+    public void zoomIn()                   { mapView.zoomIn(); }
+    public void zoomOut()                  { mapView.zoomOut(); }
+    public void setZoom(int level)         { mapView.setZoom(level); }
+    public void resetView()                { mapView.resetView(); }
     public void flyTo(double lat, double lng) { mapView.flyTo(lat, lng); }
     public void panTo(double lat, double lng) { mapView.panTo(lat, lng); }
-    public void highlightZone(int id) { mapView.highlightZone(id); }
-    public void focusZone(Zone zone) { if (zone != null) { mapView.focusZone(zone); selectZone(zone); } }
-    public void focusZoneById(int id) { zones.stream().filter(z -> z.getId() == id).findFirst().ifPresent(this::focusZone); }
-    public void selectZone(Zone zone) { if (zone != null) { selectedZone = zone; mapView.selectZone(zone); } }
-    public Zone getSelectedZone() { return selectedZone; }
+    public void highlightZone(int id)      { mapView.highlightZone(id); }
+    public void focusZone(Zone zone)       { if (zone != null) { mapView.focusZone(zone); selectZone(zone); } }
+    public void focusZoneById(int id)      { zones.stream().filter(z -> z.getId() == id).findFirst().ifPresent(this::focusZone); }
+    public void selectZone(Zone zone)      { if (zone != null) { selectedZone = zone; mapView.selectZone(zone); } }
+    public Zone getSelectedZone()          { return selectedZone; }
+
     public void updateZone(Zone zone, double niveauEau) { mapView.updateZoneWithWaterLevel(zone, niveauEau); }
     public void updateAllZones(List<Zone> updatedZones) { mapView.updateAllZones(updatedZones); routeGraph.refreshAllEdges(); }
+
     public void drawRoutes(List<int[]> routes, List<Zone> zones) { mapView.refreshRouteColors(); }
-    public void setOnZoneSelected(Consumer<Zone> cb) { this.onZoneSelected = cb; }
-    public void setOnAgentArrived(Consumer<AgentMovement> cb) { this.onAgentArrived = cb; }
-    public RouteGraph getRouteGraph() { return routeGraph; }
-    public List<Zone> getZones() { return zones; }
-    public List<Edge> getEdges() { return routeGraph.getEdges(); }
+
+    public void setOnZoneSelected(Consumer<Zone> cb)         { this.onZoneSelected = cb; }
+    public void setOnAgentArrived(Consumer<AgentMovement> cb){ this.onAgentArrived = cb; }
+
+    public RouteGraph  getRouteGraph() { return routeGraph; }
+    public List<Zone>  getZones()      { return zones; }
+    public List<Agent> getAgents()     { return agents; }
+    public List<Edge>  getEdges()      { return routeGraph.getEdges(); }
+    public MapView getMapView() { return mapView; }
 }

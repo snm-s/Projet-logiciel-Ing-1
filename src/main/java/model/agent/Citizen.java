@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import model.enums.CitizenState;
 import model.graph.Node;
 
+
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Citizen extends Agent {
     private CitizenState state;
@@ -39,6 +40,7 @@ public class Citizen extends Agent {
         this.mobilityStatus = "normal";
     }
 
+    @JsonIgnore
     public CitizenState getState() {
         return state;
     }

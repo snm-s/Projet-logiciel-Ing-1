@@ -14,7 +14,7 @@ import com.google.gson.reflect.TypeToken;
  */
 public class ZoneManager {
     private List<Zone> zones;
-    private static final String DEFAULT_ZONES_FILE = "src/main/resources/zones.json";
+    private static final String DEFAULT_ZONES_FILE = "data/zones.json";
 
     public ZoneManager() {
         this.zones = new ArrayList<>();

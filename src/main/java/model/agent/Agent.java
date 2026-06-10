@@ -4,6 +4,8 @@ package model.agent;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
@@ -23,6 +25,7 @@ import model.zone.Zone;
     @JsonSubTypes.Type(value = RescueAgent.class, name = "rescueAgent"),
     @JsonSubTypes.Type(value = AdminAgent.class, name = "admin")
 })
+
 public abstract class Agent {
     private int id;
     private String firstName;
@@ -149,6 +152,7 @@ public abstract class Agent {
     public boolean hasStrategy() {
         return strategy != null;
     }
+    
     
     public boolean isSaved() {
         // Un agent est sauvé s'il est arrivé sur un nœud de type REFUGE (on complétera après)

@@ -42,6 +42,7 @@ import javafx.scene.text.FontWeight;
 import javafx.util.Duration;
 import model.agent.Agent;
 import model.simulation.FloodSimulation;
+import model.simulation.SimulationDataService;
 import model.zone.ZoneManager;
 
 public class AdminDashboardView extends BorderPane {
@@ -59,21 +60,17 @@ public class AdminDashboardView extends BorderPane {
     private static final String TEXT_MUTED = "#8eaabf";
     private static final String BORDER = "#1e3a52";
 
+    // ── État ──────────────────────────────────────────────────────────────────
     private final AdminController ctrl;
-    private final FloodSimulation simulation;
-
     private String currentSection = "dashboard";
     private VBox sidebarBox;
     private StackPane contentArea;
+    private final SimulationDataService dataService;
 
-    public AdminDashboardView(AdminController controller) {
-        this(controller, Main.getSharedSimulation());
-    }
-
-    public AdminDashboardView(AdminController controller, FloodSimulation simulation) {
+    // ── Constructeur (appelé par Main : new AdminDashboardView()) ─────────────
+    public AdminDashboardView(AdminController controller, SimulationDataService dataService) {
         this.ctrl = controller;
-        this.simulation = simulation;
-
+        this.dataService = dataService;
         this.setStyle("-fx-background-color: " + BG_DARK + ";");
         this.setTop(buildTopBar());
         this.setLeft(buildSidebar());
@@ -261,6 +258,8 @@ public class AdminDashboardView extends BorderPane {
         sn.maxWidth(1000);
         sn.maxHeight(380);
 
+        
+
         javafx.application.Platform.runLater(() -> {
             javax.swing.SwingUtilities.invokeLater(() -> {
                 mapView.getMapViewer().setZoom(6);
@@ -269,7 +268,12 @@ public class AdminDashboardView extends BorderPane {
             });
         });
 
-        model.sensor.WaterLevelDetector detector = new model.sensor.WaterLevelDetector(simulation.getAlertSystem());
+    
+        // Lier un détecteur de niveau d'eau qui alimente le système d'alertes
+        model.simulation.FloodSimulation localSim = app.Main.getSharedSimulation();
+        model.sensor.WaterLevelDetector detector = new model.sensor.WaterLevelDetector(localSim.getAlertSystem());
+        // Polling initial pour démonstration : met à jour la carte et crée des alertes
+        // si nécessaire
         detector.pollRandom((zone, lvl) -> {
             try {
                 mapView.updateZoneWithWaterLevel(zone, lvl);
@@ -295,7 +299,7 @@ public class AdminDashboardView extends BorderPane {
 
     private void showAlerts() {
         AdminAlertsView alertsView = new AdminAlertsView();
-        new AdminAlertsController(alertsView, simulation.getAlertSystem());
+        new AdminAlertsController(alertsView, app.Main.getSharedSimulation().getAlertSystem());
 
         fadeIn(alertsView);
         contentArea.getChildren().setAll(alertsView);

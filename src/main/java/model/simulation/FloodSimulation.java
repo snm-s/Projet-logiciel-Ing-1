@@ -50,16 +50,24 @@ public class FloodSimulation {
     //private final AlertSystem alertSystem;
     private final List<ZoneUpdateListener> listeners;
     private final Subject<Zone> zoneObservers;
-    private final ZoneManager zoneManager;
+    private final SimulationDataService dataService;
+
+    private final Subject<List<Agent>> agentSubject = new Subject<>();
+    private final Subject<List<Zone>>  zoneSubject  = new Subject<>();
 
 
 
-    public FloodSimulation() {
+
+    public FloodSimulation(SimulationDataService dataService) {
+        this.dataService = dataService;
+
         this.graph = new Graph();
-        this.agents = UserService.loadAgents();
-        if (this.agents == null) {
-            this.agents = new ArrayList<>();
-        }
+
+        this.agents = dataService.loadAgents();
+        this.zones = dataService.loadZones();
+
+        if (this.agents == null) this.agents = new ArrayList<>();
+
         this.alertSystem = new AlertSystem();
 
         this.niveauEau = DEFAULT_NIVEAU_EAU;
@@ -68,11 +76,13 @@ public class FloodSimulation {
         this.enPause = true;
         this.agentsActifs = DEFAULT_AGENTS_ACTIFS;
         this.agentsEvacues = 0;
+
         this.listeners = new ArrayList<>();
         this.zoneObservers = new Subject<>();
-        this.zoneManager = new ZoneManager();
-        this.zones = zoneManager.getZones();
-        this.alertSystem = new AlertSystem();
+    }
+    
+    public FloodSimulation() {
+        this(app.Main.getSharedDataService());
     }
 
     public Graph getGraph() { return graph; }
@@ -93,7 +103,13 @@ public class FloodSimulation {
             .count();
     }
 
-
+    public void setZones(List<Zone> zones) {
+        this.zones.clear();
+        if (zones != null) {
+            this.zones.addAll(zones);
+        }
+        notifyZoneChange();  
+    }
 
     public void addZoneUpdateListener(ZoneUpdateListener listener) {
         listeners.add(listener);
@@ -110,6 +126,28 @@ public class FloodSimulation {
     public void removeZoneObserver(Observer<Zone> observer) {
         zoneObservers.removeObserver(observer);
     }
+
+    private void notifyZoneChange() {
+        zoneSubject.notifyObservers(new ArrayList<>(zones));
+    }
+
+
+    public void addAgentObserver(Observer<List<Agent>> observer) {
+        agentSubject.addObserver(observer);
+    }
+
+
+    public void removeAgentObserver(Observer<List<Agent>> observer) {
+        agentSubject.removeObserver(observer);
+    }
+
+    private void notifyAgentChange() {
+        agentSubject.notifyObservers(new ArrayList<>(agents));
+    }
+
+
+
+
 
     public void assignStrategyToAgent(Agent agent, Strategy strategy) {
         if (agent != null) {
@@ -285,7 +323,74 @@ public class FloodSimulation {
         return Math.max(min, Math.min(max, value));
     }
 
+    public void addAgent(Agent agent) {
+        agents.add(agent);
+        notifyAgentChange();
+        notifySimulationUpdated();
+    }
+
+    public void removeAgent(Agent agent) {
+        agents.remove(agent);
+        notifyAgentChange();
+        notifySimulationUpdated();
+    }
+
+    public void addZone(Zone zone) {
+        zones.add(zone);
+        notifyZoneChange();
+        notifySimulationUpdated();
+    }
+
+
+    public void removeZone(Zone zone) {
+        zones.remove(zone);
+        notifyZoneChange();
+        notifySimulationUpdated();
+    }
+
+    public void removeZoneById(int zoneId) {
+        zones.removeIf(z -> z.getId() == zoneId);
+        notifyZoneChange();
+        notifySimulationUpdated();
+    }
+
+    public void updateZone(Zone updated) {
+        for (int i = 0; i < zones.size(); i++) {
+            if (zones.get(i).getId() == updated.getId()) {
+                zones.set(i, updated);
+                break;
+            }
+        }
+        notifyZoneChange();
+        notifySimulationUpdated();
+    }
+
+    public int nextZoneId() {
+        return zones.stream().mapToInt(Zone::getId).max().orElse(0) + 1;
+    }
+
+    public void replaceAllAgents(List<Agent> newAgents) {
+        agents.clear();
+        agents.addAll(newAgents);
+        notifyAgentChange();
+    }
+
+    public void setAgents(List<Agent> agents) {
+        this.agents.clear();
+        if (agents != null) {
+            this.agents.addAll(agents);
+        }
+        notifyAgentChange();
+    }
 
 
 
+
+    
+    private void persist() {
+        dataService.saveAll(
+            new ArrayList<>(zones),
+            new ArrayList<>(agents)
+        );
+    }
 }

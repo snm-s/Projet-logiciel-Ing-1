@@ -2,6 +2,7 @@ package view;
 
 import java.util.List;
 
+import app.Main;
 import controller.AdminPage.SimulationController;
 import controller.MapController;
 import javafx.animation.KeyFrame;
@@ -26,6 +27,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.util.Duration;
+import model.agent.Agent;
 import model.agent.Citizen;
 import model.enums.CitizenState;
 import model.graph.Node;
@@ -71,6 +73,10 @@ public class SimulationView extends BorderPane {
     public SimulationView(SimulationController controller) {
         this.controller = controller;
         this.modele = controller != null ? controller.getModele() : null;
+
+        this.mapView = Main.getSharedMapView();
+        this.mapController = Main.getSharedMapController();
+
         setStyle("-fx-background-color:" + BG_DARK + ";");
         buildContent();
         startRefreshLoop();
@@ -132,13 +138,13 @@ public class SimulationView extends BorderPane {
         stack.setStyle("-fx-background-color:#090e1a;");
 
         if (modele != null) {
-            mapView = new MapView(modele.getZones());
+
+            this.mapView = Main.getSharedMapView();
+            this.mapController = Main.getSharedMapController();
+            
             mapView.setAgents(modele.getAgents());
             modele.addZoneUpdateListener(mapView);
             stack.getChildren().add(mapView.getSwingNode());
-
-            mapController = new MapController(mapView, modele.getZones(), modele.getAgents());
-            if (controller != null) controller.setMapController(mapController);
 
             mapView.setOnAgentSelected(agent -> {
                 lblSelectedZone.setText(agent.getFirstName() != null ? agent.getFirstName() : "Agent #" + agent.getId());
@@ -200,7 +206,7 @@ public class SimulationView extends BorderPane {
     }
 
     private VBox buildGraphToolsPanel() {
-        VBox box = cardPanel(560);
+        VBox box = cardPanel(620);
         box.getChildren().add(styledLabel("INTERACTION AVEC LE GRAPHE", FontWeight.BOLD, 10, TEXT_MUTED));
 
         HBox modes = new HBox(6);
@@ -210,6 +216,59 @@ public class SimulationView extends BorderPane {
         Button addEdge = smallButton("＋ Arête");
         Button moveNode = smallButton("↕ Déplacer nœud");
         Button del = smallButton("🗑 Supprimer");
+
+        HBox zones = new HBox(6);
+        zones.setAlignment(Pos.CENTER);
+
+        Button addNeighborhood = smallButton("＋ Quartier");
+        Button addShelter = smallButton("＋ Refuges");
+        Button removeZone = smallButton("🗑 Suppr. zone sélect.");
+        Button floodZone  = smallButton("💧 Inonder zone");
+        Button resetZones = smallButton("↺ Reset zones");
+
+        addNeighborhood.setOnAction(e -> {
+            if (controller != null) { controller.addRandomNeighborhood();    refreshUI(); }
+        });
+        addShelter.setOnAction(e -> {
+            if (controller != null) { controller.addRandomShelter(); refreshUI(); }
+        });
+
+        removeZone.setOnAction(e -> {
+            // La zone sélectionnée est celle trackée par mapController
+            if (mapController != null && controller != null) {
+                model.zone.Zone selected = mapController.getSelectedZone();
+                if (selected != null) {
+                    controller.removeZone(selected.getId());
+                    refreshUI();
+                }
+            }
+        });
+
+        floodZone.setOnAction(e -> {
+            if (mapController != null && controller != null) {
+                model.zone.Zone selected = mapController.getSelectedZone();
+                if (selected != null) {
+                    selected.setFlooded(true);
+                    controller.updateZone(selected);
+                    refreshUI();
+                }
+            }
+        });
+
+        resetZones.setOnAction(e -> {
+            if (controller != null) {
+                // Remet toutes les zones à l'état non-inondé
+                modele.getZones().forEach(z -> z.reset());
+                // Notifie via un updateZone sur chaque zone
+                modele.getZones().forEach(z -> controller.updateZone(z));
+                refreshUI();
+            }
+        });
+
+
+    
+
+
         select.setOnAction(e -> mapView.setEditMode(MapView.EditMode.SELECT));
         addNode.setOnAction(e -> mapView.setEditMode(MapView.EditMode.ADD_NODE));
         addEdge.setOnAction(e -> mapView.setEditMode(MapView.EditMode.ADD_EDGE));
@@ -226,12 +285,29 @@ public class SimulationView extends BorderPane {
         Button removeAgent = smallButton("Suppr. agent");
         add5Nodes.setOnAction(e -> { if (mapView != null) mapView.addRandomNodes(5); });
         add1Agent.setOnAction(e -> addOneAgent());
-        add10Agents.setOnAction(e -> { if (mapView != null) { mapView.addRandomAgents(10); refreshUI(); } });
+        add10Agents.setOnAction(e -> {
+            if (controller != null) {
+                controller.addRandomCitizens(10);
+                app.Main.getSharedAdminCtrl().loadAgents();
+                refreshUI();
+            }
+        });
         evacuate.setOnAction(e -> { if (mapController != null) { mapController.evacuateAllCitizensToShelters(); refreshUI(); } });
-        removeAgent.setOnAction(e -> { if (mapView != null) { mapView.removeSelectedAgent(); refreshUI(); } });
-        mass.getChildren().addAll(add5Nodes, add1Agent, add10Agents, evacuate, removeAgent);
+        removeAgent.setOnAction(e -> {
+            if (mapView != null && controller != null) {
+                // Récupérer l'agent sélectionné dans la MapView
+                Agent selected = mapView.getSelectedAgent(); // voir ajout ci-dessous
+                if (selected != null) {
+                    controller.removeAgent(selected.getId());
+                    app.Main.getSharedAdminCtrl().loadAgents();
+                }
+                refreshUI();
+            }
+        });
 
-        box.getChildren().addAll(modes, mass);
+        mass.getChildren().addAll(add5Nodes, add1Agent, add10Agents, evacuate, removeAgent);
+        zones.getChildren().addAll(addNeighborhood, addShelter, removeZone, floodZone, resetZones);
+        box.getChildren().addAll(modes, mass, zones);
         return box;
     }
 
@@ -254,14 +330,11 @@ public class SimulationView extends BorderPane {
     }
 
     private void addOneAgent() {
-        if (modele == null || mapView == null) return;
-        int id = modele.getAgents().stream().mapToInt(a -> a.getId()).max().orElse(100) + 1;
-        Citizen c = new Citizen(id, "Citoyen", "Nouveau" + id, new Node(45.7640, 4.8357));
-        c.setState(CitizenState.CALM);
-        c.setMaxSpeed(2.0 + (id % 4));
-        c.setCongestionTolerance(0.5 + (id % 3));
-        modele.getAgents().add(c);
-        mapView.addAgent(c);
+        if (controller == null) return;
+        // Délègue au SimulationController qui écrit dans FloodSimulation partagée
+        controller.addRandomCitizen();
+        // Notifier AdminController que les agents ont changé
+        app.Main.getSharedAdminCtrl().loadAgents();
         refreshUI();
     }
 

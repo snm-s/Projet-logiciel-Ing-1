@@ -9,6 +9,9 @@ import model.agent.Agent;
 import model.agent.AdminAgent;
 import model.agent.Citizen;
 import model.agent.RescueAgent;
+import model.simulation.FloodSimulation;
+import model.simulation.SimulationDataService;
+import model.zone.Zone;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,42 +26,42 @@ import java.util.stream.Collectors;
  */
 public class AdminController {
 
-    private static final String USERS_FILE = "dataUser/users.json";
 
     private final ObjectMapper mapper;
     private ObservableList<Agent> allAgents = FXCollections.observableArrayList();
+    private ObservableList<Zone> allZones = FXCollections.observableArrayList();
+    private final SimulationDataService dataService;
+    private final FloodSimulation simulation;
 
-    // ── Singleton ──────────────────────────────────────────────────────────────
-    private static AdminController instance;
 
-    public static AdminController getInstance() {
-        if (instance == null) instance = new AdminController();
-        return instance;
-    }
 
-    public AdminController() {
+    public AdminController(SimulationDataService dataService, FloodSimulation simulation) {
+        this.dataService = dataService;
+        this.simulation = simulation;
+
         mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
         loadAgents();
+        loadZones();
     }
 
     // ── Chargement ─────────────────────────────────────────────────────────────
 
+    /**
+     * Recharge la liste depuis la FloodSimulation en mémoire (source de vérité).
+     * Plus de lecture JSON directe.
+     */
     public void loadAgents() {
-        try {
-            File file = new File(USERS_FILE);
-            if (!file.exists()) {
-                System.err.println("[AdminController] users.json introuvable : " + file.getAbsolutePath());
-                return;
-            }
-            List<Agent> loaded = mapper.readValue(file, new TypeReference<List<Agent>>() {});
-            allAgents.setAll(loaded);
-            System.out.println("[AdminController] " + loaded.size() + " agents chargés.");
-        } catch (IOException e) {
-            System.err.println("[AdminController] Erreur lecture users.json : " + e.getMessage());
-        }
+        List<Agent> live = simulation.getAgents();
+        allAgents.setAll(live != null ? live : List.of());
     }
+    public void loadZones() {
+        List<Zone> live = simulation.getZones();
+        allZones.setAll(live != null ? live : List.of());
+    }
+
 
     // ── Listes observables ─────────────────────────────────────────────────────
 
@@ -140,23 +143,48 @@ public class AdminController {
 
     // ── CRUD ───────────────────────────────────────────────────────────────────
 
+
+    public void saveAgents() {
+        dataService.saveAgents(allAgents);
+    }
+
+
     public void addAgent(Agent a) {
-        allAgents.add(a);
-        saveAgents();
+        simulation.addAgent(a);                    // modifie la source de vérité
+        allAgents.setAll(simulation.getAgents());  // rafraîchit l'ObservableList
+        dataService.saveAgents(allAgents);         // persistance optionnelle
     }
 
     public void deleteAgent(Agent a) {
-        allAgents.remove(a);
-        saveAgents();
+        simulation.removeAgent(a);                 // modifie la source de vérité
+        allAgents.setAll(simulation.getAgents());  // rafraîchit l'ObservableList
+        dataService.saveAgents(allAgents);         // persistance optionnelle
     }
 
-    public void saveAgents() {
-        try {
-            mapper.writerWithDefaultPrettyPrinter().writeValue(new File(USERS_FILE), allAgents);
-        } catch (IOException e) {
-            System.err.println("[AdminController] Erreur sauvegarde : " + e.getMessage());
-        }
+    public void addZone(Zone z) {
+        simulation.addZone(z);                        // source de vérité
+        allZones.setAll(simulation.getZones());        // rafraîchit l'ObservableList
+        dataService.saveZones(allZones);              // persistance optionnelle
     }
+
+
+    public void deleteZone(Zone z) {
+        simulation.removeZone(z);                     // source de vérité
+        allZones.setAll(simulation.getZones());        // rafraîchit l'ObservableList
+        dataService.saveZones(allZones);              // persistance optionnelle
+    }
+
+    public void updateZone(Zone z) {
+        simulation.updateZone(z);                     // source de vérité
+        allZones.setAll(simulation.getZones());        // rafraîchit l'ObservableList
+        dataService.saveZones(allZones);              // persistance optionnelle
+    }
+
+
+    public int getTotalZones()   { return allZones.size(); }
+    public int getFloodedZones() { return (int) allZones.stream().filter(Zone::isFlooded).count(); }
+    public int getSafeZones()    { return (int) allZones.stream().filter(z -> !z.isFlooded()).count(); }
+
 
     // ── Recherche ──────────────────────────────────────────────────────────────
 

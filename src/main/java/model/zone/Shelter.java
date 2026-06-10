@@ -1,5 +1,7 @@
 package model.zone;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 public class Shelter extends Zone {
     private int capacity;
     private int currentOccupancy;
@@ -9,9 +11,11 @@ public class Shelter extends Zone {
         this.capacity = capacity;
         this.currentOccupancy = 0;
     }
+    
+    public Shelter() {super();}
 
     public int getCapacity() { return capacity; }
-    public int getCurrentOccupancy() { return currentOccupancy; }
+    @JsonIgnore public int getCurrentOccupancy() { return currentOccupancy; }
     public boolean canAccommodate(int numberOfPeople) { return (currentOccupancy + numberOfPeople) <= capacity; }
     public void accommodate(int numberOfPeople) {
         if (canAccommodate(numberOfPeople)) {

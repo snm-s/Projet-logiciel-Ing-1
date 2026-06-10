@@ -262,6 +262,15 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         mapViewer.repaint();
     }
 
+    /**
+     * Retourne l'agent actuellement sélectionné, ou null.
+     * Utilisé par SimulationView pour déléguer la suppression à SimulationController.
+     */
+    public Agent getSelectedAgent() {
+        if (selectedGraphElement instanceof Agent a) return a;
+        return null;
+    }
+
     public JXMapViewer getMapViewer() { return mapViewer; }
     public SwingNode getSwingNode() { return swingNode; }
     public Object getWebView() { return null; }

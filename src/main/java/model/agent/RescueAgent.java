@@ -1,5 +1,6 @@
 package model.agent;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import model.enums.RescueState;
@@ -10,6 +11,7 @@ public class RescueAgent extends Agent {
     private String teamType;
     private RescueState state;
 
+
     public String getTeamType() {
         return teamType;
     }
@@ -18,6 +20,7 @@ public class RescueAgent extends Agent {
         this.teamType = teamType;
     }
 
+  
     public RescueState getState() {
         return state;
     }
@@ -41,6 +44,7 @@ public class RescueAgent extends Agent {
         super(id, firstName, lastName, position);
         this.state = RescueState.INDISPONIBLE; // État par défaut
     }
+
 
     public boolean isIdle() {
         // Renvoie true si l'équipe n'a pas de mission en cours

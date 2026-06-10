@@ -1,8 +1,12 @@
 package view;
 
+import java.util.List;
+
 import app.Main;
+import controller.MapController;
 import controller.CitizenPage.CitizenAlertsController;
 import controller.CitizenPage.CitizenController;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -42,6 +46,7 @@ public class CitizenDashboardView extends BorderPane {
     private static final String BORDER_GLASS = "rgba(255,255,255,0.18)";
 
     private final CitizenController controller;
+    private controller.MapController mapControllerRef;
     private final Agent user;
 
     private VBox sidebar;
@@ -53,7 +58,33 @@ public class CitizenDashboardView extends BorderPane {
     public CitizenDashboardView(CitizenController controller) {
         this.controller = controller;
         this.user = Main.currentUser;
-        this.mapComponent = new MapView(controller.getZones());
+        
+        MapController sharedMC = Main.getSharedMapController();
+        if (sharedMC != null) {
+            this.mapComponent = sharedMC.getMapView();
+        } else {
+            // Fallback si SimulationView n'a pas encore été ouverte :
+            // Créer une MapView autonome ET la brancher sur les données partagées
+            this.mapComponent = Main.getSharedMapView();
+            // Synchroniser agents et graphe depuis la simulation partagée
+            List<Agent> agents = Main.getSharedSimulation().getAgents();
+            this.mapComponent.setAgents(agents);
+        }
+
+        // Abonnement temps réel aux changements de zones
+        Main.getSharedSimulation().addZoneObserver(zone ->
+            Platform.runLater(() ->
+                mapComponent.updateAllZones(Main.getSharedSimulation().getZones())
+            )
+        );
+
+        // Abonnement temps réel aux changements d'agents
+        Main.getSharedSimulation().addAgentObserver(updatedAgents ->
+            Platform.runLater(() ->
+                mapComponent.setAgents(updatedAgents)
+            )
+        );
+
 
         setPrefSize(1100, 650);
         setStyle("-fx-background-color:" + BG_DARK + ";");
