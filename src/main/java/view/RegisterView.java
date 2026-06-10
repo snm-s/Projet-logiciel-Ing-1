@@ -1071,6 +1071,24 @@ public class RegisterView extends StackPane {
         emergencyContact.setOnAction(e -> registerBtn.fire());
     }
 
+    private void updateCoordinatesFromCity() {
+        String cityText = city.getEditor().getText().trim().toLowerCase();
+    
+        if (cityText.contains("parmain")) {
+            detectedLat = 49.1120;
+            detectedLng = 2.2090;
+        } else if (cityText.contains("lyon")) {
+            detectedLat = 45.7640;
+            detectedLng = 4.8357;
+        } else if (cityText.contains("cergy")) {
+            detectedLat = 49.0360;
+            detectedLng = 2.0760;
+        } else if (cityText.contains("paris")) {
+            detectedLat = 48.8566;
+            detectedLng = 2.3522;
+        }
+    }
+
     private void handleRegister() {
         if (controller == null) return;
 
@@ -1109,7 +1127,21 @@ public class RegisterView extends StackPane {
         } catch (NumberFormatException e) {
             System.out.println("[Créer un compte] Erreur : Étage invalide");
         }
+        
+        String fullAddress =
+        address.getText()
+        + ", "
+        + city.getEditor().getText()
+        + ", "
+        + country.getText();
 
+double[] coords =
+        service.GeocodingService.getCoordinates(fullAddress);
+
+if (coords != null) {
+    detectedLat = coords[0];
+    detectedLng = coords[1];
+}
         boolean writeSuccess = controller.handleUserRegistration(
                 firstName.getText(),
                 lastName.getText(),
