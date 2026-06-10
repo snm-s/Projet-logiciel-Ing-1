@@ -9,47 +9,63 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 public class AddressService {
 
     public static List<String> searchLyonAddresses(String query) {
-        List<String> results = new ArrayList<>();
+
+        List<String> addresses = new ArrayList<>();
 
         try {
-            String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8);
+
+            String encodedQuery =
+                    URLEncoder.encode(query + " Lyon", StandardCharsets.UTF_8);
 
             String urlString =
-                    "https://api-adresse.data.gouv.fr/search/?" +
-                    "q=" + encoded +
-                    "&citycode=69123" +
-                    "&limit=8" +
-                    "&autocomplete=1";
+                    "https://api-adresse.data.gouv.fr/search/?q="
+                            + encodedQuery
+                            + "&limit=10";
 
             URL url = new URL(urlString);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
 
-            BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8)
-            );
+            HttpURLConnection connection =
+                    (HttpURLConnection) url.openConnection();
 
-            StringBuilder json = new StringBuilder();
+            connection.setRequestMethod("GET");
+
+            BufferedReader reader =
+                    new BufferedReader(
+                            new InputStreamReader(connection.getInputStream())
+                    );
+
+            StringBuilder response = new StringBuilder();
             String line;
 
             while ((line = reader.readLine()) != null) {
-                json.append(line);
+                response.append(line);
             }
 
             reader.close();
 
-            String text = json.toString();
+            JSONObject json =
+                    new JSONObject(response.toString());
 
-            String[] parts = text.split("\"label\":\"");
+            JSONArray features =
+                    json.getJSONArray("features");
 
-            for (int i = 1; i < parts.length; i++) {
-                String label = parts[i].split("\"")[0];
+            for (int i = 0; i < features.length(); i++) {
 
-                if (label.toLowerCase().contains("lyon")) {
-                    results.add(label);
+                JSONObject properties =
+                        features.getJSONObject(i)
+                                .getJSONObject("properties");
+
+                String address =
+                        properties.optString("name", "").trim();
+
+                if (!address.isBlank()) {
+                    addresses.add(address);
                 }
             }
 
@@ -57,6 +73,6 @@ public class AddressService {
             e.printStackTrace();
         }
 
-        return results;
+        return addresses;
     }
 }
