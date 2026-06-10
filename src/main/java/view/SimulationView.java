@@ -129,7 +129,37 @@ public class SimulationView extends BorderPane {
         status.setAlignment(Pos.CENTER);
         status.setPadding(new Insets(0, 20, 0, 0));
 
-        bar.getChildren().addAll(logo, modeBox, spacer, status);
+        Button btnBack = new Button("← Retour");
+        btnBack.setStyle(
+            "-fx-background-color:#1e293b;" +
+            "-fx-text-fill:#94a3b8;" +
+            "-fx-background-radius:6;" +
+            "-fx-font-size:11px;" +
+            "-fx-padding:5 12 5 12;" +
+            "-fx-cursor:hand;"
+        );
+        btnBack.setOnMouseEntered(e -> btnBack.setStyle(
+            "-fx-background-color:#3b82f6;" +
+            "-fx-text-fill:white;" +
+            "-fx-background-radius:6;" +
+            "-fx-font-size:11px;" +
+            "-fx-padding:5 12 5 12;" +
+            "-fx-cursor:hand;"
+        ));
+        btnBack.setOnMouseExited(e -> btnBack.setStyle(
+            "-fx-background-color:#1e293b;" +
+            "-fx-text-fill:#94a3b8;" +
+            "-fx-background-radius:6;" +
+            "-fx-font-size:11px;" +
+            "-fx-padding:5 12 5 12;" +
+            "-fx-cursor:hand;"
+        ));
+        btnBack.setOnAction(e -> {
+            stopRefresh();
+            Main.showDashboardView("admin");
+        });
+
+        bar.getChildren().addAll(btnBack, logo, modeBox, spacer, status);
         return bar;
     }
 
