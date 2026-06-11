@@ -1,26 +1,21 @@
 package controller.AdminPage;
 
-import controller.MapController;
-import model.agent.Agent;
-import model.agent.Citizen;
-import model.agent.RescueAgent;
-import model.algorithms.EvacuationPath;
-import model.enums.CitizenState;
-import model.graph.AgentMovement;
-import model.graph.Node;
-import model.simulation.FloodSimulation;
-import model.simulation.SimulationDataService;
-import model.zone.Zone;
-import model.graph.EdgeState;
-
-import javafx.application.Platform;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import app.Main;
+import controller.MapController;
+import javafx.application.Platform;
+import model.agent.Agent;
+import model.agent.Citizen;
+import model.agent.RescueAgent;
+import model.graph.AgentMovement;
+import model.graph.EdgeState;
+import model.simulation.FloodSimulation;
+import model.simulation.SimulationDataService;
+import model.zone.Zone;
 
 /**
  * Contrôleur principal de la simulation d'inondation.
@@ -460,7 +455,17 @@ public class SimulationController {
     }
 
     private void propagateAgentAddition(Agent agent) {
-        if (mapController != null) mapController.addAgent(agent);
+        if (mapController != null) {
+            mapController.addAgent(agent);
+            mapController.syncAgents(modele.getAgents());
+        }
+    
+        Platform.runLater(() -> {
+            if (Main.getSharedMapView() != null) {
+                Main.getSharedMapView().setAgents(modele.getAgents());
+            }
+        });
+    
         notifyAgentsUpdated();
     }
 

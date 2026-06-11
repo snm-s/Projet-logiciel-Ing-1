@@ -1,12 +1,12 @@
 package model.graph;
 
-import model.graph.EdgeState;
-import model.zone.Zone;
-import org.jxmapviewer.viewer.GeoPosition;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import org.jxmapviewer.viewer.GeoPosition;
+
+import model.zone.Zone;
 
 /**
  * Arête du graphe routier reliant deux zones.
@@ -32,6 +32,8 @@ public class Edge {
     private int          currentFlow;   // flux courant (agents en transit)
     private int          floodedCount;  // nombre de fois inondée (statistiques)
     private EdgeState        state;
+    private double floodLevel = 0.0;
+    
 
     // Observateurs (notifiés quand l'état change)
     private final List<EdgeObserver> observers = new ArrayList<>();
@@ -63,6 +65,14 @@ public class Edge {
      *  - Le flux courant vs capacité
      */
     public EdgeState computeState() {
+
+        if (floodLevel >= 1.0) {
+            return EdgeState.FLOODED;
+        }
+        
+        if (floodLevel > 0.0) {
+            return EdgeState.FLOODING;
+        }
         // 1. Gestion des inondations (Priorité maximale)
         boolean fromFlooded = fromZone.isFlooded();
         boolean toFlooded   = toZone.isFlooded();
@@ -166,6 +176,30 @@ public class Edge {
 
     private void notifyObservers() {
         for (EdgeObserver obs : observers) obs.onEdgeStateChanged(this, state);
+    }
+
+    public void setFloodLevel(double level) {
+        double oldLevel = this.floodLevel;
+    
+        this.floodLevel = Math.max(0.0, Math.min(1.0, level));
+    
+        if (oldLevel < 1.0 && this.floodLevel >= 1.0) {
+            this.floodedCount++;
+        }
+    
+        refreshState();
+    }
+    
+    public double getFloodLevel() {
+        return floodLevel;
+    }
+    
+    public void setFlooded(boolean flooded) {
+        setFloodLevel(flooded ? 1.0 : 0.0);
+    }
+    
+    public boolean isManuallyFlooded() {
+        return floodLevel >= 1.0;
     }
 
     // ─────────────────────────────────────────────────────────────────────

@@ -58,11 +58,27 @@ public class AgentPainter implements Painter<JXMapViewer> {
     public void setAgents(List<Agent> agents, List<Zone> zones) {
         this.agents = agents == null ? new ArrayList<>() : new ArrayList<>(agents);
         this.zones = zones == null ? new ArrayList<>() : new ArrayList<>(zones);
+    
+        Set<Integer> ids = new HashSet<>();
+        for (Agent a : this.agents) ids.add(a.getId());
+    
+        edgeByAgent.keySet().removeIf(id -> !ids.contains(id));
+        progressByAgent.keySet().removeIf(id -> !ids.contains(id));
+        waitCyclesByAgent.keySet().removeIf(id -> !ids.contains(id));
+    
         ensurePositions();
     }
 
     public List<Agent> getAgents() {
         return agents;
+    }
+
+    private boolean isDisplayedAgent(Agent agent) {
+
+        if (agent == null) return false;
+    
+        return agents.stream()
+                .anyMatch(a -> a.getId() == agent.getId());
     }
 
     public void updateZones(List<Zone> zones) {
@@ -164,9 +180,17 @@ public class AgentPainter implements Painter<JXMapViewer> {
         if (routeGraph != null) {
             for (AgentMovement mv : routeGraph.getActiveMovements()) {
                 if (mv == null || mv.getAgent() == null || mv.getCurrentPosition() == null) continue;
+        
+                Agent movingAgent = mv.getAgent();
+                if (!isDisplayedAgent(movingAgent)) continue;
+        
                 Point2D p = map.convertGeoPositionToPoint(mv.getCurrentPosition());
                 double dist = p.distance(screenPoint);
-                if (dist < 24 && dist < bestDist) { bestDist = dist; best = mv.getAgent(); }
+        
+                if (dist < 24 && dist < bestDist) {
+                    bestDist = dist;
+                    best = movingAgent;
+                }
             }
         }
         return best;
@@ -183,6 +207,7 @@ public class AgentPainter implements Painter<JXMapViewer> {
             for (AgentMovement mv : new ArrayList<>(routeGraph.getActiveMovements())) {
                 if (mv == null || mv.getAgent() == null || mv.getCurrentPosition() == null) continue;
                 Agent agent = mv.getAgent();
+                if (!isDisplayedAgent(agent)) continue;
                 movingAgentIds.add(agent.getId());
                 boolean panicking = isPanicking(agent) || mv.isBlocked();
                 if (isDangerAt(mv.getCurrentPosition().getLatitude(), mv.getCurrentPosition().getLongitude())) {

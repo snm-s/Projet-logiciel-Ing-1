@@ -76,6 +76,12 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     private GraphNode draggedNode;
     private GraphNode pendingEdgeStart;
     private Object selectedGraphElement;
+    private boolean manualFloodMode = false;
+private GeoPosition floodCenter = null;
+private double floodRadius = 0;
+private javax.swing.Timer floodTimer;
+private int floodTimerDelayMs = 300;
+private double floodRadiusStep = 2.0;
 
     private static final GeoPosition LYON_CENTER = new GeoPosition(45.7640, 4.8357);
     private static final int DEFAULT_ZOOM = 6;
@@ -136,6 +142,14 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
 
         MouseAdapter adapter = new MouseAdapter() {
             @Override public void mouseClicked(MouseEvent e) {
+                if (manualFloodMode) {
+                    floodCenter = mapViewer.convertPointToGeoPosition(e.getPoint());
+                    floodRadius = 0;
+                    startFloodPropagation();
+                    setInfo("Inondation déclenchée manuellement.");
+                    mapViewer.repaint();
+                    return;
+                }
                 if (editMode == EditMode.ADD_NODE) {
                     GeoPosition gp = mapViewer.convertPointToGeoPosition(e.getPoint());
                     addVisualNode(gp.getLatitude(), gp.getLongitude());
@@ -187,16 +201,20 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
             @Override public void mousePressed(MouseEvent e) {
                 Agent agent = agentPainter.findAgentAt(mapViewer, e.getPoint());
                 if (agent != null) {
+                    selectedGraphElement = agent; 
+            
                     draggedAgent = agent;
                     agentPainter.startDrag(agent);
+            
                     if (onAgentSelected != null) onAgentSelected.accept(agent);
-                    setInfo("Agent attrapé : " + nameOf(agent) + " → état stressé/paniqué.");
+            
+                    setInfo("Agent sélectionné : " + nameOf(agent));
                     mapViewer.setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
                     mapViewer.repaint();
                     e.consume();
                     return;
                 }
-
+            
                 Object hit = graphOverlayPainter.hitTest(mapViewer, e.getPoint());
                 if (editMode == EditMode.MOVE_NODE && hit instanceof GraphNode node) {
                     draggedNode = node;
@@ -206,7 +224,6 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
                     e.consume();
                 }
             }
-
             @Override public void mouseDragged(MouseEvent e) {
                 if (draggedAgent != null) {
                     GeoPosition pos = mapViewer.convertPointToGeoPosition(e.getPoint());
@@ -289,8 +306,23 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     
     public void setAgents(List<Agent> agents) {
         this.agents = agents == null ? new ArrayList<>() : new ArrayList<>(agents);
+    
+        if (selectedGraphElement instanceof Agent selected) {
+            boolean stillExists = this.agents.stream()
+                    .anyMatch(a -> a.getId() == selected.getId());
+    
+            if (!stillExists) {
+                selectedGraphElement = null;
+            }
+        }
+    
         agentPainter.setAgents(this.agents, zones);
-        SwingUtilities.invokeLater(mapViewer::repaint);
+        agentPainter.snapAgentsToGraph();
+    
+        SwingUtilities.invokeLater(() -> {
+            mapViewer.revalidate();
+            mapViewer.repaint();
+        });
     }
 
     public void setOnAgentSelected(Consumer<Agent> callback) { this.onAgentSelected = callback; }
@@ -303,7 +335,60 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         setInfo("Mode : " + this.editMode.name());
     }
 
+    public void setManualFloodMode(boolean enabled) {
+        this.manualFloodMode = enabled;
+        setInfo(enabled ? "Mode inondation manuelle : clique sur la carte." : "Mode inondation désactivé.");
+    }
+
+    public void resetManualFlood() {
+        if (floodTimer != null) {
+            floodTimer.stop();
+        }
+    
+        floodCenter = null;
+        floodRadius = 0;
+        manualFloodMode = false;
+    
+        if (routeGraph != null) {
+            for (Edge edge : routeGraph.getEdges()) {
+                edge.setFloodLevel(0.0);
+            }
+        }
+    
+        setInfo("Inondation réinitialisée.");
+        mapViewer.repaint();
+    }
+
+    public void startRandomFlood() {
+        if (floodTimer != null) {
+            floodTimer.stop();
+        }
+    
+        Random r = new Random();
+    
+        double lat = LYON_CENTER.getLatitude() + (r.nextDouble() - 0.5) * 0.05;
+        double lng = LYON_CENTER.getLongitude() + (r.nextDouble() - 0.5) * 0.07;
+    
+        floodCenter = new GeoPosition(lat, lng);
+        floodRadius = 0;
+        manualFloodMode = false;
+    
+        startFloodPropagation();
+        setInfo("Inondation aléatoire déclenchée.");
+        mapViewer.repaint();
+    }
+
     public EditMode getEditMode() { return editMode; }
+
+    public void setFloodSpeedFromSlider(double sliderValue) {
+        floodTimerDelayMs = (int) sliderValue;
+    
+        floodRadiusStep = Math.max(0.5, 1000.0 / sliderValue);
+    
+        if (floodTimer != null && floodTimer.isRunning()) {
+            startFloodPropagation();
+        }
+    }
 
     public void addRandomNodes(int count) {
         Random r = new Random();
@@ -327,10 +412,16 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
 
     public void removeSelectedAgent() {
         if (selectedGraphElement instanceof Agent a) {
-            agents.remove(a);
-            agentPainter.setAgents(agents, zones);
+            agents.removeIf(agent -> agent.getId() == a.getId());
+    
             selectedGraphElement = null;
+    
+            agentPainter.setAgents(agents, zones);
+            agentPainter.snapAgentsToGraph();
+    
             setInfo("Agent supprimé.");
+    
+            mapViewer.revalidate();
             mapViewer.repaint();
         }
     }
@@ -464,6 +555,63 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
 
     public void clearRoute() { SwingUtilities.invokeLater(() -> { routeHighlightPainter.clear(); mapViewer.repaint(); }); }
 
+    private void startFloodPropagation() {
+        if (floodTimer != null) {
+            floodTimer.stop();
+        }
+    
+        floodTimer = new javax.swing.Timer(floodTimerDelayMs, e -> {
+            floodRadius += floodRadiusStep;
+    
+            updateFloodedEdges();
+    
+            if (floodRadius >= 260) {
+                floodTimer.stop();
+            }
+    
+            mapViewer.repaint();
+        });
+    
+        floodTimer.start();
+    }
+
+    private void updateFloodedEdges() {
+        if (routeGraph == null || floodCenter == null) return;
+    
+        Point2D floodPoint = mapViewer.convertGeoPositionToPoint(floodCenter);
+    
+        for (Edge edge : routeGraph.getEdges()) {
+            boolean touched = false;
+    
+            List<GeoPosition> pts = edge.getWaypoints();
+    
+            if (pts == null || pts.size() < 2) {
+                pts = List.of(
+                        new GeoPosition(edge.getFromZone().getLatitude(), edge.getFromZone().getLongitude()),
+                        new GeoPosition(edge.getToZone().getLatitude(), edge.getToZone().getLongitude())
+                );
+            }
+    
+            for (int i = 0; i < pts.size() - 1; i++) {
+                Point2D p1 = mapViewer.convertGeoPositionToPoint(pts.get(i));
+                Point2D p2 = mapViewer.convertGeoPositionToPoint(pts.get(i + 1));
+    
+                double distance = new Line2D.Double(p1, p2).ptSegDist(floodPoint);
+    
+                if (distance <= floodRadius) {
+                    touched = true;
+                    break;
+                }
+            }
+    
+            if (touched) {
+                edge.setFloodLevel(edge.getFloodLevel() + 0.12);
+            }
+        }
+    
+        mapViewer.repaint();
+    }
+
     private void handleMapClick(Point screenPoint) {
         GeoPosition clickPos = mapViewer.convertPointToGeoPosition(screenPoint);
         double lat = clickPos.getLatitude();
@@ -575,6 +723,7 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         Graphics2D g2 = (Graphics2D) g.create();
 
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        drawFlood(g2, map);
 
         if (rg != null) {
 
@@ -598,6 +747,65 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
 
     }
 
+    private void drawFlood(Graphics2D g2, JXMapViewer map) {
+        if (floodCenter == null) return;
+    
+        Point2D p = map.convertGeoPositionToPoint(floodCenter);
+    
+        int cx = (int) p.getX();
+        int cy = (int) p.getY();
+        int r = (int) floodRadius;
+    
+        if (r <= 0) return;
+    
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+    
+        // Eau principale transparente
+        g2.setColor(new Color(0, 145, 255, 55));
+        g2.fillOval(cx - r, cy - r, r * 2, r * 2);
+    
+        // Plusieurs vagues irrégulières
+        for (int wave = 0; wave < 4; wave++) {
+            int waveRadius = r - wave * 35;
+            if (waveRadius <= 10) continue;
+    
+            java.awt.geom.Path2D.Double path = new java.awt.geom.Path2D.Double();
+    
+            for (int angle = 0; angle <= 360; angle += 8) {
+                double rad = Math.toRadians(angle);
+    
+                double deformation =
+                        Math.sin(rad * 5 + floodRadius * 0.08 + wave) * 8
+                        + Math.cos(rad * 3 + floodRadius * 0.05) * 5;
+    
+                double rr = waveRadius + deformation;
+    
+                double x = cx + Math.cos(rad) * rr;
+                double y = cy + Math.sin(rad) * rr;
+    
+                if (angle == 0) {
+                    path.moveTo(x, y);
+                } else {
+                    path.lineTo(x, y);
+                }
+            }
+    
+            path.closePath();
+    
+            g2.setColor(new Color(0, 190, 255, 35));
+            g2.fill(path);
+    
+            g2.setColor(new Color(0, 210, 255, 120));
+            g2.setStroke(new BasicStroke(2.2f));
+            g2.draw(path);
+        }
+    
+        // Centre un peu plus foncé
+        int inner = Math.max(15, r / 3);
+        g2.setColor(new Color(0, 90, 210, 60));
+        g2.fillOval(cx - inner, cy - inner, inner * 2, inner * 2);
+    }
+
         private void drawRealEdge(Graphics2D g2, JXMapViewer map, Edge e) {
             List<GeoPosition> pts = e.getWaypoints();
         
@@ -614,6 +822,7 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
             switch (e.getState()) {
                 case SAFE -> edgeColor = new Color(14, 165, 233, 220);
                 case AT_RISK -> edgeColor = new Color(245, 158, 11, 230);
+                case FLOODING -> edgeColor = new Color(249, 115, 22, 230);
                 case CONGESTED -> edgeColor = new Color(234, 179, 8, 230);
                 case OVERLOADED -> edgeColor = new Color(185, 28, 28, 230);
                 case FLOODED -> edgeColor = new Color(239, 68, 68, 230);
