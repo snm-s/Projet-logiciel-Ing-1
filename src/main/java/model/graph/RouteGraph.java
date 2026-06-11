@@ -388,6 +388,17 @@ public class RouteGraph {
     public EvacuationRouter     getRouter()          { return router; }
     public List<AgentMovement>  getActiveMovements() { return Collections.unmodifiableList(activeMovements); }
 
+    public void removeMovementsOfAgent(int agentId) {
+        activeMovements.removeIf(mv ->
+            mv != null &&
+            mv.getAgent() != null &&
+            mv.getAgent().getId() == agentId
+        );
+    
+        simulateFlows();
+        refreshAllEdges();
+    }
+
     public List<Edge> getEdgesForZone(Zone zone) {
         return edges.stream()
             .filter(e -> e.getFromZone().getId() == zone.getId()
