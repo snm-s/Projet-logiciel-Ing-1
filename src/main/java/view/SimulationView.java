@@ -28,9 +28,6 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.util.Duration;
 import model.agent.Agent;
-import model.agent.Citizen;
-import model.enums.CitizenState;
-import model.graph.Node;
 import model.simulation.FloodSimulation;
 import model.zone.Zone;
 
@@ -99,27 +96,68 @@ public class SimulationView extends BorderPane {
         logo.setPadding(new Insets(0, 20, 0, 16));
         logo.setPrefWidth(230);
         logo.setStyle("-fx-border-color:transparent " + BORDER_COLOR + " transparent transparent;-fx-border-width:0 1 0 0;");
-        Label ico = new Label("🌊");
-        ico.setStyle("-fx-font-size:16px;");
+        Label ico = new Label("");
+ico.setMinWidth(0);
+ico.setPrefWidth(0);
         VBox titleBox = new VBox(1,
                 styledLabel("Inondation", FontWeight.BOLD, 13, TEXT_PRIMARY),
                 styledLabel("Graphe + agents Mii", FontWeight.NORMAL, 10, TEXT_MUTED));
-        logo.getChildren().addAll(ico, titleBox);
+                logo.getChildren().add(titleBox);
 
         HBox modeBox = new HBox(8);
         modeBox.setAlignment(Pos.CENTER);
         modeBox.setPadding(new Insets(0, 20, 0, 20));
         btnAleatoire = modeButton("⟳  Aléatoire", true);
-        btnManuelle = modeButton("↺  Manuelle", false);
-        btnAleatoire.setOnAction(e -> {
-            setModeActive(btnAleatoire, btnManuelle);
-            if (controller != null) { controller.setModeAleatoire(true); controller.demarrerSimulation(); startSimLoop(); }
-        });
-        btnManuelle.setOnAction(e -> {
-            setModeActive(btnManuelle, btnAleatoire);
-            if (controller != null) { controller.setModeAleatoire(false); controller.mettreEnPause(); stopSimLoop(); }
-        });
-        modeBox.getChildren().addAll(btnAleatoire, btnManuelle);
+btnManuelle = modeButton("↺  Manuelle", false);
+Button btnRecommencer = modeButton("↻  Recommencer", false);
+
+btnAleatoire.setOnAction(e -> {
+    setModeActive(btnAleatoire, btnManuelle, btnRecommencer);
+
+    if (mapView != null) {
+        mapView.setManualFloodMode(false);
+        mapView.startRandomFlood();
+    }
+
+    if (controller != null) {
+        controller.setModeAleatoire(true);
+        controller.demarrerSimulation();
+        startSimLoop();
+    }
+});
+
+btnManuelle.setOnAction(e -> {
+    setModeActive(btnManuelle, btnAleatoire, btnRecommencer);
+
+    if (controller != null) {
+        controller.setModeAleatoire(false);
+        controller.mettreEnPause();
+        stopSimLoop();
+    }
+
+    if (mapView != null) {
+        mapView.setManualFloodMode(true);
+    }
+});
+
+btnRecommencer.setOnAction(e -> {
+    if (mapView != null) {
+        mapView.resetManualFlood();
+    }
+
+    if (controller != null) {
+        controller.resetSimulation();
+        controller.mettreEnPause();
+    }
+
+    stopSimLoop();
+    refreshUI();
+
+    lblSimStatus.setText("En pause");
+    lblTimer.setText("⏱  00:00:00");
+});
+
+modeBox.getChildren().addAll(btnAleatoire, btnManuelle, btnRecommencer);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -128,7 +166,6 @@ public class SimulationView extends BorderPane {
         HBox status = new HBox(10, lblSimStatus, lblTimer);
         status.setAlignment(Pos.CENTER);
         status.setPadding(new Insets(0, 20, 0, 0));
-
         Button btnBack = new Button("← Retour");
         btnBack.setStyle(
             "-fx-background-color:#1e293b;" +
@@ -241,7 +278,7 @@ public class SimulationView extends BorderPane {
 
         HBox modes = new HBox(6);
         modes.setAlignment(Pos.CENTER);
-        Button select = smallButton("👆 Sélection");
+        Button select = smallButton("Sélection");
         Button addNode = smallButton("＋ Nœud");
         Button addEdge = smallButton("＋ Arête");
         Button moveNode = smallButton("↕ Déplacer nœud");
@@ -253,7 +290,6 @@ public class SimulationView extends BorderPane {
         Button addNeighborhood = smallButton("＋ Quartier");
         Button addShelter = smallButton("＋ Refuges");
         Button removeZone = smallButton("🗑 Suppr. zone sélect.");
-        Button floodZone  = smallButton("💧 Inonder zone");
         Button resetZones = smallButton("↺ Reset zones");
 
         addNeighborhood.setOnAction(e -> {
@@ -269,17 +305,6 @@ public class SimulationView extends BorderPane {
                 model.zone.Zone selected = mapController.getSelectedZone();
                 if (selected != null) {
                     controller.removeZone(selected.getId());
-                    refreshUI();
-                }
-            }
-        });
-
-        floodZone.setOnAction(e -> {
-            if (mapController != null && controller != null) {
-                model.zone.Zone selected = mapController.getSelectedZone();
-                if (selected != null) {
-                    selected.setFlooded(true);
-                    controller.updateZone(selected);
                     refreshUI();
                 }
             }
@@ -318,52 +343,68 @@ public class SimulationView extends BorderPane {
         add10Agents.setOnAction(e -> {
             if (controller != null) {
                 controller.addRandomCitizens(10);
+        
+                if (mapView != null && modele != null) {
+                    mapView.setAgents(modele.getAgents());
+                }
+        
                 app.Main.getSharedAdminCtrl().loadAgents();
                 refreshUI();
             }
         });
         evacuate.setOnAction(e -> { if (mapController != null) { mapController.evacuateAllCitizensToShelters(); refreshUI(); } });
         removeAgent.setOnAction(e -> {
-            if (mapView != null && controller != null) {
-                // Récupérer l'agent sélectionné dans la MapView
-                Agent selected = mapView.getSelectedAgent(); // voir ajout ci-dessous
-                if (selected != null) {
-                    controller.removeAgent(selected.getId());
-                    app.Main.getSharedAdminCtrl().loadAgents();
-                }
-                refreshUI();
+            if (mapView == null || controller == null || modele == null) return;
+        
+            Agent selected = mapView.getSelectedAgent();
+        
+            if (selected == null) {
+                lblGraphInfo.setText("Clique d'abord sur un agent.");
+                return;
             }
+        
+            int id = selected.getId();
+        
+            controller.removeAgent(id);
+        
+            mapView.setAgents(modele.getAgents());
+        
+            lblGraphInfo.setText("Agent supprimé.");
+            lblSelectedZone.setText("Sélection —");
+        
+            app.Main.getSharedAdminCtrl().loadAgents();
+            refreshUI();
         });
 
         mass.getChildren().addAll(add5Nodes, add1Agent, add10Agents, evacuate, removeAgent);
-        zones.getChildren().addAll(addNeighborhood, addShelter, removeZone, floodZone, resetZones);
+        zones.getChildren().addAll(addNeighborhood, addShelter, removeZone, resetZones);
         box.getChildren().addAll(modes, mass, zones);
         return box;
     }
 
     private VBox buildLegendePanel() {
         VBox p = cardPanel(205);
-        p.getChildren().add(styledLabel("LÉGENDE", FontWeight.BOLD, 10, TEXT_MUTED));
-        p.getChildren().add(colorBar(ACCENT_GREEN, "Arête sûre"));
-        p.getChildren().add(colorBar(ACCENT_ORANGE, "Arête à risque"));
-        p.getChildren().add(colorBar("#eab308", "Congestionnée"));
-        p.getChildren().add(colorBar("#b91c1c", "Surchargée"));
-        p.getChildren().add(colorBar(ACCENT_RED, "Arête inondée"));
-        p.getChildren().add(separator());
+    
         p.getChildren().add(styledLabel("ACTIONS TEMPORELLES", FontWeight.BOLD, 10, TEXT_MUTED));
         p.getChildren().add(buildControlButtons());
         p.getChildren().add(buildSpeedRow());
-        p.getChildren().add(separator());
-        p.getChildren().add(styledLabel("ZONES", FontWeight.BOLD, 10, TEXT_MUTED));
-        p.getChildren().add(buildZoneGrid());
+    
         return p;
     }
 
     private void addOneAgent() {
-        if (controller == null) return;
-        // Délègue au SimulationController qui écrit dans FloodSimulation partagée
+        if (controller == null || modele == null) return;
+    
         controller.addRandomCitizen();
-        // Notifier AdminController que les agents ont changé
+    
+        if (mapController != null) {
+            mapController.syncAgents(modele.getAgents());
+        }
+    
+        if (mapView != null) {
+            mapView.setAgents(modele.getAgents());
+        }
+    
         app.Main.getSharedAdminCtrl().loadAgents();
         refreshUI();
     }
@@ -435,9 +476,9 @@ public class SimulationView extends BorderPane {
 
         VBox b1 = statBloc("INFORMATIONS GÉNÉRALES");
         b1.getChildren().addAll(
-                statRow("👥", "Citoyens à évacuer", lblPopRisque = val("0", ACCENT_ORANGE)),
-                statRow("🏕", "Citoyens au refuge", lblPersonnesSec = val("0", ACCENT_GREEN)),
-                statRow("🧍", "Agents affichés", lblAgentsActifs = val("0", ACCENT_BLUE)));
+            statRow("○", "Citoyens à évacuer", lblPopRisque = val("0", ACCENT_ORANGE)),
+            statRow("□", "Citoyens au refuge", lblPersonnesSec = val("0", ACCENT_GREEN)),
+            statRow("▣", "Agents affichés", lblAgentsActifs = val("0", ACCENT_BLUE)));
 
         VBox b2 = statBloc("STATUT DU RÉSEAU");
         b2.getChildren().addAll(
@@ -449,9 +490,9 @@ public class SimulationView extends BorderPane {
 
         VBox b3 = statBloc("POINTS DE REFUGE");
         b3.getChildren().addAll(
-                statRow("⛺", "Total", lblRefugesTotal = val("0", TEXT_PRIMARY)),
-                statRow("✅", "Accessibles", lblRefugesAccess = val("0", ACCENT_GREEN)),
-                statRow("❌", "Inaccessibles", lblRefugesInacc = val("0", ACCENT_RED)));
+            statRow("⌂", "Total", lblRefugesTotal = val("0", TEXT_PRIMARY)),
+            statRow("✓", "Accessibles", lblRefugesAccess = val("0", ACCENT_GREEN)),
+            statRow("×", "Inaccessibles", lblRefugesInacc = val("0", ACCENT_RED)));
 
         VBox b4 = statBloc("NIVEAU D'EAU MOYEN");
         lblNiveauActuel = styledLabel("0.00 m", FontWeight.BOLD, 18, ACCENT_BLUE);
@@ -557,10 +598,26 @@ public class SimulationView extends BorderPane {
         return p;
     }
 
+    private Rectangle iconLine(String color) {
+        Rectangle r = new Rectangle(22, 3);
+        r.setArcWidth(3);
+        r.setArcHeight(3);
+        r.setFill(Color.web(color));
+        return r;
+    }
+
     private VBox statBloc(String title) {
-        VBox b = new VBox(5);
-        b.setPadding(new Insets(10, 16, 10, 16));
-        b.getChildren().add(styledLabel(title, FontWeight.BOLD, 9, TEXT_MUTED));
+        VBox b = new VBox(8);
+        b.setPadding(new Insets(12, 18, 10, 18));
+    
+        Label titleLabel = styledLabel(title, FontWeight.BOLD, 9, TEXT_MUTED);
+    
+        Rectangle underline = new Rectangle(150, 2);
+        underline.setFill(Color.web(ACCENT_BLUE));
+        underline.setArcWidth(3);
+        underline.setArcHeight(3);
+    
+        b.getChildren().addAll(titleLabel, underline);
         return b;
     }
 
@@ -574,9 +631,15 @@ public class SimulationView extends BorderPane {
     private HBox statRow(String icon, String label, Label value) {
         HBox r = new HBox(8);
         r.setAlignment(Pos.CENTER_LEFT);
+    
         Label ic = new Label(icon);
+        ic.setTextFill(Color.web(TEXT_MUTED));
+        ic.setFont(Font.font("System", FontWeight.BOLD, 15));
+        ic.setMinWidth(22);
+    
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);
+    
         r.getChildren().addAll(ic, styledLabel(label, FontWeight.NORMAL, 11, TEXT_MUTED), sp, value);
         return r;
     }
@@ -624,9 +687,12 @@ public class SimulationView extends BorderPane {
         return b;
     }
 
-    private void setModeActive(Button active, Button inactive) {
+    private void setModeActive(Button active, Button... inactives) {
         active.setStyle("-fx-background-color:#1e40af;-fx-text-fill:#93c5fd;-fx-background-radius:6;-fx-font-size:11px;-fx-padding:5 12 5 12;-fx-cursor:hand;");
-        inactive.setStyle("-fx-background-color:#1e293b;-fx-text-fill:" + TEXT_MUTED + ";-fx-background-radius:6;-fx-font-size:11px;-fx-padding:5 12 5 12;-fx-cursor:hand;");
+    
+        for (Button inactive : inactives) {
+            inactive.setStyle("-fx-background-color:#1e293b;-fx-text-fill:" + TEXT_MUTED + ";-fx-background-radius:6;-fx-font-size:11px;-fx-padding:5 12 5 12;-fx-cursor:hand;");
+        }
     }
 
     private Button iconBtn(String icon) {
