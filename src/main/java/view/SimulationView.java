@@ -129,14 +129,24 @@ btnAleatoire.setOnAction(e -> {
 btnManuelle.setOnAction(e -> {
     setModeActive(btnManuelle, btnAleatoire, btnRecommencer);
 
+    if (mapView != null) {
+        mapView.setManualFloodMode(true);
+    }
+
     if (controller != null) {
         controller.setModeAleatoire(false);
+
+        // IMPORTANT :
+        // Le mode manuel est aussi un lancement officiel de simulation.
+        // Donc on déclenche les mêmes alertes / historiques / évacuations
+        // que le mode aléatoire, mais sans démarrer la montée d'eau automatique.
+        controller.demarrerSimulation();
         controller.mettreEnPause();
         stopSimLoop();
     }
 
-    if (mapView != null) {
-        mapView.setManualFloodMode(true);
+    if (lblSimStatus != null) {
+        lblSimStatus.setText("Mode manuel — alerte envoyée");
     }
 });
 
@@ -709,3 +719,4 @@ modeBox.getChildren().addAll(btnAleatoire, btnManuelle, btnRecommencer);
     private HBox wrap(VBox b) { HBox.setHgrow(b, Priority.ALWAYS); b.setMaxWidth(Double.MAX_VALUE); HBox w = new HBox(b); HBox.setHgrow(w, Priority.ALWAYS); return w; }
     private Rectangle div() { Rectangle r = new Rectangle(1, 75); r.setFill(Color.web(BORDER_COLOR)); return r; }
 }
+

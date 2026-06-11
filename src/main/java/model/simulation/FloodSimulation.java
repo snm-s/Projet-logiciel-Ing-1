@@ -7,17 +7,18 @@ import java.util.List;
 import java.util.Map;
 
 import model.agent.Agent;
+import model.agent.Citizen;
 import model.agent.RescueTeam;
 import model.alert.Alert;
 import model.alert.AlertSystem;
-import model.auth.UserService;
 import model.enums.AlertType;
+import model.enums.CitizenState;
 import model.graph.Graph;
 import model.observer.Observer;
 import model.observer.Subject;
 import model.strategy.Strategy;
+import model.zone.Shelter;
 import model.zone.Zone;
-import model.zone.ZoneManager;
 import model.zone.ZoneUpdateListener;
 
 
@@ -59,6 +60,8 @@ public class FloodSimulation {
     private final Subject<List<Zone>>  zoneSubject  = new Subject<>();
     
     private final Map<Integer, Zone[]> citizenPaths = new HashMap<>();
+    private final List<EvacuationEvent> evacuationHistory = new ArrayList<>();
+    private boolean simulationStartAlertPublished = false;
 
 
 
@@ -98,6 +101,82 @@ public class FloodSimulation {
     public Map<Integer, Zone[]> getCitizenPaths() {
         return Collections.unmodifiableMap(citizenPaths);
     }
+
+    public void publishSimulationStartAlert() {
+        if (simulationStartAlertPublished) return;
+        simulationStartAlertPublished = true;
+
+        String time = java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+        alertSystem.addAlert(new Alert(
+                AlertType.EVACUATION,
+                "Alerte évacuation : la simulation d'inondation est lancée. Suivez l'itinéraire vers le refuge indiqué.",
+                "Toutes les zones",
+                "Élevée",
+                time,
+                "Active",
+                "simulation"
+        ));
+    }
+
+    public void recordEvacuationDeparture(Agent agent, Zone from, Zone to) {
+        if (agent == null || from == null || to == null) return;
+
+        registerCitizenPath(agent, from, to);
+        if (agent instanceof Citizen c) {
+            c.setState(CitizenState.ESCAPING);
+        }
+
+        String agentName = agentName(agent);
+        evacuationHistory.add(new EvacuationEvent(
+                agent.getId(),
+                agentName,
+                "DEPART",
+                agentName + " a reçu son itinéraire et part vers le refuge " + to.getName() + ".",
+                from.getName(),
+                to.getName()
+        ));
+    }
+
+    public void recordEvacuationArrival(Agent agent, Zone refuge) {
+        if (agent == null || refuge == null) return;
+
+        if (refuge instanceof Shelter && agent instanceof Citizen c) {
+            c.setState(CitizenState.SAFE);
+        }
+
+        String agentName = agentName(agent);
+        evacuationHistory.add(new EvacuationEvent(
+                agent.getId(),
+                agentName,
+                "ARRIVEE",
+                agentName + " est arrivé au refuge " + refuge.getName() + ".",
+                "",
+                refuge.getName()
+        ));
+    }
+
+    public List<EvacuationEvent> getEvacuationHistory() {
+        return new ArrayList<>(evacuationHistory);
+    }
+
+    public List<EvacuationEvent> getEvacuationHistoryFor(int agentId) {
+        List<EvacuationEvent> result = new ArrayList<>();
+        for (EvacuationEvent event : evacuationHistory) {
+            if (event.getAgentId() == agentId) {
+                result.add(event);
+            }
+        }
+        return result;
+    }
+
+    private String agentName(Agent agent) {
+        if (agent == null) return "Agent";
+        String first = agent.getFirstName() == null ? "" : agent.getFirstName();
+        String last = agent.getLastName() == null ? "" : agent.getLastName();
+        String full = (first + " " + last).trim();
+        return full.isBlank() ? "Agent #" + agent.getId() : full;
+    }
+
 
     public Graph getGraph() { return graph; }
     public List<Agent> getAgents() { return agents; }
@@ -255,6 +334,9 @@ public class FloodSimulation {
         this.enPause = true;
         this.agentsEvacues = 0;
         this.alertSystem.getActiveAlerts().clear();
+        this.evacuationHistory.clear();
+        this.citizenPaths.clear();
+        this.simulationStartAlertPublished = false;
         this.zones.forEach(Zone::reset);
         notifySimulationUpdated();
     }

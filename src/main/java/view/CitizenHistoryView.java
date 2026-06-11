@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import app.Main;
 import controller.CitizenPage.CitizenController;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -21,6 +22,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import model.alert.Alert;
 import model.enums.AlertType;
+import model.simulation.EvacuationEvent;
 
 public class CitizenHistoryView extends BorderPane {
 
@@ -64,7 +66,7 @@ public class CitizenHistoryView extends BorderPane {
 
         Label title = label("Historique", WHITE, 28, true);
         Label sub = label(
-                "Retrouvez les vraies alertes publiées pendant la session en cours.",
+                "Retrouvez vos alertes générales et uniquement votre historique personnel d'évacuation.",
                 LIGHT,
                 14,
                 false
@@ -77,25 +79,26 @@ public class CitizenHistoryView extends BorderPane {
 
     private HBox buildStats() {
         List<Alert> alerts = getRealAlerts();
+        List<EvacuationEvent> events = getMyEvacuationEvents();
 
         long active = alerts.stream()
                 .filter(a -> "Active".equalsIgnoreCase(a.getStatus()))
                 .count();
 
-        long resolved = alerts.stream()
-                .filter(a -> "Résolue".equalsIgnoreCase(a.getStatus()))
+        long departures = events.stream()
+                .filter(e -> "DEPART".equalsIgnoreCase(e.getType()))
                 .count();
 
-        long high = alerts.stream()
-                .filter(a -> "Élevée".equalsIgnoreCase(a.getSeverity()))
+        long arrivals = events.stream()
+                .filter(e -> "ARRIVEE".equalsIgnoreCase(e.getType()))
                 .count();
 
         HBox stats = new HBox(16);
         stats.getChildren().addAll(
-                statCard("Total alertes", String.valueOf(alerts.size()), BLUE, "Alertes réellement reçues"),
+                statCard("Alertes reçues", String.valueOf(alerts.size()), BLUE, "Messages généraux"),
                 statCard("Actives", String.valueOf(active), RED, "Situations en cours"),
-                statCard("Résolues", String.valueOf(resolved), GREEN, "Situations terminées"),
-                statCard("Prioritaires", String.valueOf(high), ORANGE, "Sévérité élevée")
+                statCard("Départs", String.valueOf(departures), ORANGE, "Votre trajet lancé"),
+                statCard("Arrivées", String.valueOf(arrivals), GREEN, "Votre arrivée refuge")
         );
 
         for (Node node : stats.getChildren()) {
@@ -114,7 +117,7 @@ public class CitizenHistoryView extends BorderPane {
         VBox texts = new VBox(4);
         Label title = label("Journal réel", WHITE, 20, true);
         Label subtitle = label(
-                "Les événements affichés ici viennent directement des alertes de l’application.",
+                "Les événements affichés ici sont filtrés sur votre compte citoyen.",
                 LIGHT,
                 13,
                 false
@@ -126,18 +129,24 @@ public class CitizenHistoryView extends BorderPane {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Label count = badge(getRealAlerts().size() + " événement(s)", BLUE);
+        Label count = badge((getRealAlerts().size() + getMyEvacuationEvents().size()) + " événement(s)", BLUE);
 
         header.getChildren().addAll(texts, spacer, count);
 
         VBox list = new VBox(12);
 
         List<Alert> alerts = getRealAlerts();
+        List<EvacuationEvent> events = getMyEvacuationEvents();
 
-        if (alerts.isEmpty()) {
+        if (alerts.isEmpty() && events.isEmpty()) {
             list.getChildren().add(emptyBox());
         } else {
             Collections.reverse(alerts);
+            Collections.reverse(events);
+
+            for (EvacuationEvent event : events) {
+                list.getChildren().add(evacuationHistoryCard(event));
+            }
 
             for (Alert alert : alerts) {
                 list.getChildren().add(alertHistoryCard(alert));
@@ -146,6 +155,51 @@ public class CitizenHistoryView extends BorderPane {
 
         section.getChildren().addAll(header, list);
         return section;
+    }
+
+    private VBox evacuationHistoryCard(EvacuationEvent event) {
+        VBox card = new VBox(12);
+        card.setPadding(new Insets(18));
+        card.setStyle(
+                "-fx-background-color:" + CARD + ";" +
+                        "-fx-background-radius:16;" +
+                        "-fx-border-color:" + BORDER + ";" +
+                        "-fx-border-radius:16;"
+        );
+
+        HBox top = new HBox(14);
+        top.setAlignment(Pos.CENTER_LEFT);
+
+        boolean arrived = "ARRIVEE".equalsIgnoreCase(event.getType());
+        StackPane icon = smallIcon(arrived ? "OK" : "EV", arrived ? GREEN : ORANGE);
+
+        VBox main = new VBox(4);
+        Label type = label(arrived ? "Arrivée au refuge" : "Départ vers refuge", MUTED, 12, true);
+        Label desc = label(clean(event.getMessage(), "Événement d'évacuation"), WHITE, 18, true);
+        desc.setWrapText(true);
+        main.getChildren().addAll(type, desc);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Label status = badge(arrived ? "Sécurisé" : "En route", arrived ? GREEN : ORANGE);
+
+        top.getChildren().addAll(icon, main, spacer, status);
+
+        HBox details = new HBox(12);
+        details.getChildren().addAll(
+                detailBox("Heure", clean(event.getTime(), "--:--")),
+                detailBox("Départ", clean(event.getFromZone(), "--")),
+                detailBox("Refuge", clean(event.getToZone(), "--")),
+                detailBox("Confidentialité", "Visible uniquement par vous")
+        );
+
+        for (Node node : details.getChildren()) {
+            HBox.setHgrow(node, Priority.ALWAYS);
+        }
+
+        card.getChildren().addAll(top, details);
+        return card;
     }
 
     private VBox alertHistoryCard(Alert alert) {
@@ -208,7 +262,7 @@ public class CitizenHistoryView extends BorderPane {
 
         Label title = label("Aucun événement réel enregistré", WHITE, 18, true);
         Label sub = label(
-                "Les alertes apparaîtront ici dès qu’elles seront publiées par l’administration ou générées par la simulation.",
+                "Les alertes et votre historique personnel apparaîtront ici dès que la simulation sera lancée.",
                 LIGHT,
                 13,
                 false
@@ -226,6 +280,15 @@ public class CitizenHistoryView extends BorderPane {
 
         return new ArrayList<>(controller.getAlertSystem().getAlerts());
     }
+
+    private List<EvacuationEvent> getMyEvacuationEvents() {
+        if (controller == null || Main.currentUser == null) {
+            return new ArrayList<>();
+        }
+
+        return new ArrayList<>(controller.getEvacuationHistoryFor(Main.currentUser));
+    }
+
 
     private VBox statCard(String title, String value, String color, String subtitle) {
         VBox card = glassCard(18);

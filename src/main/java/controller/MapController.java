@@ -1,5 +1,6 @@
 package controller;
 
+import app.Main;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -169,6 +170,9 @@ public class MapController {
         AgentMovement mv = routeGraph.planEvacuation(citizen, from, zones);
         if (mv != null) {
             citizen.setState(CitizenState.ESCAPING);
+            if (mv.getDestinationZone() != null) {
+                Main.getSharedSimulation().recordEvacuationDeparture(citizen, from, mv.getDestinationZone());
+            }
             mapView.refreshRouteColors();
         }
         return mv;
@@ -217,9 +221,17 @@ public class MapController {
 
     private void handleAgentArrived(AgentMovement mv) {
         Agent agent = mv.getAgent();
-        if (agent instanceof Citizen c) c.setState(CitizenState.SAFE);
+        Zone destination = mv.getDestinationZone();
+
+        if (agent instanceof Citizen c && destination instanceof Shelter) {
+            c.setState(CitizenState.SAFE);
+            Main.getSharedSimulation().recordEvacuationArrival(agent, destination);
+        }
+
         if (onAgentArrived != null) Platform.runLater(() -> onAgentArrived.accept(mv));
-        mapView.setGraphInfo("Arrivé : " + nameOf(agent) + " → " + mv.getDestinationZone().getName());
+
+        String destName = destination == null ? "destination" : destination.getName();
+        mapView.setGraphInfo("Arrivé : " + nameOf(agent) + " → " + destName);
         mapView.refreshRouteColors();
     }
 

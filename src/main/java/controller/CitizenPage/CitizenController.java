@@ -12,6 +12,7 @@ import model.alert.AlertSystem;
 import model.graph.Node;
 import model.graph.Route;
 import model.simulation.FloodSimulation;
+import model.simulation.EvacuationEvent;
 import model.zone.Shelter;
 import model.zone.Zone;
 import model.zone.ZoneManager;
@@ -31,6 +32,16 @@ public class CitizenController {
     public AlertSystem getAlertSystem() {
         return simulation.getAlertSystem();
     }
+
+    public List<EvacuationEvent> getEvacuationHistoryFor(Agent user) {
+        if (user == null) return new ArrayList<>();
+        return simulation.getEvacuationHistoryFor(user.getId());
+    }
+
+    public List<EvacuationEvent> getAllEvacuationHistory() {
+        return simulation.getEvacuationHistory();
+    }
+
 
     public List<Zone> getZones() {
         return new ZoneManager().getZones();

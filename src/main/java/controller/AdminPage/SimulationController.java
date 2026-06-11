@@ -147,8 +147,14 @@ public class SimulationController {
 
     public void demarrerSimulation() {
         modele.demarrer();
-        evacuationDeclenchee = false;
-        notifyStatus("Simulation en cours");
+        modele.publishSimulationStartAlert();
+
+        if (!evacuationDeclenchee) {
+            declencherEvacuationAutomatique();
+            evacuationDeclenchee = true;
+        }
+
+        notifyStatus("Simulation en cours — alerte envoyée aux citoyens");
     }
 
     public void mettreEnPause() {
@@ -451,7 +457,7 @@ public class SimulationController {
             .map(a -> (Citizen) a)
             .collect(Collectors.toList());
         mapController.triggerMassEvacuation(citizens);
-        notifyStatus("⚠ Évacuation déclenchée !");
+        notifyStatus("⚠ Évacuation déclenchée : alertes envoyées et trajets attribués.");
     }
 
     private void propagateAgentAddition(Agent agent) {
