@@ -27,6 +27,11 @@ public class RescueAgent extends Agent {
         this.state = RescueState.UNAVAILABLE; // État par défaut
     }
 
+    @Override
+    public double getSpeed() {
+        return speed;
+    }
+
     public String getTeamType() {
         return teamType;
     }
@@ -35,9 +40,6 @@ public class RescueAgent extends Agent {
         this.teamType = teamType;
     }
 
-    public double getSpeed() {
-        return speed;
-    }
 
     public RescueState getState() {
         return state;

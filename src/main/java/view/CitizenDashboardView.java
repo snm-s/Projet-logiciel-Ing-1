@@ -527,8 +527,6 @@ public class CitizenDashboardView extends BorderPane {
 
         mapComponent.centerOnAgent(user);
 
-        mapComponent.generateLocalGraphForAgent(user);
-
         return page;
     }
 

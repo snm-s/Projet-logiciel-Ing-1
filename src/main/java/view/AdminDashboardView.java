@@ -37,28 +37,31 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.SVGPath;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.util.Duration;
 import model.agent.Agent;
-import model.simulation.FloodSimulation;
+import model.agent.Citizen;
 import model.simulation.SimulationDataService;
 import model.zone.ZoneManager;
 
 public class AdminDashboardView extends BorderPane {
 
-    private static final String BG_DARK = "#0d1b2a";
-    private static final String BG_PANEL = "#132337";
-    private static final String BG_CARD = "#1a2f45";
-    private static final String BG_SIDEBAR = "#0f1e30";
-    private static final String ACCENT_BLUE = "#1e88e5";
-    private static final String ACCENT_CYAN = "#26c6da";
-    private static final String ACCENT_GREEN = "#43a047";
-    private static final String ACCENT_ORANGE = "#fb8c00";
-    private static final String ACCENT_RED = "#e53935";
-    private static final String TEXT_PRIMARY = "#e8f0fe";
-    private static final String TEXT_MUTED = "#8eaabf";
-    private static final String BORDER = "#1e3a52";
+private static final String BG_DARK = "#06172b";
+private static final String BG_PANEL = "rgba(8, 22, 42, 0.72)";
+private static final String BG_CARD = "rgba(8, 22, 42, 0.72)";
+private static final String BG_SIDEBAR = "#0b1a30";
+
+private static final String ACCENT_BLUE = "#1683ff";
+private static final String ACCENT_CYAN = "#22d3ee";
+private static final String ACCENT_GREEN = "#22c55e";
+private static final String ACCENT_ORANGE = "#f59e0b";
+private static final String ACCENT_RED = "#ef4444";
+
+private static final String TEXT_PRIMARY = "#ffffff";
+private static final String TEXT_MUTED = "#b8c7dd";
+private static final String BORDER = "rgba(255,255,255,0.18)";
 
     // ── État ──────────────────────────────────────────────────────────────────
     private final AdminController ctrl;
@@ -76,7 +79,9 @@ public class AdminDashboardView extends BorderPane {
         this.setLeft(buildSidebar());
 
         contentArea = new StackPane();
-        contentArea.setStyle("-fx-background-color: " + BG_DARK + ";");
+        contentArea.setStyle(
+            "-fx-background-color:linear-gradient(to bottom right, #06172b, #0b1a30, #08162a);"
+    );
         this.setCenter(contentArea);
 
         showDashboard();
@@ -89,10 +94,7 @@ public class AdminDashboardView extends BorderPane {
         bar.setStyle("-fx-background-color: " + BG_SIDEBAR
                 + "; -fx-border-color: " + BORDER + "; -fx-border-width: 0 0 1 0;");
 
-        Rectangle logo = new Rectangle(32, 32);
-        logo.setArcWidth(8);
-        logo.setArcHeight(8);
-        logo.setFill(Color.web(ACCENT_BLUE));
+        StackPane logo = createLogoIcon();
 
         Label title = new Label("Inondation");
         title.setFont(Font.font("Segoe UI", FontWeight.BOLD, 20));
@@ -139,33 +141,38 @@ public class AdminDashboardView extends BorderPane {
         sidebarBox.setPrefWidth(210);
         sidebarBox.setMinWidth(210);
         sidebarBox.setPadding(new Insets(20, 12, 20, 12));
-        sidebarBox.setStyle("-fx-background-color: " + BG_SIDEBAR
-                + "; -fx-border-color: " + BORDER + "; -fx-border-width: 0 1 0 0;");
+        sidebarBox.setStyle(
+            "-fx-background-color:" + BG_SIDEBAR + ";" +
+            "-fx-border-color:rgba(255,255,255,0.10);" +
+            "-fx-border-width:0 1 0 0;"
+    );
 
         sidebarBox.getChildren().addAll(
-                navBtn("▦", "Tableau de bord", "dashboard"),
-                navBtn("⌂", "Citoyens", "citizens"),
-                navBtn("✚", "Agents secours", "rescue"),
-                navBtn("◆", "Admins", "admins"),
-                navBtn("!", "Alertes", "alerts"),
-                navBtn("▥", "Statistiques", "stats")
+            navBtn("dashboard", "Tableau de bord", "dashboard"),
+            navBtn("home", "Citoyens", "citizens"),
+            navBtn("plus", "Agents secours", "rescue"),
+            navBtn("user", "Admins", "admins"),
+            navBtn("alert", "Alertes", "alerts"),
+            navBtn("stats", "Statistiques", "stats")
         );
 
         return sidebarBox;
     }
 
-    private Button navBtn(String icon, String label, String section) {
-        Button b = new Button(icon + "  " + label);
+    private Button navBtn(String iconType, String label, String section) {
+        Button b = new Button(label);
+        b.setGraphic(createSidebarIcon(iconType));
         b.setMaxWidth(Double.MAX_VALUE);
         b.setAlignment(Pos.CENTER_LEFT);
-        b.setFont(Font.font("Segoe UI", 13));
-        b.setPadding(new Insets(10, 14, 10, 14));
+        b.setGraphicTextGap(14);
+        b.setFont(Font.font("Segoe UI", FontWeight.SEMI_BOLD, 13));
+        b.setPadding(new Insets(13, 16, 13, 16));
         b.setStyle(navStyle(section.equals(currentSection)));
-
+    
         b.setOnAction(e -> {
             currentSection = section;
             refreshNavStyles();
-
+    
             switch (section) {
                 case "dashboard" -> showDashboard();
                 case "citizens" -> showAgentList("citizen", "Citoyens");
@@ -175,16 +182,56 @@ public class AdminDashboardView extends BorderPane {
                 case "stats" -> showStats();
             }
         });
-
+    
         return b;
+    }
+
+    private Node createSidebarIcon(String type) {
+        SVGPath icon = new SVGPath();
+    
+        switch (type) {
+            case "dashboard" ->
+                    icon.setContent("M3 3 H10 V10 H3 Z M14 3 H21 V10 H14 Z M3 14 H10 V21 H3 Z M14 14 H21 V21 H14 Z");
+            case "home" ->
+                    icon.setContent("M3 11 L12 3 L21 11 V21 H15 V15 H9 V21 H3 Z");
+            case "plus" ->
+                    icon.setContent("M12 5 V19 M5 12 H19");
+            case "user" ->
+                    icon.setContent("M12 12 A4 4 0 1 0 12 4 A4 4 0 0 0 12 12 M4 21 Q12 15 20 21");
+            case "alert" ->
+                    icon.setContent("M12 3 L22 20 H2 Z M12 9 V14 M12 17 V18");
+            case "stats" ->
+                    icon.setContent("M5 20 V10 M12 20 V4 M19 20 V14");
+            default ->
+                    icon.setContent("M4 4 H20 V20 H4 Z");
+        }
+    
+        icon.setStroke(Color.web(TEXT_MUTED));
+        icon.setStrokeWidth(1.8);
+        icon.setFill(Color.TRANSPARENT);
+    
+        StackPane box = new StackPane(icon);
+        box.setPrefSize(22, 22);
+        box.setMinSize(22, 22);
+        box.setMaxSize(22, 22);
+    
+        return box;
     }
 
     private String navStyle(boolean active) {
         return active
-                ? "-fx-background-color: " + ACCENT_BLUE + "22; -fx-text-fill: " + ACCENT_CYAN
-                + "; -fx-background-radius: 6; -fx-cursor: hand;"
-                : "-fx-background-color: transparent; -fx-text-fill: " + TEXT_MUTED
-                + "; -fx-background-radius: 6; -fx-cursor: hand;";
+                ? "-fx-background-color:linear-gradient(to right, #0b5cbf, #1683ff);"
+                + "-fx-text-fill:white;"
+                + "-fx-background-radius:12;"
+                + "-fx-font-weight:bold;"
+                + "-fx-cursor:hand;"
+                + "-fx-effect:dropshadow(gaussian, rgba(14,115,235,0.35), 18, 0, 0, 4);"
+                : "-fx-background-color:rgba(255,255,255,0.025);"
+                + "-fx-text-fill:#b8c7dd;"
+                + "-fx-background-radius:12;"
+                + "-fx-border-color:rgba(255,255,255,0.07);"
+                + "-fx-border-radius:12;"
+                + "-fx-cursor:hand;";
     }
 
     private void refreshNavStyles() {
@@ -207,7 +254,7 @@ public class AdminDashboardView extends BorderPane {
     private void showDashboard() {
         VBox root = new VBox(20);
         root.setPadding(new Insets(24));
-        root.setStyle("-fx-background-color: " + BG_DARK + ";");
+        root.setStyle("-fx-background-color: transparent;");
 
         HBox titleRow = new HBox(16);
         titleRow.setAlignment(Pos.CENTER_LEFT);
@@ -310,8 +357,14 @@ public class AdminDashboardView extends BorderPane {
         card.setPadding(new Insets(18));
         card.setPrefWidth(180);
         card.setMinWidth(180);
-        card.setStyle("-fx-background-color: " + BG_CARD + "; -fx-background-radius: 10;"
-                + "-fx-border-color: " + accent + "44; -fx-border-radius: 10; -fx-border-width: 1;");
+        card.setStyle(
+            "-fx-background-color:" + BG_CARD + ";" +
+            "-fx-background-radius:18;" +
+            "-fx-border-color:" + accent + "99;" +
+            "-fx-border-radius:18;" +
+            "-fx-border-width:1;" +
+            "-fx-effect:dropshadow(gaussian, rgba(0,0,0,0.30), 24, 0, 0, 8);"
+    );
 
         HBox header = new HBox(8);
         header.setAlignment(Pos.CENTER_LEFT);
@@ -439,7 +492,7 @@ public class AdminDashboardView extends BorderPane {
 
         VBox root = new VBox(16);
         root.setPadding(new Insets(24));
-        root.setStyle("-fx-background-color: " + BG_DARK + ";");
+        root.setStyle("-fx-background-color: transparent;");
 
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
@@ -566,7 +619,7 @@ public class AdminDashboardView extends BorderPane {
                 a -> a.getPosition() != null ? a.getPosition().toString() : "—", 220);
 
         TableColumn<Agent, String> colSaved = strCol("Sauvé",
-                a -> a.isSaved() ? "Oui" : "—", 80);
+                a -> (a instanceof Citizen c && c.isSaved()) ? "Oui" : "—", 80);
 
         table.getColumns().addAll(
                 colId,
@@ -636,7 +689,7 @@ public class AdminDashboardView extends BorderPane {
     private void showStats() {
         VBox root = new VBox(20);
         root.setPadding(new Insets(24));
-        root.setStyle("-fx-background-color: " + BG_DARK + ";");
+        root.setStyle("-fx-background-color: transparent;");
 
         Label titleLbl = new Label("Statistiques");
         titleLbl.setFont(Font.font("Segoe UI", FontWeight.BOLD, 22));
@@ -711,7 +764,11 @@ public class AdminDashboardView extends BorderPane {
     private ScrollPane scrollWrap(Node content) {
         ScrollPane sp = new ScrollPane(content);
         sp.setFitToWidth(true);
-        sp.setStyle("-fx-background: " + BG_DARK + "; -fx-background-color: " + BG_DARK + ";");
+        sp.setStyle(
+                "-fx-background:transparent;" +
+                "-fx-background-color:transparent;" +
+                "-fx-viewport-background-color:transparent;"
+        );
         return sp;
     }
 
@@ -740,4 +797,19 @@ public class AdminDashboardView extends BorderPane {
             default -> TEXT_MUTED;
         };
     }
+
+    private StackPane createLogoIcon() {
+    SVGPath logo = new SVGPath();
+    logo.setContent("M15 2 L28 12 H23 V22 H7 V12 H2 Z M2 25 Q8 23 15 25 T28 25 M2 28 Q8 26 15 28 T28 28");
+    logo.setStroke(Color.WHITE);
+    logo.setStrokeWidth(2.0);
+    logo.setFill(Color.TRANSPARENT);
+
+    StackPane box = new StackPane(logo);
+    box.setPrefSize(34, 34);
+    box.setMinSize(34, 34);
+    box.setMaxSize(34, 34);
+
+    return box;
+}
 }

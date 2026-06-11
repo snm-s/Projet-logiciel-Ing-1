@@ -1,26 +1,21 @@
 package controller.AdminPage;
 
-import controller.MapController;
-import model.agent.Agent;
-import model.agent.Citizen;
-import model.agent.RescueAgent;
-import model.algorithms.EvacuationPath;
-import model.enums.CitizenState;
-import model.graph.AgentMovement;
-import model.graph.Node;
-import model.simulation.FloodSimulation;
-import model.simulation.SimulationDataService;
-import model.zone.Zone;
-import model.graph.EdgeState;
-
-import javafx.application.Platform;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import app.Main;
+import controller.MapController;
+import javafx.application.Platform;
+import model.agent.Agent;
+import model.agent.Citizen;
+import model.agent.RescueAgent;
+import model.graph.AgentMovement;
+import model.graph.EdgeState;
+import model.simulation.FloodSimulation;
+import model.simulation.SimulationDataService;
+import model.zone.Zone;
 
 /**
  * Contrôleur principal de la simulation d'inondation.
@@ -152,8 +147,21 @@ public class SimulationController {
 
     public void demarrerSimulation() {
         modele.demarrer();
-        evacuationDeclenchee = false;
-        notifyStatus("Simulation en cours");
+        modele.publishSimulationStartAlert();
+
+        if (modeAleatoire && !evacuationDeclenchee) {
+            // Mode aléatoire : l'eau se propage directement, donc les citoyens
+            // commencent l'évacuation dès le lancement.
+            declencherEvacuationAutomatique();
+            evacuationDeclenchee = true;
+            notifyStatus("Simulation aléatoire — alerte envoyée, agents en évacuation");
+        } else if (!modeAleatoire) {
+            // Mode manuel : on envoie l'alerte, mais les agents ne partent pas
+            // tant que l'utilisateur n'a pas cliqué sur la carte pour lancer l'inondation.
+            notifyStatus("Mode manuel — alerte envoyée, cliquez sur la carte pour déclencher l'évacuation");
+        } else {
+            notifyStatus("Simulation en cours — alerte envoyée aux citoyens");
+        }
     }
 
     public void mettreEnPause() {
@@ -178,17 +186,33 @@ public class SimulationController {
     public void executerPas() {
         if (modele.isEnPause()) return;
 
-        modele.executerPas();
+        // En mode aléatoire, l'eau monte automatiquement.
+        // En mode manuel, on garde le niveau d'eau tel quel, mais on continue
+        // à faire avancer les agents sur leurs trajets.
+        if (modeAleatoire) {
+            modele.executerPas();
+        }
 
         double niveau = modele.getNiveauEau();
 
-        if (!evacuationDeclenchee && niveau >= SEUIL_EVACUATION_M) {
-            declencherEvacuationAutomatique();
-            evacuationDeclenchee = true;
+        if (modeAleatoire) {
+            if (!evacuationDeclenchee && niveau >= SEUIL_EVACUATION_M) {
+                declencherEvacuationAutomatique();
+                evacuationDeclenchee = true;
+            }
+        } else {
+            // Mode manuel : l'évacuation ne démarre qu'après propagation manuelle
+            // sur au moins une arête. Avant le clic, les Mii restent en place.
+            if (!evacuationDeclenchee && hasManualFloodStarted()) {
+                declencherEvacuationAutomatique();
+                evacuationDeclenchee = true;
+            }
         }
 
-        if (mapController != null) {
+        if (mapController != null && evacuationDeclenchee) {
             mapController.tick(DELTA_SECONDS);
+            mapController.updateAllZones(modele.getZones());
+        } else if (mapController != null) {
             mapController.updateAllZones(modele.getZones());
         }
 
@@ -449,6 +473,14 @@ public class SimulationController {
     // PRIVÉS
     // ─────────────────────────────────────────────────────────────────────
 
+    private boolean hasManualFloodStarted() {
+        if (mapController == null) return false;
+        return mapController.getEdges().stream()
+            .anyMatch(e -> e.getFloodLevel() > 0.0
+                    || e.getState() == EdgeState.FLOODING
+                    || e.getState() == EdgeState.FLOODED);
+    }
+
     private void declencherEvacuationAutomatique() {
         if (mapController == null) return;
         List<Citizen> citizens = modele.getAgents().stream()
@@ -456,11 +488,27 @@ public class SimulationController {
             .map(a -> (Citizen) a)
             .collect(Collectors.toList());
         mapController.triggerMassEvacuation(citizens);
-        notifyStatus("⚠ Évacuation déclenchée !");
+        notifyStatus("⚠ Évacuation déclenchée : alertes envoyées et trajets attribués.");
     }
 
     private void propagateAgentAddition(Agent agent) {
-        if (mapController != null) mapController.addAgent(agent);
+        if (mapController != null) {
+            mapController.addAgent(agent);
+            mapController.syncAgents(modele.getAgents());
+
+            // Si l'alerte a déjà été lancée, tout nouveau citoyen doit aussi
+            // recevoir un trajet d'évacuation vers un refuge.
+            if (evacuationDeclenchee && agent instanceof Citizen c) {
+                mapController.evacuateCitizen(c);
+            }
+        }
+    
+        Platform.runLater(() -> {
+            if (Main.getSharedMapView() != null) {
+                Main.getSharedMapView().setAgents(modele.getAgents());
+            }
+        });
+    
         notifyAgentsUpdated();
     }
 

@@ -3,6 +3,7 @@ package controller.CitizenPage;
 import javafx.application.Platform;
 import model.alert.Alert;
 import model.alert.AlertSystem;
+import model.observer.Observer;
 import view.CitizenAlertsView;
 
 import java.time.LocalTime;
@@ -13,7 +14,7 @@ public class CitizenAlertsController {
 
     private final CitizenAlertsView view;
     private final AlertSystem model;
-    private final Runnable alertListener;
+    private final Observer alertListener;
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
 
@@ -23,7 +24,7 @@ public class CitizenAlertsController {
 
         view.setController(this);
 
-        this.alertListener = () -> Platform.runLater(this::reloadPublishedAlerts);
+        this.alertListener = event -> reloadPublishedAlerts();
         this.model.addListener(alertListener);
 
         reloadPublishedAlerts();

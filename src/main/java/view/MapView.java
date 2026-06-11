@@ -33,13 +33,17 @@ import javafx.application.Platform;
 import javafx.embed.swing.SwingNode;
 import model.agent.Agent;
 import model.agent.Citizen;
+import model.enums.CitizenMood;
 import model.enums.CitizenState;
+import model.enums.MobilityStatus;
 import model.graph.Edge;
 import model.graph.Node;
 import model.graph.RouteGraph;
 import model.observer.Observer;
+import model.zone.Shelter;
 import model.zone.Zone;
 import model.zone.ZoneUpdateListener;
+
 
 /**
  * Carte OSM + graphe interactif + personnages Mii.
@@ -74,6 +78,12 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     private GraphNode draggedNode;
     private GraphNode pendingEdgeStart;
     private Object selectedGraphElement;
+    private boolean manualFloodMode = false;
+private GeoPosition floodCenter = null;
+private double floodRadius = 0;
+private javax.swing.Timer floodTimer;
+private int floodTimerDelayMs = 300;
+private double floodRadiusStep = 2.0;
 
     private static final GeoPosition LYON_CENTER = new GeoPosition(45.7640, 4.8357);
     private static final int DEFAULT_ZOOM = 6;
@@ -134,6 +144,14 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
 
         MouseAdapter adapter = new MouseAdapter() {
             @Override public void mouseClicked(MouseEvent e) {
+                if (manualFloodMode) {
+                    floodCenter = mapViewer.convertPointToGeoPosition(e.getPoint());
+                    floodRadius = 0;
+                    startFloodPropagation();
+                    setInfo("Inondation déclenchée manuellement.");
+                    mapViewer.repaint();
+                    return;
+                }
                 if (editMode == EditMode.ADD_NODE) {
                     GeoPosition gp = mapViewer.convertPointToGeoPosition(e.getPoint());
                     addVisualNode(gp.getLatitude(), gp.getLongitude());
@@ -185,16 +203,20 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
             @Override public void mousePressed(MouseEvent e) {
                 Agent agent = agentPainter.findAgentAt(mapViewer, e.getPoint());
                 if (agent != null) {
+                    selectedGraphElement = agent; 
+            
                     draggedAgent = agent;
                     agentPainter.startDrag(agent);
+            
                     if (onAgentSelected != null) onAgentSelected.accept(agent);
-                    setInfo("Agent attrapé : " + nameOf(agent) + " → état stressé/paniqué.");
+            
+                    setInfo("Agent sélectionné : " + nameOf(agent));
                     mapViewer.setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
                     mapViewer.repaint();
                     e.consume();
                     return;
                 }
-
+            
                 Object hit = graphOverlayPainter.hitTest(mapViewer, e.getPoint());
                 if (editMode == EditMode.MOVE_NODE && hit instanceof GraphNode node) {
                     draggedNode = node;
@@ -204,7 +226,6 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
                     e.consume();
                 }
             }
-
             @Override public void mouseDragged(MouseEvent e) {
                 if (draggedAgent != null) {
                     GeoPosition pos = mapViewer.convertPointToGeoPosition(e.getPoint());
@@ -287,8 +308,23 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     
     public void setAgents(List<Agent> agents) {
         this.agents = agents == null ? new ArrayList<>() : new ArrayList<>(agents);
+    
+        if (selectedGraphElement instanceof Agent selected) {
+            boolean stillExists = this.agents.stream()
+                    .anyMatch(a -> a.getId() == selected.getId());
+    
+            if (!stillExists) {
+                selectedGraphElement = null;
+            }
+        }
+    
         agentPainter.setAgents(this.agents, zones);
-        SwingUtilities.invokeLater(mapViewer::repaint);
+        agentPainter.snapAgentsToGraph();
+    
+        SwingUtilities.invokeLater(() -> {
+            mapViewer.revalidate();
+            mapViewer.repaint();
+        });
     }
 
     public void setOnAgentSelected(Consumer<Agent> callback) { this.onAgentSelected = callback; }
@@ -301,7 +337,60 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         setInfo("Mode : " + this.editMode.name());
     }
 
+    public void setManualFloodMode(boolean enabled) {
+        this.manualFloodMode = enabled;
+        setInfo(enabled ? "Mode inondation manuelle : clique sur la carte." : "Mode inondation désactivé.");
+    }
+
+    public void resetManualFlood() {
+        if (floodTimer != null) {
+            floodTimer.stop();
+        }
+    
+        floodCenter = null;
+        floodRadius = 0;
+        manualFloodMode = false;
+    
+        if (routeGraph != null) {
+            for (Edge edge : routeGraph.getEdges()) {
+                edge.setFloodLevel(0.0);
+            }
+        }
+    
+        setInfo("Inondation réinitialisée.");
+        mapViewer.repaint();
+    }
+
+    public void startRandomFlood() {
+        if (floodTimer != null) {
+            floodTimer.stop();
+        }
+    
+        Random r = new Random();
+    
+        double lat = LYON_CENTER.getLatitude() + (r.nextDouble() - 0.5) * 0.05;
+        double lng = LYON_CENTER.getLongitude() + (r.nextDouble() - 0.5) * 0.07;
+    
+        floodCenter = new GeoPosition(lat, lng);
+        floodRadius = 0;
+        manualFloodMode = false;
+    
+        startFloodPropagation();
+        setInfo("Inondation aléatoire déclenchée.");
+        mapViewer.repaint();
+    }
+
     public EditMode getEditMode() { return editMode; }
+
+    public void setFloodSpeedFromSlider(double sliderValue) {
+        floodTimerDelayMs = (int) sliderValue;
+    
+        floodRadiusStep = Math.max(0.5, 1000.0 / sliderValue);
+    
+        if (floodTimer != null && floodTimer.isRunning()) {
+            startFloodPropagation();
+        }
+    }
 
     public void addRandomNodes(int count) {
         Random r = new Random();
@@ -325,10 +414,16 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
 
     public void removeSelectedAgent() {
         if (selectedGraphElement instanceof Agent a) {
-            agents.remove(a);
-            agentPainter.setAgents(agents, zones);
+            agents.removeIf(agent -> agent.getId() == a.getId());
+    
             selectedGraphElement = null;
+    
+            agentPainter.setAgents(agents, zones);
+            agentPainter.snapAgentsToGraph();
+    
             setInfo("Agent supprimé.");
+    
+            mapViewer.revalidate();
             mapViewer.repaint();
         }
     }
@@ -338,8 +433,13 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         Random rng = new Random();
         for (int i = 0; i < count; i++) {
             Citizen c = new Citizen(maxId + i, "Citoyen", "Auto" + (maxId + i), new Node(LYON_CENTER.getLatitude(), LYON_CENTER.getLongitude()));
-            c.setState(i % 5 == 0 ? CitizenState.INJURED : i % 4 == 0 ? CitizenState.PMR : CitizenState.CALM);
-            c.setMaxSpeed(1.5 + rng.nextDouble() * 3.5);
+            
+            Random r = new Random();
+
+            c.setState(CitizenState.values()[r.nextInt(CitizenState.values().length)]);
+            c.setMood(CitizenMood.values()[r.nextInt(CitizenMood.values().length)]);
+            c.setMobilityStatus(MobilityStatus.values()[r.nextInt(MobilityStatus.values().length)]);
+            
             agents.add(c);
         }
         agentPainter.setAgents(agents, zones);
@@ -426,46 +526,6 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         });
     }
     
-    public void generateLocalGraphForAgent(Agent agent) {
-        if (agent == null || agent.getPosition() == null) return;
-    
-        double lat = agent.getPosition().getLat();
-        double lng = agent.getPosition().getLng();
-    
-        SwingUtilities.invokeLater(() -> {
-            graphOverlayPainter.visualNodes.clear();
-            graphOverlayPainter.visualEdges.clear();
-    
-            GraphNode position = new GraphNode("Position actuelle", lat, lng, false);
-            GraphNode nord = new GraphNode("Carrefour Nord", lat + 0.003, lng, false);
-            GraphNode sud = new GraphNode("Carrefour Sud", lat - 0.003, lng, false);
-            GraphNode est = new GraphNode("Carrefour Est", lat, lng + 0.003, false);
-            GraphNode ouest = new GraphNode("Carrefour Ouest", lat, lng - 0.003, false);
-            GraphNode refuge = new GraphNode("Refuge conseillé", lat + 0.006, lng + 0.006, false);
-    
-            graphOverlayPainter.visualNodes.add(position);
-            graphOverlayPainter.visualNodes.add(nord);
-            graphOverlayPainter.visualNodes.add(sud);
-            graphOverlayPainter.visualNodes.add(est);
-            graphOverlayPainter.visualNodes.add(ouest);
-            graphOverlayPainter.visualNodes.add(refuge);
-    
-            graphOverlayPainter.visualEdges.add(new GraphEdge(position, nord, 10));
-            graphOverlayPainter.visualEdges.add(new GraphEdge(position, sud, 10));
-            graphOverlayPainter.visualEdges.add(new GraphEdge(position, est, 10));
-            graphOverlayPainter.visualEdges.add(new GraphEdge(position, ouest, 10));
-            graphOverlayPainter.visualEdges.add(new GraphEdge(est, refuge, 8));
-            graphOverlayPainter.visualEdges.add(new GraphEdge(nord, refuge, 8));
-            graphOverlayPainter.visualEdges.add(new GraphEdge(ouest, sud, 6));
-    
-            selectedGraphElement = position;
-            graphOverlayPainter.setSelected(position);
-    
-            mapViewer.setAddressLocation(new GeoPosition(lat, lng));
-            mapViewer.setZoom(3);
-            mapViewer.repaint();
-        });
-    }
 
 
     public void focusZone(Zone zone) {
@@ -502,8 +562,75 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
 
     public void clearRoute() { SwingUtilities.invokeLater(() -> { routeHighlightPainter.clear(); mapViewer.repaint(); }); }
 
+    private void startFloodPropagation() {
+        if (floodTimer != null) {
+            floodTimer.stop();
+        }
+    
+        floodTimer = new javax.swing.Timer(floodTimerDelayMs, e -> {
+            floodRadius += floodRadiusStep;
+    
+            updateFloodedEdges();
+    
+            if (floodRadius >= 260) {
+                floodTimer.stop();
+            }
+    
+            mapViewer.repaint();
+        });
+    
+        floodTimer.start();
+    }
+
+    private void updateFloodedEdges() {
+        if (routeGraph == null || floodCenter == null) return;
+    
+        Point2D floodPoint = mapViewer.convertGeoPositionToPoint(floodCenter);
+    
+        for (Edge edge : routeGraph.getEdges()) {
+            boolean touched = false;
+    
+            List<GeoPosition> pts = edge.getWaypoints();
+    
+            if (pts == null || pts.size() < 2) {
+                pts = List.of(
+                        new GeoPosition(edge.getFromZone().getLatitude(), edge.getFromZone().getLongitude()),
+                        new GeoPosition(edge.getToZone().getLatitude(), edge.getToZone().getLongitude())
+                );
+            }
+    
+            for (int i = 0; i < pts.size() - 1; i++) {
+                Point2D p1 = mapViewer.convertGeoPositionToPoint(pts.get(i));
+                Point2D p2 = mapViewer.convertGeoPositionToPoint(pts.get(i + 1));
+    
+                double distance = new Line2D.Double(p1, p2).ptSegDist(floodPoint);
+    
+                if (distance <= floodRadius) {
+                    touched = true;
+                    break;
+                }
+            }
+    
+            if (touched) {
+                edge.setFloodLevel(edge.getFloodLevel() + 0.12);
+            }
+        }
+    
+        mapViewer.repaint();
+    }
+
     private void handleMapClick(Point screenPoint) {
         GeoPosition clickPos = mapViewer.convertPointToGeoPosition(screenPoint);
+
+        if (manualFloodMode) {
+            floodCenter = clickPos;
+            floodRadius = 0;
+            startFloodPropagation();
+            setInfo("Inondation manuelle déclenchée — les citoyens commencent l'évacuation.");
+            mapViewer.repaint();
+            return;
+        }
+
         double lat = clickPos.getLatitude();
         double lng = clickPos.getLongitude();
         Zone closest = null;
@@ -561,28 +688,26 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     }
 
     private String agentInfo(Agent a) {
-        return nameOf(a) + " | vitesse max=" + String.format("%.1f", a.getMaxSpeed()) + " | tolérance congestion=" + String.format("%.1f", a.getCongestionTolerance());
+        return nameOf(a) + " | vitesse max=" + String.format("%.1f", a.getSpeed()) + " | tolérance congestion=" + String.format("%.1f", a.getCongestionTolerance());
     }
 
     private static class RouteHighlightPainter implements Painter<JXMapViewer> {
         private Zone from, to;
-        void setRoute(Zone from, Zone to) { this.from = from; this.to = to; }
-        void clear() { this.from = null; this.to = null; }
-        @Override public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
-            if (from == null || to == null) return;
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            try {
-                Point2D p1 = map.convertGeoPositionToPoint(new GeoPosition(from.getLatitude(), from.getLongitude()));
-                Point2D p2 = map.convertGeoPositionToPoint(new GeoPosition(to.getLatitude(), to.getLongitude()));
-                g2.setColor(new Color(14, 115, 235, 70));
-                g2.setStroke(new BasicStroke(10f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                g2.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
-                g2.setColor(new Color(14, 115, 235, 245));
-                g2.setStroke(new BasicStroke(4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1, new float[]{12, 8}, 0));
-                g2.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
-            } catch (Exception ignored) {}
-            g2.dispose();
+    
+        void setRoute(Zone from, Zone to) {
+            this.from = from;
+            this.to = to;
+        }
+    
+        void clear() {
+            this.from = null;
+            this.to = null;
+        }
+    
+        @Override
+        public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
+            // On ne dessine rien ici.
+            // Les vraies arêtes sont dessinées dans GraphOverlayPainter.
         }
     }
 
@@ -608,30 +733,132 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
             return null;
         }
 
-        @Override public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        @Override
 
-            for (GraphEdge e : visualEdges) drawVisualEdge(g2, map, e);
-            for (GraphNode n : baseNodes) drawNode(g2, map, n);
-            for (GraphNode n : visualNodes) drawNode(g2, map, n);
+    public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
 
-            if (rg != null) {
-                for (Edge e : rg.getEdges()) {
-                    Point2D a = map.convertGeoPositionToPoint(new GeoPosition(e.getFromZone().getLatitude(), e.getFromZone().getLongitude()));
-                    Point2D b = map.convertGeoPositionToPoint(new GeoPosition(e.getToZone().getLatitude(), e.getToZone().getLongitude()));
-                    int midX = (int) ((a.getX() + b.getX()) / 2);
-                    int midY = (int) ((a.getY() + b.getY()) / 2);
-                    if (selected == e) {
-                        g2.setColor(new Color(250, 204, 21, 220));
-                        g2.setStroke(new BasicStroke(5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                        g2.drawLine((int) a.getX(), (int) a.getY(), (int) b.getX(), (int) b.getY());
-                    }
-                    // Pas de gros labels partout : la congestion est visible par la couleur/épaisseur des arêtes
-                    // et par les statistiques quand l'arête est sélectionnée.
+        Graphics2D g2 = (Graphics2D) g.create();
+
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        drawFlood(g2, map);
+
+        if (rg != null) {
+
+            for (Edge e : rg.getEdges()) {
+
+                drawRealEdge(g2, map, e);
+
+            }
+
+        }
+
+        for (GraphNode n : baseNodes) {
+            drawNode(g2, map, n);
+        }
+        
+        for (GraphNode n : visualNodes) {
+            drawNode(g2, map, n);
+        }
+
+        g2.dispose();
+
+    }
+
+    private void drawFlood(Graphics2D g2, JXMapViewer map) {
+        if (floodCenter == null) return;
+    
+        Point2D p = map.convertGeoPositionToPoint(floodCenter);
+    
+        int cx = (int) p.getX();
+        int cy = (int) p.getY();
+        int r = (int) floodRadius;
+    
+        if (r <= 0) return;
+    
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+    
+        // Eau principale transparente
+        g2.setColor(new Color(0, 145, 255, 55));
+        g2.fillOval(cx - r, cy - r, r * 2, r * 2);
+    
+        // Plusieurs vagues irrégulières
+        for (int wave = 0; wave < 4; wave++) {
+            int waveRadius = r - wave * 35;
+            if (waveRadius <= 10) continue;
+    
+            java.awt.geom.Path2D.Double path = new java.awt.geom.Path2D.Double();
+    
+            for (int angle = 0; angle <= 360; angle += 8) {
+                double rad = Math.toRadians(angle);
+    
+                double deformation =
+                        Math.sin(rad * 5 + floodRadius * 0.08 + wave) * 8
+                        + Math.cos(rad * 3 + floodRadius * 0.05) * 5;
+    
+                double rr = waveRadius + deformation;
+    
+                double x = cx + Math.cos(rad) * rr;
+                double y = cy + Math.sin(rad) * rr;
+    
+                if (angle == 0) {
+                    path.moveTo(x, y);
+                } else {
+                    path.lineTo(x, y);
                 }
             }
-            g2.dispose();
+    
+            path.closePath();
+    
+            g2.setColor(new Color(0, 190, 255, 35));
+            g2.fill(path);
+    
+            g2.setColor(new Color(0, 210, 255, 120));
+            g2.setStroke(new BasicStroke(2.2f));
+            g2.draw(path);
+        }
+    
+        // Centre un peu plus foncé
+        int inner = Math.max(15, r / 3);
+        g2.setColor(new Color(0, 90, 210, 60));
+        g2.fillOval(cx - inner, cy - inner, inner * 2, inner * 2);
+    }
+
+        private void drawRealEdge(Graphics2D g2, JXMapViewer map, Edge e) {
+            List<GeoPosition> pts = e.getWaypoints();
+        
+            if (pts == null || pts.size() < 2) {
+                pts = List.of(
+                    new GeoPosition(e.getFromZone().getLatitude(), e.getFromZone().getLongitude()),
+                    new GeoPosition(e.getToZone().getLatitude(), e.getToZone().getLongitude())
+                );
+            }
+        
+            Color edgeColor = new Color(14, 165, 233, 220); // bleu
+            float width = 4f;
+        
+            switch (e.getState()) {
+                case SAFE -> edgeColor = new Color(14, 165, 233, 220);
+                case AT_RISK -> edgeColor = new Color(245, 158, 11, 230);
+                case FLOODING -> edgeColor = new Color(249, 115, 22, 230);
+                case CONGESTED -> edgeColor = new Color(234, 179, 8, 230);
+                case OVERLOADED -> edgeColor = new Color(185, 28, 28, 230);
+                case FLOODED -> edgeColor = new Color(239, 68, 68, 230);
+            }
+        
+            g2.setColor(edgeColor);
+            g2.setStroke(new BasicStroke(width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        
+            for (int i = 0; i < pts.size() - 1; i++) {
+                Point2D p1 = map.convertGeoPositionToPoint(pts.get(i));
+                Point2D p2 = map.convertGeoPositionToPoint(pts.get(i + 1));
+        
+                g2.drawLine(
+                    (int) p1.getX(),
+                    (int) p1.getY(),
+                    (int) p2.getX(),
+                    (int) p2.getY()
+                );
+            }
         }
 
         private void drawVisualEdge(Graphics2D g2, JXMapViewer map, GraphEdge e) {
@@ -642,19 +869,40 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
             g2.draw(new Line2D.Double(a, b));
         }
 
+    
         private void drawNode(Graphics2D g2, JXMapViewer map, GraphNode n) {
             Point2D p = map.convertGeoPositionToPoint(n.geo());
             boolean sel = selected == n || pendingEdgeStart == n;
-            int r = n.base ? 9 : 8;
-            g2.setColor(new Color(0, 0, 0, 150));
-            g2.fillOval((int) p.getX() - r - 3, (int) p.getY() - r - 3, (r + 3) * 2, (r + 3) * 2);
-            g2.setColor(sel ? new Color(250, 204, 21) : n.base ? new Color(255, 255, 255) : new Color(34, 211, 238));
+        
+            int r = n.base ? 10 : 8;
+        
+            Color nodeColor;
+        
+            if (n.zone instanceof Shelter) {
+                nodeColor = new Color(147, 51, 234); // violet = refuge
+            } else if (n.base) {
+                nodeColor = new Color(34, 211, 238); // bleu = quartier / zone normale
+            } else {
+                nodeColor = new Color(14, 165, 233); // bleu clair = nœud ajouté manuellement
+            }
+        
+            if (sel) {
+                nodeColor = new Color(250, 204, 21); // sélection en jaune
+            }
+        
+            // Ombre noire autour
+            g2.setColor(new Color(0, 0, 0, 160));
+            g2.fillOval((int) p.getX() - r - 4, (int) p.getY() - r - 4, (r + 4) * 2, (r + 4) * 2);
+        
+            // Remplissage du nœud
+            g2.setColor(nodeColor);
             g2.fillOval((int) p.getX() - r, (int) p.getY() - r, r * 2, r * 2);
-            g2.setColor(n.isCongested() ? new Color(239, 68, 68) : new Color(15, 23, 42));
-            g2.setStroke(new BasicStroke(2f));
+        
+            // Contour noir
+            g2.setColor(new Color(15, 23, 42));
+            g2.setStroke(new BasicStroke(3f));
             g2.drawOval((int) p.getX() - r, (int) p.getY() - r, r * 2, r * 2);
         }
-
         Object hitTest(JXMapViewer map, Point p) {
             for (GraphNode n : visualNodes) if (map.convertGeoPositionToPoint(n.geo()).distance(p) < 15) return n;
             for (GraphNode n : baseNodes) if (map.convertGeoPositionToPoint(n.geo()).distance(p) < 15) return n;

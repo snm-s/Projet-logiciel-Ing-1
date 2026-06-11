@@ -129,40 +129,20 @@ public class CitizenSettingsView extends BorderPane {
 
     private HBox buildSettingsGrid() {
         HBox grid = new HBox(18);
-
-        VBox leftColumn = new VBox(18);
-        VBox rightColumn = new VBox(18);
-
-        leftColumn.getChildren().addAll(
-                buildProfileSection(),
-                buildAccessibilitySection()
+        grid.setAlignment(Pos.TOP_LEFT);
+    
+        VBox column = new VBox(18);
+        column.setAlignment(Pos.TOP_LEFT);
+        column.setMaxWidth(650);
+    
+        column.getChildren().addAll(
+                buildNotificationSection()
         );
-
-        rightColumn.getChildren().addAll(
-                buildNotificationSection(),
-                buildPrivacyInfoSection()
-        );
-
-        grid.getChildren().addAll(leftColumn, rightColumn);
-        HBox.setHgrow(leftColumn, Priority.ALWAYS);
-        HBox.setHgrow(rightColumn, Priority.ALWAYS);
-
+    
+        grid.getChildren().add(column);
+        HBox.setHgrow(column, Priority.ALWAYS);
+    
         return grid;
-    }
-
-    private VBox buildProfileSection() {
-        VBox wrapper = sectionWrapper("Mon profil");
-        VBox card = (VBox) wrapper.getChildren().get(1);
-
-        mobilityReducedCheck = settingCheckBox(citizen.isMobilityReduced());
-
-        card.getChildren().addAll(
-                infoRow("Adresse", nonEmpty(user.getAddress(), "Non renseignée")),
-                infoRow("Ville", nonEmpty(user.getCity(), "Non renseignée")),
-                settingRow("♿", "Mobilité réduite", "Enregistre le statut PMR dans le profil", mobilityReducedCheck)
-        );
-
-        return wrapper;
     }
 
     private VBox buildNotificationSection() {
@@ -179,67 +159,6 @@ public class CitizenSettingsView extends BorderPane {
                 settingRow("◉", "Son des notifications", "Jouer un son lors des alertes", soundNotificationsCheck),
                 settingRow("↻", "Mises à jour itinéraire", "Recalcul automatique du trajet", routeUpdatesCheck),
                 settingRow("⌖", "Localisation arrière-plan", "Mise à jour continue de la position", backgroundLocationCheck)
-        );
-
-        return wrapper;
-    }
-
-    private VBox buildAccessibilitySection() {
-        VBox wrapper = sectionWrapper("Affichage");
-        VBox card = (VBox) wrapper.getChildren().get(1);
-
-        double savedScale = citizen.getDisplayScale();
-        if (savedScale <= 0) {
-            savedScale = 100.0;
-        }
-
-        VBox zoomBox = new VBox(10);
-        zoomBox.setPadding(new Insets(16));
-
-        HBox titleRow = new HBox(10);
-        titleRow.setAlignment(Pos.CENTER_LEFT);
-
-        VBox texts = new VBox(3);
-        texts.getChildren().addAll(
-                label("Taille d'affichage", WHITE, 15, true),
-                label("Agrandit ou réduit la zone centrale de l’application", MUTED, 12, false)
-        );
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        scaleValueLabel = label(Math.round(savedScale) + "%", BLUE, 14, true);
-        titleRow.getChildren().addAll(lineIcon("Aa"), texts, spacer, scaleValueLabel);
-
-        displayScaleSlider = new Slider(80, 130, savedScale);
-        displayScaleSlider.setShowTickLabels(true);
-        displayScaleSlider.setShowTickMarks(true);
-        displayScaleSlider.setMajorTickUnit(25);
-        displayScaleSlider.setBlockIncrement(5);
-
-        displayScaleSlider.valueProperty().addListener((obs, oldValue, newValue) -> {
-            double rounded = (double) Math.round(newValue.doubleValue());
-            scaleValueLabel.setText((int) rounded + "%");
-
-            if (displayScaleCallback != null) {
-                displayScaleCallback.accept(rounded);
-            }
-        });
-
-        zoomBox.getChildren().addAll(titleRow, displayScaleSlider);
-        card.getChildren().add(zoomBox);
-
-        return wrapper;
-    }
-
-    private VBox buildPrivacyInfoSection() {
-        VBox wrapper = sectionWrapper("Confidentialité");
-        VBox card = (VBox) wrapper.getChildren().get(1);
-
-        card.getChildren().addAll(
-                infoRow("Données sauvegardées", "Profil, mobilité, notifications"),
-                infoRow("Fichier", "dataUser/users.json"),
-                infoRow("Action", "Le bouton Enregistrer modifie réellement le JSON")
         );
 
         return wrapper;
@@ -276,14 +195,10 @@ public class CitizenSettingsView extends BorderPane {
             return;
         }
 
-        double roundedScale = (double) Math.round(displayScaleSlider.getValue());
-
-        citizen.setMobilityReduced(mobilityReducedCheck.isSelected());
         citizen.setEmergencyAlertsEnabled(emergencyAlertsCheck.isSelected());
         citizen.setSoundNotificationsEnabled(soundNotificationsCheck.isSelected());
         citizen.setRouteUpdatesEnabled(routeUpdatesCheck.isSelected());
         citizen.setBackgroundLocationEnabled(backgroundLocationCheck.isSelected());
-        citizen.setDisplayScale(roundedScale);
 
         boolean saved = UserService.updateAgent(citizen);
 
@@ -308,14 +223,10 @@ public class CitizenSettingsView extends BorderPane {
             return;
         }
 
-        mobilityReducedCheck.setSelected(citizen.isMobilityReduced());
         emergencyAlertsCheck.setSelected(citizen.isEmergencyAlertsEnabled());
         soundNotificationsCheck.setSelected(citizen.isSoundNotificationsEnabled());
         routeUpdatesCheck.setSelected(citizen.isRouteUpdatesEnabled());
         backgroundLocationCheck.setSelected(citizen.isBackgroundLocationEnabled());
-        displayScaleSlider.setValue(citizen.getDisplayScale() <= 0 ? 100.0 : citizen.getDisplayScale());
-
-        updateMobilityBadge();
 
         if (displayScaleCallback != null) {
             displayScaleCallback.accept(citizen.getDisplayScale() <= 0 ? 100.0 : citizen.getDisplayScale());

@@ -2,6 +2,7 @@ package model.sensor;
 
 import model.zone.Zone;
 import model.alert.AlertSystem;
+import model.enums.AlertSeverity;
 import model.enums.AlertType;
 import model.alert.Alert;
 
@@ -47,7 +48,7 @@ public class WaterSensor {
                         AlertType.INONDATION,
                         "Capteur: inondation détectée dans " + zone.getName(),
                         zone.getName(),
-                        "Élevée",
+                        AlertSeverity.HIGH,
                         time,
                         "Active",
                         "sensor"));
@@ -62,7 +63,7 @@ public class WaterSensor {
                             AlertType.INFO,
                             "Capteur: niveau revenu sous le seuil pour " + zone.getName(),
                             zone.getName(),
-                            "Faible",
+                            AlertSeverity.LOW,
                             time,
                             "Résolue",
                             "sensor"));

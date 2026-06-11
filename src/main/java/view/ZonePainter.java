@@ -1,18 +1,29 @@
 package view;
 
-import model.zone.Shelter;
-import model.zone.Zone;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics2D;
+import java.awt.Point;
+import java.awt.RenderingHints;
+import java.awt.geom.GeneralPath;
+import java.awt.geom.Point2D;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
+
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+
 import org.jxmapviewer.JXMapViewer;
 import org.jxmapviewer.painter.Painter;
 import org.jxmapviewer.viewer.GeoPosition;
 
-import javax.swing.*;
-import java.awt.*;
-import java.awt.geom.GeneralPath;
-import java.awt.geom.Point2D;
-import java.util.*;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
+import model.zone.Shelter;
+import model.zone.Zone;
 
 /**
  * Painter JXMapViewer pour afficher les zones comme des polygones colorés
@@ -120,39 +131,40 @@ public class ZonePainter implements Painter<JXMapViewer> {
     // ─────────────────────────────────────────────────────────────────────
 
     private void drawZone(Graphics2D g2, JXMapViewer map, Zone zone, boolean isSelected) {
-        GeneralPath poly = buildPolygon(map, zone);
-        if (poly == null) return;
-
-        // Couleur de remplissage
-        double niveau = waterLevels.getOrDefault(zone.getId(), zone.isFlooded() ? 1.0 : 0.0);
-        Color fillColor  = getFillColor(zone, niveau);
-        Color borderColor;
-        float borderWidth;
-
-        if (isSelected) {
-            // Halo sélection (dessiné en deux passes : fond jaune + couleur zone)
-            g2.setColor(COLOR_SELECTED);
-            g2.fill(poly);
-            g2.setColor(COLOR_SEL_BORDER);
-            g2.setStroke(new BasicStroke(3.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            g2.draw(poly);
-            borderColor = COLOR_SEL_BORDER;
-            borderWidth = 2.5f;
-        }
-
-        // Remplissage principal
-        g2.setColor(fillColor);
-        g2.fill(poly);
-
-        // Contour
-        borderColor  = getBorderColor(zone, niveau);
-        borderWidth  = isSelected ? 2.5f : 1.5f;
-        g2.setColor(borderColor);
-        g2.setStroke(new BasicStroke(borderWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g2.draw(poly);
-
-        // Label (nom de la zone)
-        drawLabel(g2, map, zone, isSelected);
+        try {
+            Point2D center = map.convertGeoPositionToPoint(
+                new GeoPosition(zone.getLatitude(), zone.getLongitude())
+            );
+    
+            int r = zone instanceof Shelter ? 12 : 10;
+    
+            // Couleur du point
+            if (zone instanceof Shelter) {
+                g2.setColor(new Color(250, 204, 21)); // jaune = refuge
+            } else {
+                g2.setColor(new Color(14, 165, 233)); // bleu = quartier
+            }
+    
+            g2.fillOval(
+                (int) center.getX() - r,
+                (int) center.getY() - r,
+                r * 2,
+                r * 2
+            );
+    
+            // Contour noir
+            g2.setColor(new Color(15, 23, 42));
+            g2.setStroke(new BasicStroke(isSelected ? 4f : 3f));
+            g2.drawOval(
+                (int) center.getX() - r,
+                (int) center.getY() - r,
+                r * 2,
+                r * 2
+            );
+    
+            drawLabel(g2, map, zone, isSelected);
+    
+        } catch (Exception ignored) {}
     }
 
     // ─────────────────────────────────────────────────────────────────────

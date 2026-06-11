@@ -57,7 +57,7 @@ public class ForgotPasswordController {
         }
     }
 
-    // --- CETTE MÉTHODE DOIT ÊTRE DANS LA CLASSE ---
+
     private boolean validatePasswordStrength(String password) {
         return password != null 
             && password.length() >= 8 

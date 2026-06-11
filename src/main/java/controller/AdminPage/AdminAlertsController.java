@@ -3,6 +3,7 @@ package controller.AdminPage;
 import javafx.application.Platform;
 import model.alert.Alert;
 import model.alert.AlertSystem;
+import model.observer.Observer;
 import view.AdminAlertsView;
 
 import java.time.LocalTime;
@@ -13,7 +14,7 @@ public class AdminAlertsController {
 
     private final AdminAlertsView view;
     private final AlertSystem model;
-    private final Runnable alertListener;
+    private final Observer alertListener;
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
 
@@ -23,7 +24,7 @@ public class AdminAlertsController {
 
         view.setController(this);
 
-        this.alertListener = () -> Platform.runLater(this::reloadFromModel);
+        this.alertListener = event -> reloadFromModel();
         this.model.addListener(alertListener);
 
         reloadFromModel();
@@ -51,7 +52,7 @@ public class AdminAlertsController {
         if (alert == null) return;
 
         alert.setStatus("Résolue");
-        model.notifyChanges();
+        model.notifyListeners(alert);
     }
 
     public void deleteAlert(Alert alert) {

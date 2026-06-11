@@ -1,5 +1,6 @@
 package controller.CitizenPage;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -12,6 +13,7 @@ import model.alert.AlertSystem;
 import model.graph.Node;
 import model.graph.Route;
 import model.simulation.FloodSimulation;
+import model.simulation.EvacuationEvent;
 import model.zone.Shelter;
 import model.zone.Zone;
 import model.zone.ZoneManager;
@@ -31,6 +33,16 @@ public class CitizenController {
     public AlertSystem getAlertSystem() {
         return simulation.getAlertSystem();
     }
+
+    public List<EvacuationEvent> getEvacuationHistoryFor(Agent user) {
+        if (user == null) return new ArrayList<>();
+        return simulation.getEvacuationHistoryFor(user.getId());
+    }
+
+    public List<EvacuationEvent> getAllEvacuationHistory() {
+        return simulation.getEvacuationHistory();
+    }
+
 
     public List<Zone> getZones() {
         return new ZoneManager().getZones();
@@ -137,7 +149,7 @@ public class CitizenController {
         double d = getEvacuationDistanceKm(user);
         if (d < 0) return -1;
 
-        double speed = user != null && user.getMaxSpeed() > 0 ? user.getMaxSpeed() : 4.0;
+        double speed = user != null && user.getSpeed() > 0 ? user.getSpeed() : 4.0;
         return Math.max(3, (int) Math.round((d / speed) * 60));
     }
 
@@ -218,7 +230,7 @@ public class CitizenController {
         double d = getDistanceFromUserKm(user, zone);
         if (d < 0) return -1;
 
-        double speed = user != null && user.getMaxSpeed() > 0 ? user.getMaxSpeed() : 4.0;
+        double speed = user != null && user.getSpeed() > 0 ? user.getSpeed() : 4.0;
         return Math.max(3, (int) Math.round((d / speed) * 60));
     }
 
@@ -227,8 +239,16 @@ public class CitizenController {
         return eta >= 0 ? eta + " min" : "-- min";
     }
 
-    public String getRouteStatusLabel(Agent user) {
-        return user != null && user.isSaved() ? "Arrivé" : "En cours";
+    public String getRouteStatusLabel(Agent user) {       
+        if (user == null) {
+            throw new IllegalArgumentException("Agent inexistant");
+        }
+        if (!(user instanceof Citizen c)) {
+            return "Non applicable";
+        }
+
+        return c.isSaved() ? "Arrivé" : "En cours";
+        
     }
 
     public int getAlertCount() {

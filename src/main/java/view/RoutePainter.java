@@ -1,13 +1,5 @@
 package view;
 
-import model.algorithms.EvacuationPath;
-import model.graph.Edge;
-import model.graph.EdgeState;
-import model.graph.RouteGraph;
-import org.jxmapviewer.JXMapViewer;
-import org.jxmapviewer.painter.Painter;
-import org.jxmapviewer.viewer.GeoPosition;
-
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -17,6 +9,15 @@ import java.awt.geom.GeneralPath;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.jxmapviewer.JXMapViewer;
+import org.jxmapviewer.painter.Painter;
+import org.jxmapviewer.viewer.GeoPosition;
+
+import model.algorithms.EvacuationPath;
+import model.graph.Edge;
+import model.graph.EdgeState;
+import model.graph.RouteGraph;
 
 /**
  * Dessine le vrai graphe RouteGraph sur la carte.
@@ -197,6 +198,8 @@ public class RoutePainter implements Painter<JXMapViewer> {
         }
 
         return switch (state) {
+            case FLOODING -> new RouteStyle(RISK,
+        new BasicStroke(2.3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f, new float[]{9, 6}, 0));
             case FLOODED -> new RouteStyle(FLOODED,
                     new BasicStroke(2.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f, new float[]{8, 6}, 0));
             case OVERLOADED -> new RouteStyle(OVERLOADED,

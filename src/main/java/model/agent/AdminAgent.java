@@ -15,4 +15,9 @@ public class AdminAgent extends Agent {
         super(id, firstName, lastName, position);
     }
 
+    @Override
+    public double getSpeed() {
+        throw new UnsupportedOperationException("L'admin n'as pas de vitesse");
+    }
+
 }

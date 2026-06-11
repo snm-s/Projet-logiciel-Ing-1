@@ -26,6 +26,8 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import model.alert.Alert;
+import model.enums.AlertSeverity;
+import model.enums.AlertStatus;
 import model.enums.AlertType;
 
 public class AdminAlertsView extends BorderPane {
@@ -269,12 +271,13 @@ public class AdminAlertsView extends BorderPane {
         TableColumn<Alert, String> colDesc = plainCol("Description", "description", 190);
         TableColumn<Alert, String> colLoc = plainCol("Localisation", "localisation", 140);
 
-        TableColumn<Alert, String> colSev = new TableColumn<>("Sévérité");
+        TableColumn<Alert, AlertSeverity> colSev = new TableColumn<>("Sévérité");
         colSev.setCellValueFactory(new PropertyValueFactory<>("severity"));
         colSev.setPrefWidth(90);
-        colSev.setCellFactory(c -> new TableCell<>() {
+        colSev.setCellFactory(c -> new TableCell<Alert, AlertSeverity>() {
+
             @Override
-            protected void updateItem(String value, boolean empty) {
+            protected void updateItem(AlertSeverity value, boolean empty) {
                 super.updateItem(value, empty);
 
                 if (empty || value == null) {
@@ -283,11 +286,12 @@ public class AdminAlertsView extends BorderPane {
                     return;
                 }
 
-                setText(value);
+                setText(value.toString());
+
                 setStyle(
                         "-fx-font-size:13px;" +
-                                "-fx-font-weight:bold;" +
-                                "-fx-text-fill:" + severityColor(value) + ";"
+                        "-fx-font-weight:bold;" +
+                        "-fx-text-fill:" + severityColor(value) + ";"
                 );
             }
         });
@@ -512,7 +516,7 @@ public class AdminAlertsView extends BorderPane {
         ComboBox<AlertType> fType = comboEnum();
         TextField fDesc = field("Description");
         TextField fLoc = field("Localisation");
-        ComboBox<String> fSev = combo("Élevée", "Moyenne", "Faible");
+        ComboBox<AlertSeverity> fSev = comboSeverity();
         TextField fTime = field("Heure (HH:mm)");
         ComboBox<String> fStat = combo("Active", "Résolue");
 
@@ -540,11 +544,12 @@ public class AdminAlertsView extends BorderPane {
         dlg.setResultConverter(button -> {
             if (button != ButtonType.OK) return null;
 
+
             return new Alert(
                     fType.getValue() == null ? AlertType.INFO : fType.getValue(),
                     fDesc.getText().isBlank() ? "—" : fDesc.getText().trim(),
                     fLoc.getText().isBlank() ? "—" : fLoc.getText().trim(),
-                    fSev.getValue() == null ? "Faible" : fSev.getValue(),
+                    fSev.getValue() == null ? AlertSeverity.LOW : fSev.getValue(),
                     fTime.getText().isBlank() ? "--:--" : fTime.getText().trim(),
                     fStat.getValue() == null ? "Active" : fStat.getValue(),
                     "admin"
@@ -574,8 +579,16 @@ public class AdminAlertsView extends BorderPane {
         return tf;
     }
 
+    private ComboBox<AlertSeverity> comboSeverity() {
+        ComboBox<AlertSeverity> cb = new ComboBox<>(FXCollections.observableArrayList(AlertSeverity.values()));
+        cb.setStyle("-fx-font-size:13px;-fx-pref-width:220px;");
+        return cb;
+    }
+
     private ComboBox<String> combo(String... items) {
-        ComboBox<String> cb = new ComboBox<>(FXCollections.observableArrayList(items));
+        ComboBox<String> cb = new ComboBox<>(
+                FXCollections.observableArrayList(items)
+        );
         cb.setStyle("-fx-font-size:13px;-fx-pref-width:220px;");
         return cb;
     }
@@ -610,12 +623,12 @@ public class AdminAlertsView extends BorderPane {
         };
     }
 
-    private String severityColor(String severity) {
+    private String severityColor(AlertSeverity severity) {
         if (severity == null) return TEXT_GRAY;
 
-        return switch (severity.toLowerCase()) {
-            case "élevée" -> RED;
-            case "moyenne" -> ORANGE;
+        return switch (severity) {
+            case HIGH -> RED;
+            case WARNING -> ORANGE;
             default -> TEXT_GRAY;
         };
     }

@@ -1,9 +1,20 @@
 package controller;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
+
+import app.Main;
+import javafx.application.Platform;
 import model.agent.Agent;
 import model.agent.Citizen;
 import model.agent.RescueAgent;
 import model.algorithms.EvacuationPath;
+import model.enums.CitizenMood;
 import model.enums.CitizenState;
 import model.graph.AgentMovement;
 import model.graph.Edge;
@@ -11,11 +22,6 @@ import model.graph.RouteGraph;
 import model.zone.Shelter;
 import model.zone.Zone;
 import view.MapView;
-
-import javafx.application.Platform;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * Contrôleur de la carte : relie {@link MapView}, {@link RouteGraph} et les agents.
@@ -42,6 +48,10 @@ public class MapController {
     private Consumer<Zone>          onZoneSelected;
     private Consumer<AgentMovement> onAgentArrived;
     private Zone                    selectedZone;
+
+    // Missions de secours : rescueAgentId -> citoyens bloqués pris en charge
+    private final Map<Integer, List<Citizen>> rescueAssignments = new HashMap<>();
+    private final Set<Integer> busyRescueAgents = new HashSet<>();
 
     // ─────────────────────────────────────────────────────────────────────
     public MapController(MapView mapView, List<Zone> zones, List<Agent> agents) {
@@ -121,6 +131,11 @@ public class MapController {
         if (agent == null || agents.contains(agent)) return;
         agents.add(agent);
         mapView.addAgent(agent);            // repaint + snap au graphe
+
+        // Si la simulation/alerte est déjà lancée, un citoyen ajouté doit aussi partir vers un refuge.
+        if (agent instanceof Citizen c && Main.getSharedSimulation().hasSimulationStartAlertBeenPublished()) {
+            evacuateCitizen(c);
+        }
     }
 
     /**
@@ -128,10 +143,14 @@ public class MapController {
      */
     public boolean removeAgent(int agentId) {
         boolean removed = agents.removeIf(a -> a.getId() == agentId);
-        if (removed) {
-            mapView.setAgents(agents);
-            mapView.refreshRouteColors();
+    
+        if (routeGraph != null) {
+            routeGraph.removeMovementsOfAgent(agentId);
         }
+    
+        mapView.setAgents(agents);
+        mapView.refreshRouteColors();
+    
         return removed;
     }
 
@@ -143,6 +162,7 @@ public class MapController {
         routeGraph.tick(deltaSeconds);
         routeGraph.simulateFlows();
         routeGraph.refreshAllEdges();
+        dispatchRescueForBlockedCitizens();
         mapView.refreshRouteColors();
     }
 
@@ -165,6 +185,9 @@ public class MapController {
         AgentMovement mv = routeGraph.planEvacuation(citizen, from, zones);
         if (mv != null) {
             citizen.setState(CitizenState.ESCAPING);
+            if (mv.getDestinationZone() != null) {
+                Main.getSharedSimulation().recordEvacuationDeparture(citizen, from, mv.getDestinationZone());
+            }
             mapView.refreshRouteColors();
         }
         return mv;
@@ -213,15 +236,119 @@ public class MapController {
 
     private void handleAgentArrived(AgentMovement mv) {
         Agent agent = mv.getAgent();
-        if (agent instanceof Citizen c) c.setState(CitizenState.SAFE);
+        Zone destination = mv.getDestinationZone();
+
+        if (agent instanceof Citizen c && destination instanceof Shelter) {
+            c.setState(CitizenState.SAFE);
+            Main.getSharedSimulation().recordEvacuationArrival(agent, destination);
+        }
+
+        // Un secouriste arrivé sur une zone à risque récupère les citoyens assignés
+        // puis les amène virtuellement au refuge accessible le plus proche.
+        if (agent instanceof RescueAgent rescue && rescueAssignments.containsKey(rescue.getId())) {
+            List<Citizen> rescued = rescueAssignments.remove(rescue.getId());
+            busyRescueAgents.remove(rescue.getId());
+            Zone refuge = nearestShelter(destination);
+
+            if (refuge != null) {
+                for (Citizen c : rescued) {
+                    c.setState(CitizenState.SAFE);
+                    c.setPosition(new model.graph.Node(refuge.getLatitude(), refuge.getLongitude()));
+                    Main.getSharedSimulation().recordEvacuationArrival(c, refuge);
+                }
+                mapView.setGraphInfo("Secours : " + nameOf(rescue) + " a transféré " + rescued.size()
+                        + " citoyen(s) vers " + refuge.getName() + ".");
+                // trajet retour du secouriste vers le refuge pour visualiser l'intervention
+                if (destination != null) sendRescueAgent(rescue, destination, refuge);
+            }
+        }
+
         if (onAgentArrived != null) Platform.runLater(() -> onAgentArrived.accept(mv));
-        mapView.setGraphInfo("Arrivé : " + nameOf(agent) + " → " + mv.getDestinationZone().getName());
+
+        String destName = destination == null ? "destination" : destination.getName();
+        mapView.setGraphInfo("Arrivé : " + nameOf(agent) + " → " + destName);
         mapView.refreshRouteColors();
     }
 
     private void handleAgentBlocked(AgentMovement mv) {
-        mapView.setGraphInfo("Bloqué : " + nameOf(mv.getAgent()) + " — replanification demandée.");
+        Agent a = mv.getAgent();
+        if (a instanceof Citizen c) {
+            c.setMood(CitizenMood.STRESSED);
+            Main.getSharedSimulation().recordEvacuationBlocked(c, findClosestZone(c));
+            dispatchRescueForCitizen(c);
+        }
+        mapView.setGraphInfo("Bloqué : " + nameOf(a) + " — secours demandé.");
         mapView.refreshRouteColors();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SECOURS AUTOMATIQUE
+    // ─────────────────────────────────────────────────────────────────────
+
+    private void dispatchRescueForBlockedCitizens() {
+        for (Agent a : new ArrayList<>(agents)) {
+            if (a instanceof Citizen c && c.getMood() == CitizenMood.STRESSED) {
+                dispatchRescueForCitizen(c);
+            }
+        }
+    }
+
+    private void dispatchRescueForCitizen(Citizen citizen) {
+        if (citizen == null || citizen.getState() == CitizenState.SAFE) return;
+
+        // déjà assigné à une mission ?
+        for (List<Citizen> list : rescueAssignments.values()) {
+            if (list.stream().anyMatch(c -> c.getId() == citizen.getId())) return;
+        }
+
+        RescueAgent rescue = nearestAvailableRescue(citizen);
+        if (rescue == null) {
+            mapView.setGraphInfo("Aucun secouriste disponible pour " + nameOf(citizen));
+            return;
+        }
+
+        Zone from = findClosestZone(rescue);
+        Zone target = findClosestZone(citizen);
+        if (from == null || target == null) return;
+
+        AgentMovement mission = sendRescueAgent(rescue, from, target);
+        if (mission != null) {
+            busyRescueAgents.add(rescue.getId());
+            List<Citizen> group = rescueAssignments.computeIfAbsent(rescue.getId(), id -> new ArrayList<>());
+            group.add(citizen);
+            mapView.setGraphInfo("Secours envoyé : " + nameOf(rescue) + " vers " + target.getName());
+        }
+    }
+
+    private RescueAgent nearestAvailableRescue(Agent target) {
+        RescueAgent best = null;
+        double bestDist = Double.MAX_VALUE;
+        Zone targetZone = findClosestZone(target);
+        if (targetZone == null) return null;
+
+        for (Agent a : agents) {
+            if (!(a instanceof RescueAgent r)) continue;
+            if (busyRescueAgents.contains(r.getId())) continue;
+            Zone z = findClosestZone(r);
+            if (z == null) continue;
+            double d = Math.pow(z.getLatitude() - targetZone.getLatitude(), 2)
+                    + Math.pow(z.getLongitude() - targetZone.getLongitude(), 2);
+            if (d < bestDist) {
+                bestDist = d;
+                best = r;
+            }
+        }
+        return best;
+    }
+
+    private Zone nearestShelter(Zone from) {
+        if (from == null) return zones.stream().filter(z -> z instanceof Shelter).findFirst().orElse(null);
+        return zones.stream()
+                .filter(z -> z instanceof Shelter && !z.isFlooded())
+                .min((a, b) -> Double.compare(
+                        Math.pow(a.getLatitude() - from.getLatitude(), 2) + Math.pow(a.getLongitude() - from.getLongitude(), 2),
+                        Math.pow(b.getLatitude() - from.getLatitude(), 2) + Math.pow(b.getLongitude() - from.getLongitude(), 2)))
+                .orElse(null);
     }
 
     // ─────────────────────────────────────────────────────────────────────

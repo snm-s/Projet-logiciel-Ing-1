@@ -5,6 +5,7 @@ import java.util.UUID;
 import app.Main;
 import javafx.stage.Stage;
 import model.agent.Agent;
+import model.agent.RescueAgent;
 import model.agent.RescueTeam;
 import model.auth.UserService;
 import view.LoginView; 
@@ -44,7 +45,7 @@ public class LoginController {
                 String className = authenticatedUser.getClass().getSimpleName().toLowerCase();
                 if (className.contains("admin")) {
                     role = "admin";
-                } else if (className.contains("rescue") || authenticatedUser instanceof RescueTeam) {
+                } else if (className.contains("rescue") || authenticatedUser instanceof RescueAgent) {
                     role = "rescue";
                 } else {
                     role = "citizen";

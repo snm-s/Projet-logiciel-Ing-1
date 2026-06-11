@@ -1,20 +1,30 @@
 package view;
 
+import java.awt.Desktop;
+import java.net.URI;
+
+import app.Main;
 import controller.CitizenPage.CitizenController;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
-import javafx.scene.layout.*;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import model.agent.Agent;
-
-import java.awt.Desktop;
-import java.net.URI;
+import model.agent.Citizen;
+import model.auth.UserService;
 
 public class CitizenProfileView extends BorderPane {
 
@@ -114,25 +124,25 @@ public class CitizenProfileView extends BorderPane {
     private VBox buildSafetyCard(CitizenController controller, Agent user) {
         VBox card = glassCard(22);
         card.setMinHeight(210);
-
+    
         Label title = label("État de sécurité", WHITE, 18, true);
-
+    
         HBox main = new HBox(16);
         main.setAlignment(Pos.CENTER_LEFT);
-
+    
         StackPane indicator = new StackPane();
-
+    
         Circle outer = new Circle(38);
         outer.setFill(controller.isCitizenInPanic(user)
                 ? Color.rgb(239, 68, 68, 0.18)
                 : Color.rgb(34, 197, 94, 0.18));
-
+    
         Circle inner = new Circle(24);
         inner.setFill(Color.web(controller.isCitizenInPanic(user) ? RED : GREEN));
-
+    
         Label icon = label(controller.isCitizenInPanic(user) ? "!" : "✓", WHITE, 22, true);
         indicator.getChildren().addAll(outer, inner, icon);
-
+    
         VBox status = new VBox(5);
         Label state = label(controller.isCitizenInPanic(user) ? "Situation à surveiller" : "Situation stable", WHITE, 20, true);
         Label desc = label(
@@ -144,44 +154,83 @@ public class CitizenProfileView extends BorderPane {
                 false
         );
         desc.setWrapText(true);
-
+    
         status.getChildren().addAll(state, desc);
         main.getChildren().addAll(indicator, status);
-
+    
         HBox stats = new HBox(12);
         stats.getChildren().addAll(
                 miniStat("Alertes", String.valueOf(controller.getAlertCount())),
                 miniStat("Distance", controller.getDistanceLabel(user)),
                 miniStat("Temps", controller.getEtaLabel(user))
         );
-
+    
         for (javafx.scene.Node n : stats.getChildren()) {
             HBox.setHgrow(n, Priority.ALWAYS);
         }
-
+    
         card.getChildren().addAll(title, main, stats);
         return card;
     }
 
     private VBox buildPersonalInfoCard(CitizenController controller, Agent user) {
-        VBox card = glassCard(20);
+    VBox card = glassCard(20);
 
-        Label title = label("Informations personnelles", WHITE, 18, true);
-        Label subtitle = label("Données utilisées pour vous identifier pendant la simulation.", LIGHT, 13, false);
+    Label title = label("Informations personnelles", WHITE, 18, true);
+    Label subtitle = label("Données utilisées pour vous identifier pendant la simulation.", LIGHT, 13, false);
 
-        VBox rows = new VBox(14);
-        rows.setPadding(new Insets(8, 0, 0, 0));
+    VBox rows = new VBox(14);
+    rows.setPadding(new Insets(8, 0, 0, 0));
 
-        rows.getChildren().addAll(
-                detailRow("Nom complet", controller.getFullName(user)),
-                detailRow("Email", user != null && user.getEmail() != null ? user.getEmail() : "Non renseigné"),
-                detailRow("Téléphone", user != null && user.getPhone() != null ? user.getPhone() : "Non renseigné"),
-                detailRow("Ville", user != null && user.getCity() != null ? user.getCity() : "Non renseignée")
-        );
+    CheckBox pmrCheck = new CheckBox();
+    pmrCheck.setFocusTraversable(false);
 
-        card.getChildren().addAll(title, subtitle, rows);
-        return card;
+    if (user instanceof Citizen citizen) {
+        pmrCheck.setSelected(citizen.isMobilityReduced());
     }
+
+    rows.getChildren().addAll(
+            detailRow("Nom complet", controller.getFullName(user)),
+            detailRow("Email", user != null && user.getEmail() != null ? user.getEmail() : "Non renseigné"),
+            detailRow("Téléphone", user != null && user.getPhone() != null ? user.getPhone() : "Non renseigné"),
+            detailRow("Ville", user != null && user.getCity() != null ? user.getCity() : "Non renseignée"),
+            pmrRow("Mobilité réduite / PMR", pmrCheck)
+    );
+
+    Button saveBtn = new Button("Enregistrer");
+    saveBtn.setStyle(
+            "-fx-background-color: linear-gradient(to right, " + BLUE_DARK + ", " + BLUE + ");" +
+            "-fx-text-fill: white;" +
+            "-fx-background-radius: 10;" +
+            "-fx-font-weight: bold;" +
+            "-fx-cursor: hand;"
+    );
+
+    Label status = label("", GREEN, 12, true);
+
+    saveBtn.setOnAction(e -> {
+        if (user instanceof Citizen citizen) {
+            citizen.setMobilityPMR(pmrCheck.isSelected());
+
+            boolean saved = UserService.updateAgent(citizen);
+
+            if (saved) {
+                Main.currentUser = citizen;
+                status.setText("Profil enregistré ✓");
+                status.setTextFill(Color.web(GREEN));
+            } else {
+                status.setText("Erreur : impossible d’enregistrer.");
+                status.setTextFill(Color.web(RED));
+            }
+        }
+    });
+
+    HBox saveRow = new HBox(12, saveBtn, status);
+    saveRow.setAlignment(Pos.CENTER_LEFT);
+
+    card.getChildren().addAll(title, subtitle, rows, saveRow);
+    return card;
+}
 
     private VBox buildEvacuationCard(CitizenController controller, Agent user) {
         VBox card = glassCard(20);
@@ -282,6 +331,27 @@ smallAdvice("⚠", "Alertes", "Consultez les consignes officielles."),
         row.getChildren().addAll(k, v);
         HBox.setHgrow(v, Priority.ALWAYS);
 
+        return row;
+    }
+
+    private HBox pmrRow(String key, CheckBox checkBox) {
+        HBox row = new HBox(12);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(10, 12, 10, 12));
+        row.setStyle(
+                "-fx-background-color: rgba(255,255,255,0.045);" +
+                "-fx-background-radius: 12;"
+        );
+    
+        Label k = label(key, LIGHT, 13, true);
+        k.setMinWidth(135);
+    
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+    
+        row.getChildren().addAll(k, spacer, checkBox);
+        row.setOnMouseClicked(e -> checkBox.setSelected(!checkBox.isSelected()));
+    
         return row;
     }
 

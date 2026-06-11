@@ -1,161 +1,210 @@
 package model.graph;
 
+import org.jxmapviewer.viewer.GeoPosition;
+
 import model.agent.Agent;
 import model.agent.Citizen;
 import model.agent.RescueAgent;
 import model.algorithms.EvacuationPath;
+import model.enums.CitizenMood;
+import model.enums.CitizenState;
 import model.zone.Zone;
-import org.jxmapviewer.viewer.GeoPosition;
 
 /**
- * Suivi du déplacement d'un agent sur un chemin d'évacuation.
+ * Déplacement temporel d'un agent sur un chemin Dijkstra.
  *
- * <p>Chaque appel à {@link #step(double)} avance l'agent d'un incrément
- * proportionnel à sa vitesse. La position GPS courante est interpolée
- * sur le tracé réel (waypoints OSRM).
- *
- * <h3>États d'un déplacement :</h3>
- * <ul>
- *   <li>PENDING   : calculé, pas encore démarré</li>
- *   <li>MOVING    : en cours de déplacement</li>
- *   <li>ARRIVED   : arrivé à destination</li>
- *   <li>BLOCKED   : chemin devenu infranchissable en cours de route</li>
- * </ul>
+ * Règles :
+ * - Citoyen : arête rouge/FLOODED interdite → blocage puis replanification.
+ * - Citoyen : arête orange/FLOODING/AT_RISK → état STRESSED et vitesse accélérée.
+ * - Secouriste : peut traverser rouge/orange, mais rouge est ralenti.
  */
 public class AgentMovement {
 
-    public enum Status { PENDING, MOVING, ARRIVED, BLOCKED }
+    public enum Status { PENDING, WAITING, MOVING, ARRIVED, BLOCKED }
 
-    // ─── Champs ───────────────────────────────────────────────────────────
-    private final Agent          agent;
+    private final Agent agent;
     private final EvacuationPath path;
-    private double               progress;   // [0.0, 1.0]
-    private Status               status;
-    private GeoPosition          currentPosition;
 
-    // Vitesse de déplacement en unités de "progress" par seconde simulée.
-    // Valeur typique : 0.03 → traverse un chemin moyen en ~33 secondes simulées.
+    private double progress;
+    private Status status;
+    private GeoPosition currentPosition;
     private double speed;
 
-    // ─────────────────────────────────────────────────────────────────────
+    private int currentEdgeIndex = -1;
+    private Edge occupiedEdge = null;
 
     public AgentMovement(Agent agent, EvacuationPath path) {
-        this.agent    = agent;
-        this.path     = path;
+        this.agent = agent;
+        this.path = path;
         this.progress = 0.0;
-        this.status   = Status.PENDING;
-        this.speed    = computeSpeed(agent);
-        this.currentPosition = path.interpolatePosition(0.0);
+        this.status = Status.PENDING;
+        this.speed = computeSpeed(agent);
+        this.currentPosition = path != null ? path.interpolatePosition(0.0) : null;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // AVANCEMENT
-    // ─────────────────────────────────────────────────────────────────────
+    public void start() {
+        if (status != Status.PENDING) return;
+        if (path == null || path.isEmpty()) {
+            status = Status.ARRIVED;
+            return;
+        }
+        if (!tryEnterCurrentEdge()) {
+            status = Status.WAITING;
+            return;
+        }
+        status = Status.MOVING;
+        updateAgentPosition(currentPosition);
+    }
 
-    /**
-     * Avance d'un pas de simulation.
-     *
-     * @param deltaSeconds durée du pas simulé en secondes (ex : 1.0)
-     * @return {@code true} si l'agent vient d'arriver
-     */
     public boolean step(double deltaSeconds) {
         if (status == Status.ARRIVED || status == Status.BLOCKED) return false;
-        status = Status.MOVING;
-
-        // Vérifier si le chemin est toujours praticable
-        if (!isPathStillCrossable()) {
+        if (path == null) {
             status = Status.BLOCKED;
             return false;
         }
 
-        progress = Math.min(1.0, progress + speed * deltaSeconds);
+        if (!isPathStillCrossable()) {
+            releaseOccupiedEdge();
+            status = Status.BLOCKED;
+            return false;
+        }
+
+        if (!tryEnterCurrentEdge()) {
+            status = Status.WAITING;
+            return false;
+        }
+
+        status = Status.MOVING;
+
+        double factor = occupiedEdge != null ? occupiedEdge.getSpeedFactor() : 1.0;
+        if (occupiedEdge != null) {
+            EdgeState st = occupiedEdge.getState();
+
+            if (agent instanceof Citizen c) {
+                if (st == EdgeState.FLOODING || st == EdgeState.AT_RISK) {
+                    c.setMood(CitizenMood.STRESSED);
+                    factor *= 1.35; // stress = fuite plus rapide
+                } else if (c.getState() != CitizenState.SAFE) {
+                    c.setState(CitizenState.ESCAPING);
+                }
+                if (st == EdgeState.CONGESTED) factor *= 0.55;
+                if (st == EdgeState.OVERLOADED) factor *= 0.35;
+            }
+
+            if (agent instanceof RescueAgent) {
+                if (st == EdgeState.FLOODED) factor *= 0.45;
+                if (st == EdgeState.FLOODING || st == EdgeState.AT_RISK) factor *= 0.80;
+            }
+        }
+
+        progress = Math.min(1.0, progress + speed * factor * deltaSeconds);
         currentPosition = path.interpolatePosition(progress);
         updateAgentPosition(currentPosition);
+        updateEdgeOccupation();
 
         if (progress >= 1.0) {
             status = Status.ARRIVED;
-            // Mettre à jour la position de l'agent sur le refuge d'arrivée
             Zone destination = path.getDestination();
             if (destination != null) {
                 updateAgentPosition(new GeoPosition(destination.getLatitude(), destination.getLongitude()));
             }
-            updateAgentEdgeFlow(-1); // libérer la capacité
+            releaseOccupiedEdge();
             return true;
         }
 
         return false;
     }
 
-    /**
-     * Démarre le déplacement et réserve la capacité sur les arêtes du chemin.
-     */
-    public void start() {
-        if (status != Status.PENDING) return;
-        status = Status.MOVING;
-        updateAgentPosition(currentPosition);
-        updateAgentEdgeFlow(+1); // occuper la capacité
+    private boolean tryEnterCurrentEdge() {
+        if (path == null || path.getEdges().isEmpty()) return true;
+
+        int wantedIndex = edgeIndexForProgress();
+        Edge wanted = path.getEdges().get(wantedIndex);
+
+        if (occupiedEdge == wanted) return true;
+
+        boolean canEnter = agent instanceof RescueAgent
+                ? wanted.canEnterAsRescue()
+                : wanted.canEnter();
+        if (!canEnter) return false;
+
+        releaseOccupiedEdge();
+        occupiedEdge = wanted;
+        currentEdgeIndex = wantedIndex;
+        occupiedEdge.addFlow(1);
+        return true;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // UTILITAIRES
-    // ─────────────────────────────────────────────────────────────────────
+    private void updateEdgeOccupation() {
+        if (path == null || path.getEdges().isEmpty()) return;
 
+        int wantedIndex = edgeIndexForProgress();
+        if (wantedIndex != currentEdgeIndex) {
+            Edge old = occupiedEdge;
+            if (tryEnterCurrentEdge() && old != null) {
+                old.recordPassage(agent != null ? agent.getSpeed() : 1.0);
+            }
+        }
+    }
 
-    /** Synchronise la position géographique du modèle Agent avec le déplacement. */
+    private int edgeIndexForProgress() {
+        int n = Math.max(1, path.getEdges().size());
+        int idx = (int) Math.floor(Math.min(0.999999, Math.max(0.0, progress)) * n);
+        return Math.max(0, Math.min(n - 1, idx));
+    }
+
+    private void releaseOccupiedEdge() {
+        if (occupiedEdge != null) {
+            occupiedEdge.removeFlow(1);
+            occupiedEdge.recordPassage(agent != null ? agent.getSpeed() : 1.0);
+            occupiedEdge = null;
+        }
+        currentEdgeIndex = -1;
+    }
+
     private void updateAgentPosition(GeoPosition pos) {
         if (pos != null && agent != null) {
             agent.setPosition(new Node(pos.getLatitude(), pos.getLongitude()));
         }
     }
 
-    /** L'itinéraire est-il encore franchissable (aucune arête FLOODED) ? */
     private boolean isPathStillCrossable() {
+        if (agent instanceof RescueAgent) return true;
         return path.getEdges().stream().allMatch(Edge::isCrossable);
     }
 
-    /** Met à jour le flux courant sur toutes les arêtes du chemin. */
-    private void updateAgentEdgeFlow(int delta) {
-        for (Edge edge : path.getEdges()) {
-            if (delta > 0) edge.addFlow(delta);
-            else           edge.removeFlow(-delta);
-        }
-    }
-
-    /**
-     * Calcule la vitesse de déplacement selon le type d'agent et ses attributs.
-     * - Citoyen normal    : vitesse = maxSpeed / 100
-     * - Citoyen elderly   : × 0.6
-     * - Citoyen child     : × 0.7
-     * - RescueAgent       : × 1.5 (véhicule d'urgence)
-     */
     private double computeSpeed(Agent a) {
-        double base = (a.getMaxSpeed() > 0) ? a.getMaxSpeed() / 100.0 : 0.03;
-        if (a instanceof Citizen) {
-            Citizen c = (Citizen) a;
-            String mob = c.getMobilityStatus();
-            if ("elderly".equals(mob)) return base * 0.6;
-            if ("child".equals(mob))   return base * 0.7;
+        if (a == null) return 0.03;
+
+        double speed = a.getSpeed() > 0
+                ? a.getSpeed() / 70.0
+                : 0.045;
+
+        if (a instanceof Citizen c) {
+            speed *= c.getMobilityStatus().getSpeedMultiplier();
+
+            if (a.getCongestionTolerance() < 0.6) {
+                speed *= 0.85;
+            }
         }
-        if (a instanceof RescueAgent) return base * 1.5;
-        return base;
+
+        if (a instanceof RescueAgent) {
+            speed *= 1.8;
+        }
+
+        return speed;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // GETTERS
-    // ─────────────────────────────────────────────────────────────────────
-
-    public Agent          getAgent()           { return agent; }
-    public EvacuationPath getPath()            { return path; }
-    public double         getProgress()        { return progress; }
-    public Status         getStatus()          { return status; }
-    public GeoPosition    getCurrentPosition() { return currentPosition; }
-    public boolean        isArrived()          { return status == Status.ARRIVED; }
-    public boolean        isBlocked()          { return status == Status.BLOCKED; }
-    public boolean        isMoving()           { return status == Status.MOVING; }
-
-    /** Zone de destination finale. */
-    public Zone getDestinationZone() { return path.getDestination(); }
-
-    /** Zone d'origine. */
-    public Zone getOriginZone() { return path.getOrigin(); }
+    public Agent getAgent() { return agent; }
+    public EvacuationPath getPath() { return path; }
+    public double getProgress() { return progress; }
+    public Status getStatus() { return status; }
+    public GeoPosition getCurrentPosition() { return currentPosition; }
+    public boolean isArrived() { return status == Status.ARRIVED; }
+    public boolean isBlocked() { return status == Status.BLOCKED; }
+    public boolean isMoving() { return status == Status.MOVING; }
+    public boolean isWaiting() { return status == Status.WAITING; }
+    public Zone getDestinationZone() { return path == null ? null : path.getDestination(); }
+    public Zone getOriginZone() { return path == null ? null : path.getOrigin(); }
+    public Edge getOccupiedEdge() { return occupiedEdge; }
 }

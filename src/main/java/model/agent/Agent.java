@@ -39,7 +39,6 @@ public abstract class Agent {
 
     private Node position;
     private Node destination;
-    private double maxSpeed;
     private double congestionTolerance;
     private Strategy strategy;
 
@@ -110,7 +109,7 @@ public abstract class Agent {
     }
 
     public Agent() {
-        this.maxSpeed = 3.0;
+        
         this.congestionTolerance = 1.0;
     }
 
@@ -119,7 +118,7 @@ public abstract class Agent {
         this.firstName = firstName;
         this.lastName = lastName;
         this.position = position;
-        this.maxSpeed = 3.0;
+     
         this.congestionTolerance = 1.0;
     }
 
@@ -154,14 +153,6 @@ public abstract class Agent {
     
     
 
-    public double getMaxSpeed() { 
-        return maxSpeed; 
-    }
-
-    public void setMaxSpeed(double maxSpeed) {
-        this.maxSpeed = maxSpeed;
-    }
-
     public double getCongestionTolerance() {
         return congestionTolerance;
     }
@@ -169,5 +160,8 @@ public abstract class Agent {
     public void setCongestionTolerance(double congestionTolerance) {
         this.congestionTolerance = congestionTolerance;
     }
+
+    public abstract double getSpeed();
+    
 
 }

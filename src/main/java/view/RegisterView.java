@@ -35,7 +35,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.util.Duration;
-import service.CityService;
+import service.AddressService;
 
 public class RegisterView extends StackPane {
 
@@ -63,9 +63,10 @@ public class RegisterView extends StackPane {
     private TextField email = new TextField(), phone = new TextField();
     private PasswordField password = new PasswordField(), confirmPassword = new PasswordField();
     private TextField visiblePassword = new TextField(), visibleConfirmPassword = new TextField();
-    private TextField address = new TextField(), country = new TextField();
-    private ComboBox<String> city = new ComboBox<>();
-    private boolean citySelectionInProgress = false;
+    private ComboBox<String> address = new ComboBox<>();
+    private boolean addressSelectionInProgress = false;
+    private TextField country = new TextField();
+    private TextField city = new TextField();
     private ComboBox<String> houseType = new ComboBox<>();
     private TextField floor = new TextField();
     private Label gpsLabel = new Label("GPS non configuré");
@@ -453,54 +454,73 @@ public class RegisterView extends StackPane {
                 errPassword
         );
 
-        address.setPromptText("Addresse");
-        applyTextFieldStyle(address);
-
-        city.setPromptText("Ville");
-        city.setEditable(true);
-
-        city.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
-            if (citySelectionInProgress) return;
-
-            if (newValue == null || newValue.trim().length() < 2) {
-                city.getItems().clear();
-                city.hide();
+        address.setPromptText("Adresse à Lyon");
+        address.setEditable(true);
+        applyEditableComboBoxStyle(address);
+        
+        address.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
+            if (addressSelectionInProgress) return;
+        
+            if (newValue == null || newValue.trim().length() < 3) {
+                address.getItems().clear();
+                address.hide();
                 return;
             }
-
+        
             new Thread(() -> {
-                var results = CityService.searchCities(newValue);
-
+                var results = AddressService.searchLyonAddresses(newValue);
+        
                 Platform.runLater(() -> {
-                    if (!city.getEditor().getText().equals(newValue)) return;
-
-                    city.getItems().setAll(results);
-
-                    if (!results.isEmpty() && city.isFocused()) city.show();
-                    else city.hide();
+                    if (!address.getEditor().getText().equals(newValue)) return;
+        
+                    address.getItems().setAll(results);
+        
+                    if (!results.isEmpty() && address.isFocused()) {
+                        address.show();
+                    } else {
+                        address.hide();
+                    }
                 });
             }).start();
         });
 
-        city.valueProperty().addListener((obs, oldValue, selected) -> {
-            if (selected != null) {
-                citySelectionInProgress = true;
-                city.getEditor().setText(selected);
-                citySelectionInProgress = false;
-                city.hide();
-                country.requestFocus();
-            }
+        address.valueProperty().addListener((obs, oldValue, selected) -> {
+            if (selected == null) return;
+        
+            addressSelectionInProgress = true;
+            address.getEditor().setText(selected);
+            addressSelectionInProgress = false;
+        
+            address.hide();
+            showError(errAddress, address, false, "");
         });
 
-        applyEditableComboBoxStyle(city);
+        city.setText("Lyon");
+city.setEditable(false);
+city.setPromptText("Ville");
+applyTextFieldStyle(city);
+
+country.setText("France");
+country.setEditable(false);
+country.setPromptText("Pays");
+applyTextFieldStyle(country);
 
         country.setPromptText("Pays");
         applyTextFieldStyle(country);
 
-        setupLiveValidation(address, errAddress, f ->
-                f.getText().matches(".*\\d+.*") &&
-                        f.getText().matches(".*[a-zA-ZÀ-ÿ]+.*")
-        );
+        address.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
+            boolean hasError = newValue == null
+                    || newValue.trim().isEmpty()
+                    || !newValue.matches(".*\\d+.*")
+                    || !newValue.matches(".*[a-zA-ZÀ-ÿ]+.*");
+        
+            showError(
+                    errAddress,
+                    address,
+                    hasError,
+                    "L'adresse doit contenir un numéro de rue et un nom de rue"
+            );
+        });
 
         setupLiveValidation(country, errCountry, f -> f.getText().equalsIgnoreCase("France"));
 
@@ -811,7 +831,6 @@ public class RegisterView extends StackPane {
         if (tf == phone) return "Le numéro de téléphone doit comporter exactement 10 chiffres";
         if (tf == firstName) return "Le prénom doit contenir uniquement des lettres";
         if (tf == lastName) return "Le nom doit contenir uniquement des lettres";
-        if (tf == address) return "L'adresse doit contenir un numéro de rue et un nom de rue";
         if (tf == country) return "Le pays doit être la France";
         if (tf == floor) return "L'étage est requis";
         if (tf == householdSize) return "La taille du foyer est requise";
@@ -927,14 +946,21 @@ public class RegisterView extends StackPane {
             valid = false;
         }
 
-        if (!address.getText().matches(".*\\d+.*") || !address.getText().matches(".*[a-zA-ZÀ-ÿ]+.*")) {
-            showError(errAddress, address, true, getFieldError(address));
-            valid = false;
-        }
+        String addressValue = address.getEditor().getText().trim();
 
-        String cityValue = city.getEditor().getText().trim();
+if (!addressValue.matches(".*\\d+.*") || !addressValue.matches(".*[a-zA-ZÀ-ÿ]+.*")) {
+    showError(
+            errAddress,
+            address,
+            true,
+            "L'adresse doit contenir un numéro de rue et un nom de rue"
+    );
+    valid = false;
+}
 
-        if (cityValue.isEmpty() || !city.getItems().contains(cityValue)) {
+String cityValue = city.getText().trim();
+
+if (!cityValue.equalsIgnoreCase("Lyon")) {
             showError(errCity, city, true, "Sélectionnez une ville de la liste");
             valid = false;
         }
@@ -1062,7 +1088,7 @@ public class RegisterView extends StackPane {
         visibleConfirmPassword.setOnAction(e -> address.requestFocus());
 
         address.setOnAction(e -> city.requestFocus());
-        city.getEditor().setOnAction(e -> country.requestFocus());
+        city.setOnAction(e -> country.requestFocus());
 
         country.setOnAction(e -> gpsButton.requestFocus());
 
@@ -1072,7 +1098,7 @@ public class RegisterView extends StackPane {
     }
 
     private void updateCoordinatesFromCity() {
-        String cityText = city.getEditor().getText().trim().toLowerCase();
+        String cityText = city.getText().trim().toLowerCase();
     
         if (cityText.contains("parmain")) {
             detectedLat = 49.1120;
@@ -1129,9 +1155,9 @@ public class RegisterView extends StackPane {
         }
         
         String fullAddress =
-        address.getText()
+        address.getEditor().getText()
         + ", "
-        + city.getEditor().getText()
+        + city.getText()
         + ", "
         + country.getText();
 
@@ -1149,8 +1175,8 @@ if (coords != null) {
                 email.getText(),
                 phone.getText(),
                 pwd,
-                address.getText(),
-                city.getEditor().getText(),
+                address.getEditor().getText(),
+                city.getText(),
                 country.getText(),
                 houseType.getValue(),
                 floorNum,
@@ -1245,7 +1271,7 @@ if (coords != null) {
         this.detectedLat = lat;
         this.detectedLng = lng;
 
-        city.getEditor().setText(cityValue);
+        city.setText("Lyon");
         country.setText(countryValue);
 
         gpsLabel.setText(cityValue.isEmpty()

@@ -13,18 +13,18 @@ public class Alert {
     private AlertType type;
     private String description;
 
-    private Node localisation;
+    private String localisation;
     private AlertSeverity severity;
     private String time;
     private String status; // "Active", "Résolue", "En attente"
     private String origin; // "admin" | "suggestion"
 
-    public Alert(AlertType type, String description, Node localisation,
+    public Alert(AlertType type, String description, String localisation,
             AlertSeverity severity, String time, String status) {
         this(type, description, localisation, severity, time, status, "admin");
     }
 
-    public Alert(AlertType type, String description, Node localisation,
+    public Alert(AlertType type, String description, String localisation,
             AlertSeverity severity, String time, String status, String origin) {
         this.id = 0;
         this.type = type;
@@ -49,7 +49,7 @@ public class Alert {
         return description;
     }
 
-    public Node getLocalisation() {
+    public String getLocalisation() {
         return localisation;
     }
 
@@ -82,7 +82,7 @@ public class Alert {
         this.type = v;
     }
 
-    public void setLocalisation(Node v) {
+    public void setLocalisation(String v) {
         localisation = v;
     }
 

@@ -19,11 +19,11 @@ public class RescueTeam {
     }
 
     
-    /*
+    
     public boolean isAvailable() {
         return members.isEmpty(); // ou logique de mission
     }
-    */
+    
 
     public void addMember(RescueAgent r) {
         members.add(r);

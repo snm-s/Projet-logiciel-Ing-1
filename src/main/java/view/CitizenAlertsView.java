@@ -28,6 +28,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import model.alert.Alert;
+import model.enums.AlertSeverity;
 import model.enums.AlertType;
 
 public class CitizenAlertsView extends BorderPane {
@@ -185,7 +186,10 @@ public class CitizenAlertsView extends BorderPane {
                 latest != null
                         ? cleanText(latest.getLocalisation(), "Localisation inconnue")
                         + " • "
-                        + cleanText(latest.getSeverity(), "Sévérité inconnue")
+                        + cleanText(
+                                latest.getSeverity() == null ? null : latest.getSeverity().name(),
+                                "Sévérité inconnue"
+                        )
                         + " • "
                         + cleanText(latest.getTime(), "--:--")
                         : "Aucune situation urgente n’est publiée actuellement.",
@@ -302,6 +306,17 @@ public class CitizenAlertsView extends BorderPane {
         }
     }
 
+    private String severityFr(AlertSeverity s) {
+        if (s == null) return "--";
+
+        return switch (s) {
+            case LOW -> "Faible";
+            case WARNING -> "Moyenne";
+            case HIGH -> "Élevée";
+        };
+    }
+
+
     private VBox alertCard(Alert alert) {
         VBox card = new VBox(14);
         card.setPadding(new Insets(18));
@@ -332,10 +347,11 @@ public class CitizenAlertsView extends BorderPane {
 
         top.getChildren().addAll(icon, titleBox, spacer, status);
 
+
         HBox details = new HBox(12);
         details.getChildren().addAll(
                 detailBox("Localisation", alert.getLocalisation()),
-                detailBox("Sévérité", alert.getSeverity()),
+                detailBox("Sévérité", alert.getSeverity() == null ? "--" : severityFr(alert.getSeverity())),
                 detailBox("Heure", alert.getTime())
         );
 
@@ -439,7 +455,8 @@ public class CitizenAlertsView extends BorderPane {
         TextField descriptionField = field("Description de la situation");
         TextField localisationField = field("Localisation");
 
-        ComboBox<String> severityField = new ComboBox<>(FXCollections.observableArrayList("Élevée", "Moyenne", "Faible"));
+        ComboBox<AlertSeverity> severityField = new ComboBox<>(FXCollections.observableArrayList(AlertSeverity.values()));
+
         severityField.setPrefWidth(260);
 
         TextField timeField = field("Heure constatée, exemple : 14:30");
@@ -469,7 +486,7 @@ public class CitizenAlertsView extends BorderPane {
                     typeField.getValue() == null ? AlertType.INFO : typeField.getValue(),
                     descriptionField.getText().isBlank() ? "Situation signalée" : descriptionField.getText().trim(),
                     localisationField.getText().isBlank() ? "Localisation inconnue" : localisationField.getText().trim(),
-                    severityField.getValue() == null ? "Faible" : severityField.getValue(),
+                    severityField.getValue() == null ? AlertSeverity.LOW : severityField.getValue(),
                     timeField.getText().isBlank() ? "--:--" : timeField.getText().trim(),
                     "En attente",
                     "suggestion"
@@ -541,12 +558,12 @@ public class CitizenAlertsView extends BorderPane {
         };
     }
 
-    private String getSeverityColor(String severity) {
+    private String getSeverityColor(AlertSeverity severity) {
         if (severity == null) return BLUE;
 
-        return switch (severity.toLowerCase()) {
-            case "élevée" -> RED;
-            case "moyenne" -> ORANGE;
+        return switch (severity) {
+            case HIGH -> RED;
+            case WARNING -> ORANGE;
             default -> BLUE;
         };
     }

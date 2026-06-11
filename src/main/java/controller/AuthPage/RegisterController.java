@@ -6,10 +6,10 @@ import app.Main;
 import javafx.stage.Stage;
 import model.agent.Agent;
 import model.agent.Citizen;
-import model.agent.PMRAgent;
+import model.enums.HouseType;
+import model.enums.MobilityStatus;
 import model.agent.RescueAgent;
 import model.auth.UserService;
-import model.enums.HouseType;
 import model.graph.Node;
 import view.RegisterView;
 
@@ -67,7 +67,9 @@ public class RegisterController {
         } 
         else if ("citizen".equalsIgnoreCase(roleKey)) {
             if (isPmr) {
-                newAgent = new PMRAgent(0, firstName, lastName, null);
+                Citizen citizen = new Citizen(0, firstName, lastName, null);
+                citizen.setMobilityStatus(MobilityStatus.PMR);
+                newAgent = citizen;
             } else {
                 Citizen citizen = new Citizen(0, firstName, lastName, null);
                 // Calcul automatique de l'âge et du statut via la méthode de la classe Citizen

@@ -24,7 +24,9 @@ import model.agent.AdminAgent;
 import model.agent.Agent;
 import model.agent.Citizen;
 import model.agent.RescueAgent;
+import model.enums.CitizenMood;
 import model.enums.CitizenState;
+import model.enums.MobilityStatus;
 import model.graph.AgentMovement;
 import model.graph.Edge;
 import model.graph.Node;
@@ -58,11 +60,27 @@ public class AgentPainter implements Painter<JXMapViewer> {
     public void setAgents(List<Agent> agents, List<Zone> zones) {
         this.agents = agents == null ? new ArrayList<>() : new ArrayList<>(agents);
         this.zones = zones == null ? new ArrayList<>() : new ArrayList<>(zones);
+    
+        Set<Integer> ids = new HashSet<>();
+        for (Agent a : this.agents) ids.add(a.getId());
+    
+        edgeByAgent.keySet().removeIf(id -> !ids.contains(id));
+        progressByAgent.keySet().removeIf(id -> !ids.contains(id));
+        waitCyclesByAgent.keySet().removeIf(id -> !ids.contains(id));
+    
         ensurePositions();
     }
 
     public List<Agent> getAgents() {
         return agents;
+    }
+
+    private boolean isDisplayedAgent(Agent agent) {
+
+        if (agent == null) return false;
+    
+        return agents.stream()
+                .anyMatch(a -> a.getId() == agent.getId());
     }
 
     public void updateZones(List<Zone> zones) {
@@ -164,9 +182,17 @@ public class AgentPainter implements Painter<JXMapViewer> {
         if (routeGraph != null) {
             for (AgentMovement mv : routeGraph.getActiveMovements()) {
                 if (mv == null || mv.getAgent() == null || mv.getCurrentPosition() == null) continue;
+        
+                Agent movingAgent = mv.getAgent();
+                if (!isDisplayedAgent(movingAgent)) continue;
+        
                 Point2D p = map.convertGeoPositionToPoint(mv.getCurrentPosition());
                 double dist = p.distance(screenPoint);
-                if (dist < 24 && dist < bestDist) { bestDist = dist; best = mv.getAgent(); }
+        
+                if (dist < 24 && dist < bestDist) {
+                    bestDist = dist;
+                    best = movingAgent;
+                }
             }
         }
         return best;
@@ -183,6 +209,7 @@ public class AgentPainter implements Painter<JXMapViewer> {
             for (AgentMovement mv : new ArrayList<>(routeGraph.getActiveMovements())) {
                 if (mv == null || mv.getAgent() == null || mv.getCurrentPosition() == null) continue;
                 Agent agent = mv.getAgent();
+                if (!isDisplayedAgent(agent)) continue;
                 movingAgentIds.add(agent.getId());
                 boolean panicking = isPanicking(agent) || mv.isBlocked();
                 if (isDangerAt(mv.getCurrentPosition().getLatitude(), mv.getCurrentPosition().getLongitude())) {
@@ -246,7 +273,7 @@ public class AgentPainter implements Painter<JXMapViewer> {
         }
 
         double p = progressByAgent.getOrDefault(agent.getId(), 0.05);
-        double speed = 0.0009 * Math.max(0.6, agent.getMaxSpeed());
+        double speed = 0.0009 * Math.max(0.6, agent.getSpeed());
         if (isPanicking(agent)) speed *= 1.35;
         p += speed;
         if (p >= 1.0) {
@@ -313,32 +340,55 @@ public class AgentPainter implements Painter<JXMapViewer> {
     private void setPanic(Agent agent, boolean panic) {
         if (!(agent instanceof Citizen c)) return;
         if (panic) {
-            if (c.getState() != CitizenState.INJURED && c.getState() != CitizenState.PMR && c.getState() != CitizenState.SAFE) {
-                c.setState(CitizenState.STRESSED);
+            if (c.getState() != CitizenState.INJURED && c.getMobilityStatus() != MobilityStatus.PMR && c.getState() != CitizenState.SAFE) {
+                c.setMood(CitizenMood.STRESSED);
             }
-        } else if (c.getState() == CitizenState.STRESSED || c.getState() == CitizenState.ESCAPING) {
-            c.setState(CitizenState.CALM);
+        } else if (c.getMood() == CitizenMood.STRESSED || c.getState() == CitizenState.ESCAPING) {
+            c.setMood(CitizenMood.CALM);
         }
     }
 
     private boolean isPanicking(Agent agent) {
         if (!(agent instanceof Citizen c) || c.getState() == null) return false;
-        return c.getState() == CitizenState.STRESSED || c.getState() == CitizenState.ESCAPING;
+        return c.getMood() == CitizenMood.STRESSED || c.getState() == CitizenState.ESCAPING;
     }
 
     private Color colorFor(Agent agent, boolean panicking) {
-        if (agent instanceof RescueAgent) return new Color(67, 160, 71);
-        if (agent instanceof AdminAgent) return new Color(38, 198, 218);
-        if (panicking) return new Color(229, 57, 53);
-        if (agent instanceof Citizen c && c.getState() != null) {
-            return switch (c.getState()) {
-                case INJURED -> new Color(233, 30, 99);
-                case PMR -> new Color(142, 36, 170);
-                case STRESSED, ESCAPING -> new Color(229, 57, 53);
-                case SAFE -> new Color(34, 197, 94);
-                case CALM -> new Color(30, 136, 229);
-            };
+
+        if (agent instanceof RescueAgent)
+            return new Color(67, 160, 71);
+
+        if (agent instanceof AdminAgent)
+            return new Color(38, 198, 218);
+
+        if (panicking)
+            return new Color(229, 57, 53);
+
+        if (agent instanceof Citizen c) {
+
+            // 1. PRIORITÉ ÉLEVÉE : état physique
+            if (c.getState() == CitizenState.INJURED)
+                return new Color(233, 30, 99);
+
+            if (c.getState() == CitizenState.ESCAPING)
+                return new Color(229, 57, 53);
+
+            // 2. MOBILITÉ
+            if (c.getMobilityStatus() == MobilityStatus.PMR)
+                return new Color(142, 36, 170);
+
+            // 3. MENTAL
+            if (c.getMood() == CitizenMood.STRESSED)
+                return new Color(229, 57, 53);
+
+            if (c.getMood() == CitizenMood.CALM)
+                return new Color(30, 136, 229);
+
+            // 4. ÉTAT NORMAL
+            if (c.getState() == CitizenState.SAFE)
+                return new Color(34, 197, 94);
         }
+
         return new Color(30, 136, 229);
     }
 
@@ -407,7 +457,7 @@ public class AgentPainter implements Painter<JXMapViewer> {
             g2.setFont(new Font("Segoe UI", Font.BOLD, 8));
             g2.drawString("+", (int) x - 14, (int) y - 11);
         }
-        if (agent instanceof Citizen c && c.getState() == CitizenState.PMR) {
+        if (agent instanceof Citizen c && c.getMobilityStatus() == MobilityStatus.PMR) {
             g2.setColor(Color.WHITE);
             g2.setStroke(new BasicStroke(2f));
             g2.drawLine((int) x + 13, (int) y - 2, (int) x + 13, (int) y + 17);

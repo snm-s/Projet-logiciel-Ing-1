@@ -20,6 +20,7 @@ public class Citizen extends Agent {
 
 
     private MobilityStatus mobilityStatus;
+    private double baseSpeed = 1.0;
     private HouseType houseType;
     private int floor;
     private int householdSize;
@@ -48,6 +49,11 @@ public class Citizen extends Agent {
         this.mood = CitizenMood.CALM;
     }
 
+    @Override
+    public double getSpeed() {
+        return baseSpeed * mobilityStatus.getSpeedMultiplier();
+    }
+
     @JsonIgnore
     public CitizenState getState() {
         return state;
@@ -71,6 +77,10 @@ public class Citizen extends Agent {
 
     public void setMobilityStatus(MobilityStatus mobilityStatus) {
         this.mobilityStatus = mobilityStatus;
+    }
+
+    public void setMobilityPMR(boolean bool) {
+        if (bool) {this.mobilityStatus=MobilityStatus.PMR;}
     }
 
     public HouseType getHouseType() {
@@ -104,6 +114,8 @@ public class Citizen extends Agent {
     public void setHasPets(boolean hasPets) {
         this.hasPets = hasPets;
     }
+
+    public boolean isSaved() {return state == CitizenState.SAFE; }
 
     public String getMedicalNeeds() {
         return medicalNeeds;

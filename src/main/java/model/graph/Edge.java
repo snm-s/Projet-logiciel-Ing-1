@@ -1,12 +1,12 @@
 package model.graph;
 
-import model.graph.EdgeState;
-import model.zone.Zone;
-import org.jxmapviewer.viewer.GeoPosition;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import org.jxmapviewer.viewer.GeoPosition;
+
+import model.zone.Zone;
 
 /**
  * Arête du graphe routier reliant deux zones.
@@ -32,6 +32,17 @@ public class Edge {
     private int          currentFlow;   // flux courant (agents en transit)
     private int          floodedCount;  // nombre de fois inondée (statistiques)
     private EdgeState        state;
+    private double floodLevel = 0.0;
+
+    // Propriétés de circulation demandées dans le sujet
+    private boolean bidirectional = true;
+    private double speedFactor = 1.0;
+    private int lanes = 2;
+
+    // Statistiques d'arête
+    private int agentsPassed = 0;
+    private double totalObservedSpeed = 0.0;
+    
 
     // Observateurs (notifiés quand l'état change)
     private final List<EdgeObserver> observers = new ArrayList<>();
@@ -63,6 +74,14 @@ public class Edge {
      *  - Le flux courant vs capacité
      */
     public EdgeState computeState() {
+
+        if (floodLevel >= 1.0) {
+            return EdgeState.FLOODED;
+        }
+        
+        if (floodLevel > 0.0) {
+            return EdgeState.FLOODING;
+        }
         // 1. Gestion des inondations (Priorité maximale)
         boolean fromFlooded = fromZone.isFlooded();
         boolean toFlooded   = toZone.isFlooded();
@@ -82,12 +101,12 @@ public class Edge {
         if (flowRatio > 0.8) return EdgeState.CONGESTED;  // Congestion critique
         if (flowRatio > 0.5) return EdgeState.AT_RISK;    // Risque modéré
 
-        // 4. État sain
+        // 4. État sain (SAFE et NORMAL fusionnés)
         return EdgeState.SAFE;
     }
 
     /** Met à jour l'état et notifie les observateurs si changement. */
-    private void refreshState() {
+    public void refreshState() {
         EdgeState newState = computeState();
         if (newState != this.state) {
             this.state = newState;
@@ -130,17 +149,82 @@ public class Edge {
      * @return coût ≥ 0, Double.MAX_VALUE si infranchissable
      */
     public double routingCost(double floodWeight) {
-        if (state == EdgeState.FLOODED) return Double.MAX_VALUE; // route coupée
+        if (state == EdgeState.FLOODED) return Double.MAX_VALUE; // rouge = interdit aux citoyens
 
         double dist = geoDistance();
-        double floodPenalty = (state == EdgeState.AT_RISK) ? floodWeight * dist : 0.0;
-
-        // Pénalité congestion proportionnelle au taux de remplissage
         double congestionRatio = (capacityMax > 0) ? (double) currentFlow / capacityMax : 0.0;
-        double congestionPenalty = dist * congestionRatio * 2.0;
+        double statePenalty;
 
-        return dist + floodPenalty + congestionPenalty;
+        switch (state) {
+            case SAFE:
+                statePenalty = 0.0;
+                break;
+            case FLOODING:
+            case AT_RISK:
+                statePenalty = dist * 2.5; // orange = possible, mais le Dijkstra préfère l'éviter
+                break;
+            case CONGESTED:
+                statePenalty = dist * 4.0;
+                break;
+            case OVERLOADED:
+                statePenalty = dist * 7.0;
+                break;
+            case FLOODED:
+            default:
+                return Double.MAX_VALUE;
+        }
+
+        return (dist / Math.max(0.1, speedFactor)) + statePenalty + dist * congestionRatio * 2.0;
     }
+
+    /**
+     * Coût réservé aux secouristes : ils peuvent traverser une arête rouge,
+     * mais très lentement et avec une forte pénalité. Cela évite de bloquer
+     * définitivement les missions de secours.
+     */
+    public double rescueRoutingCost() {
+        double dist = geoDistance();
+        double congestionRatio = (capacityMax > 0) ? (double) currentFlow / capacityMax : 0.0;
+
+        return switch (state) {
+            case SAFE -> dist / Math.max(0.1, speedFactor);
+            case FLOODING, AT_RISK -> dist * 2.0;
+            case CONGESTED -> dist * 3.0;
+            case OVERLOADED -> dist * 5.0;
+            case FLOODED -> dist * 8.0; // autorisé pour secours, mais dangereux/lent
+        } + dist * congestionRatio;
+    }
+
+    /** Peut-on entrer dans l'arête à ce cycle ? */
+    public boolean canEnter() {
+        return isCrossable() && hasCapacity(1);
+    }
+
+    /** Peut-on entrer dans l'arête comme secouriste ? */
+    public boolean canEnterAsRescue() {
+        return hasCapacity(1);
+    }
+
+    /** Statistiques : un agent a traversé cette arête. */
+    public void recordPassage(double speed) {
+        agentsPassed++;
+        totalObservedSpeed += Math.max(0.0, speed);
+    }
+
+    public int getAgentsPassed() { return agentsPassed; }
+
+    public double getAverageSpeed() {
+        return agentsPassed == 0 ? 0.0 : totalObservedSpeed / agentsPassed;
+    }
+
+    public boolean isBidirectional() { return bidirectional; }
+    public void setBidirectional(boolean bidirectional) { this.bidirectional = bidirectional; }
+
+    public double getSpeedFactor() { return speedFactor; }
+    public void setSpeedFactor(double speedFactor) { this.speedFactor = Math.max(0.1, speedFactor); }
+
+    public int getLanes() { return lanes; }
+    public void setLanes(int lanes) { this.lanes = Math.max(1, lanes); }
 
     /** Distance géographique entre les deux extrémités (en km approx). */
     public double geoDistance() {
@@ -166,6 +250,30 @@ public class Edge {
 
     private void notifyObservers() {
         for (EdgeObserver obs : observers) obs.onEdgeStateChanged(this, state);
+    }
+
+    public void setFloodLevel(double level) {
+        double oldLevel = this.floodLevel;
+    
+        this.floodLevel = Math.max(0.0, Math.min(1.0, level));
+    
+        if (oldLevel < 1.0 && this.floodLevel >= 1.0) {
+            this.floodedCount++;
+        }
+    
+        refreshState();
+    }
+    
+    public double getFloodLevel() {
+        return floodLevel;
+    }
+    
+    public void setFlooded(boolean flooded) {
+        setFloodLevel(flooded ? 1.0 : 0.0);
+    }
+    
+    public boolean isManuallyFlooded() {
+        return floodLevel >= 1.0;
     }
 
     // ─────────────────────────────────────────────────────────────────────

@@ -101,7 +101,7 @@ public class AlertSystem {
         observers.remove(obs);
     }
 
-    private void notifyListeners(Alert alert) {
+    public void notifyListeners(Alert alert) {
         List<Observer> copy = new ArrayList<>(observers);
 
         for (Observer listener : copy) {

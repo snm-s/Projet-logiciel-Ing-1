@@ -102,7 +102,7 @@ public class AdminController {
     }
 
     public int getSavedCount() {
-        return (int) allAgents.stream().filter(Agent::isSaved).count();
+        return (int) allAgents.stream().filter(a -> a instanceof Citizen && ((Citizen) a).isSaved()).count();
     }
 
     public int getActiveRescueCount() {
