@@ -1,0 +1,137 @@
+[
+    {
+        "id": 1,
+        "name": "Presqu'île - Centre-ville",
+        "type": "neighborhood",
+        "latitude": 45.7649,
+        "longitude": 4.8357,
+        "altitude": 1.2,
+        "population": 850,
+        "description": "Zone urbaine centrale avec commerces et immeubles résidentiels"
+    },
+    {
+        "id": 2,
+        "name": "Confluence - Musée",
+        "type": "neighborhood",
+        "latitude": 45.7324,
+        "longitude": 4.8210,
+        "altitude": 0.8,
+        "population": 320,
+        "description": "Zone de musées et espaces publics, bas altitude"
+    },
+    {
+        "id": 3,
+        "name": "Parc de la Tête d'Or",
+        "type": "neighborhood",
+        "latitude": 45.7698,
+        "longitude": 4.8537,
+        "altitude": 1.5,
+        "population": 150,
+        "description": "Parc urbain et zones de loisirs"
+    },
+    {
+        "id": 4,
+        "name": "Fourvière - Basilique",
+        "type": "neighborhood",
+        "latitude": 45.7603,
+        "longitude": 4.8135,
+        "altitude": 3.2,
+        "population": 280,
+        "description": "Quartier résidentiel en hauteur, protégé"
+    },
+    {
+        "id": 5,
+        "name": "Guillotière - Université",
+        "type": "neighborhood",
+        "latitude": 45.7516,
+        "longitude": 4.8751,
+        "altitude": 1.0,
+        "population": 620,
+        "description": "Zone résidentielle universitaire, proximité Rhône"
+    },
+    {
+        "id": 6,
+        "name": "Gerland - Industrial",
+        "type": "neighborhood",
+        "latitude": 45.7205,
+        "longitude": 4.8352,
+        "altitude": 0.5,
+        "population": 490,
+        "description": "Zone industrielle, très basse altitude"
+    },
+    {
+        "id": 7,
+        "name": "Part-Dieu - Business",
+        "type": "neighborhood",
+        "latitude": 45.7606,
+        "longitude": 4.8858,
+        "altitude": 1.1,
+        "population": 510,
+        "description": "District commercial et de bureaux"
+    },
+    {
+        "id": 8,
+        "name": "Villeurbanne - Gratte-ciel",
+        "type": "neighborhood",
+        "latitude": 45.7693,
+        "longitude": 4.9014,
+        "altitude": 1.3,
+        "population": 740,
+        "description": "Zone résidentielle avec structures caractéristiques"
+    },
+    {
+        "id": 9,
+        "name": "Croix-Rousse - Colline",
+        "type": "neighborhood",
+        "latitude": 45.7786,
+        "longitude": 4.8229,
+        "altitude": 2.8,
+        "population": 560,
+        "description": "Quartier collinaire, relativement sûr"
+    },
+    {
+        "id": 10,
+        "name": "Port de commerce - Quai",
+        "type": "neighborhood",
+        "latitude": 45.7410,
+        "longitude": 4.8470,
+        "altitude": 0.3,
+        "population": 200,
+        "description": "Port fluvial, zone critique à risque"
+    },
+
+    {
+        "id": 11,
+        "name": "Plateau de la Croix-Rousse",
+        "type": "shelter",
+        "latitude": 45.7795,
+        "longitude": 4.8290,
+        "altitude": 250.0,
+        "population": 0,
+        "description": "Zone haute et sécurisée, éloignée des berges de la Saône",
+        "capacity": 1200
+    },
+    {
+        "id": 12,
+        "name": "Campus Santé Est (8ème)",
+        "type": "shelter",
+        "latitude": 45.7350,
+        "longitude": 4.8700,
+        "altitude": 195.0,
+        "population": 0,
+        "description": "Refuge situé sur le plateau du 8ème arrondissement, zone haute",
+        "capacity": 1000
+    },
+    {
+        "id": 13,
+        "name": "Fort de Loyasse (5ème)",
+        "type": "shelter",
+        "latitude": 45.7650,
+        "longitude": 4.8050,
+        "altitude": 270.0,
+        "population": 0,
+        "description": "Position dominante sur les hauteurs de Fourvière",
+        "capacity": 700
+    }
+    
+]

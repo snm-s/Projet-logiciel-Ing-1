@@ -1,0 +1,12 @@
+# Maven build
+target/
+
+# VS Code
+.vscode/
+
+# Java compiled output (si présent)
+bin/
+lib/
+
+# System files
+.DS_Store
