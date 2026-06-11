@@ -1,10 +1,10 @@
 package app;
 
-import controller.MapController;
 import controller.AdminPage.AdminController;
 import controller.AdminPage.SimulationController;
 import controller.AuthPage.ForgotPasswordController;
 import controller.CitizenPage.CitizenController;
+import controller.MapController;
 import controller.RescuePage.RescueController;
 import javafx.application.Application;
 import javafx.scene.Scene;
