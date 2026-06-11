@@ -133,7 +133,11 @@ public class Main extends Application {
     }
 
     public static void showSimulationView() {
-        SimulationController simulationController = new SimulationController();
+        // IMPORTANT : on réutilise le contrôleur partagé.
+        // Sinon la vue simulation a un nouveau SimulationController sans MapController,
+        // donc les alertes partent mais aucun AgentMovement n'est créé/avancé.
+        SimulationController simulationController = sharedSimCtrl;
+        simulationController.setMapController(sharedMapController);
         SimulationView simulationView = new SimulationView(simulationController);
 
         Scene scene = new Scene(simulationView, 1100, 700);

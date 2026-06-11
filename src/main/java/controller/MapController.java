@@ -1,10 +1,10 @@
 package controller;
 
-import app.Main;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+import app.Main;
 import javafx.application.Platform;
 import model.agent.Agent;
 import model.agent.Citizen;
@@ -43,6 +43,7 @@ public class MapController {
     private Consumer<Zone>          onZoneSelected;
     private Consumer<AgentMovement> onAgentArrived;
     private Zone                    selectedZone;
+    private boolean evacuationStarted = false;
 
     // ─────────────────────────────────────────────────────────────────────
     public MapController(MapView mapView, List<Zone> zones, List<Agent> agents) {
@@ -122,6 +123,11 @@ public class MapController {
         if (agent == null || agents.contains(agent)) return;
         agents.add(agent);
         mapView.addAgent(agent);            // repaint + snap au graphe
+
+        // Si une alerte/évacuation est déjà lancée, tout citoyen ajouté part aussi vers son refuge.
+        if (evacuationStarted && agent instanceof Citizen citizen) {
+            evacuateCitizen(citizen);
+        }
     }
 
     /**
@@ -189,6 +195,7 @@ public class MapController {
      * Évacuation de masse : chaque citoyen reçoit un chemin Dijkstra vers un refuge.
      */
     public void triggerMassEvacuation(List<Citizen> citizens) {
+        evacuationStarted = true;
         if (citizens == null) return;
         int planned = 0;
         for (Citizen c : citizens) {

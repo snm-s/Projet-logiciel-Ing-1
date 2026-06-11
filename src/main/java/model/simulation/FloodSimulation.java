@@ -355,6 +355,13 @@ public class FloodSimulation {
         advanceSimulation(secondes);
     }
 
+public void avancerTempsSansMontee(double secondes) {
+        if (enPause || secondes <= 0)
+            return;
+        this.tempsEcoule += secondes;
+        notifySimulationUpdated();
+    }
+
     private void advanceSimulation(double secondes) {
         this.tempsEcoule += secondes;
         double hausse = secondes * BASE_WATER_RISE_PER_SECOND * gravite;

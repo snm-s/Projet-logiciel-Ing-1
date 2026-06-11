@@ -140,30 +140,74 @@ public class RouteGraph {
      * @return le mouvement créé, ou null si aucun chemin possible
      */
     public AgentMovement planEvacuation(Agent agent, Zone from, List<Zone> zones) {
-        // IMPORTANT : le but d'une évacuation est un vrai refuge, pas une zone aléatoire.
-        // On ne garde donc que les objets Shelter chargés depuis zones.json.
+        if (agent == null || from == null) return null;
+
+        Zone assignedRefuge = findAssignedRefuge(agent, zones);
+        if (assignedRefuge != null && assignedRefuge.getId() != from.getId() && !assignedRefuge.isFlooded()) {
+            AgentMovement mv = planEvacuationToDestination(agent, from, assignedRefuge);
+            if (mv != null) return mv;
+        }
+
         List<Zone> safeZones = zones.stream()
             .filter(z -> z instanceof Shelter)
             .filter(z -> !z.isFlooded() && z.getId() != from.getId())
             .collect(Collectors.toList());
 
         if (safeZones.isEmpty()) {
-            LOG.warning("Aucun refuge disponible dans zones.json : évacuation impossible depuis " + from.getName());
+            LOG.warning("Aucun refuge disponible : évacuation impossible depuis " + from.getName());
             return null;
         }
 
         EvacuationPath path = router.findNearestSafe(from, safeZones);
-        if (path == null) {
-            LOG.fine("Aucun chemin trouvé depuis " + from.getName()
-                + " pour l'agent " + agent.getId());
-            return null;
+        return createMovement(agent, path);
+    }
+
+    /**
+     * Planifie vers un refuge/destination précis déjà assigné au citoyen.
+     */
+    public AgentMovement planEvacuationToDestination(Agent agent, Zone from, Zone destination) {
+        if (agent == null || from == null || destination == null) return null;
+        if (from.getId() == destination.getId()) return null;
+
+        EvacuationPath path = router.findPath(from, destination);
+        return createMovement(agent, path);
+    }
+
+    private AgentMovement createMovement(Agent agent, EvacuationPath path) {
+        if (path == null || path.isEmpty()) return null;
+
+        if (agent != null) {
+            removeMovementsOfAgent(agent.getId());
         }
 
         AgentMovement movement = new AgentMovement(agent, path);
         movement.start();
         activeMovements.add(movement);
-        LOG.fine("Évacuation planifiée : " + path);
+        LOG.fine("Déplacement planifié : " + path);
         return movement;
+    }
+
+    private Zone findAssignedRefuge(Agent agent, List<Zone> zones) {
+        if (agent == null || agent.getDestination() == null || zones == null) return null;
+
+        double lat = agent.getDestination().getLat();
+        double lng = agent.getDestination().getLng();
+
+        Zone best = null;
+        double bestDist = Double.MAX_VALUE;
+
+        for (Zone z : zones) {
+            if (!(z instanceof Shelter)) continue;
+            double dLat = z.getLatitude() - lat;
+            double dLng = z.getLongitude() - lng;
+            double d = dLat * dLat + dLng * dLng;
+            if (d < bestDist) {
+                bestDist = d;
+                best = z;
+            }
+        }
+
+        return best;
     }
 
     /**
@@ -171,12 +215,7 @@ public class RouteGraph {
      */
     public AgentMovement planRescueMission(RescueAgent agent, Zone from, Zone to) {
         EvacuationPath path = router.findPath(from, to);
-        if (path == null) return null;
-
-        AgentMovement movement = new AgentMovement(agent, path);
-        movement.start();
-        activeMovements.add(movement);
-        return movement;
+        return createMovement(agent, path);
     }
 
     /**
@@ -196,25 +235,30 @@ public class RouteGraph {
             } else if (mv.isBlocked()) {
                 toRemove.add(mv);
                 notifyBlocked(mv);
-                // Replanifier depuis la position actuelle si possible
                 replanBlocked(mv);
             }
         }
+
         activeMovements.removeAll(toRemove);
     }
 
-    /** Replanifie un agent bloqué depuis sa position actuelle. */
+    /** Replanifie un agent bloqué depuis sa position actuelle vers le même refuge si possible. */
     private void replanBlocked(AgentMovement blocked) {
+        if (blocked == null || blocked.getAgent() == null) return;
+
         Agent agent = blocked.getAgent();
-        // On retrouve la zone la plus proche de la position actuelle
         GeoPosition pos = blocked.getCurrentPosition();
         Zone closestZone = findClosestZone(pos);
-        if (closestZone == null || closestZone.isFlooded()) return;
+        Zone destination = blocked.getDestinationZone();
 
-        List<Zone> allZones = new ArrayList<>(zoneMap.values());
-        AgentMovement newMovement = planEvacuation(agent, closestZone, allZones);
-        if (newMovement != null)
-            LOG.fine("Agent " + agent.getId() + " replanifié depuis " + closestZone.getName());
+        if (closestZone == null || destination == null) return;
+        if (closestZone.isFlooded()) return;
+
+        AgentMovement newMovement = planEvacuationToDestination(agent, closestZone, destination);
+        if (newMovement != null) {
+            LOG.fine("Agent " + agent.getId() + " replanifié depuis " + closestZone.getName()
+                    + " vers " + destination.getName());
+        }
     }
 
     private Zone findClosestZone(GeoPosition pos) {

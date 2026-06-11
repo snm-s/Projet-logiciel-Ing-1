@@ -33,6 +33,13 @@ public class Edge {
     private int          floodedCount;  // nombre de fois inondée (statistiques)
     private EdgeState        state;
     private double floodLevel = 0.0;
+
+    // Propriétés de circulation demandées par les consignes
+    private boolean bidirectional = true;
+    private double speedFactor = 1.0; // < 1 ralentit, > 1 accélère
+    private int lanes = 2;
+    private int agentsPassed = 0;
+    private double totalObservedSpeed = 0.0;
     
 
     // Observateurs (notifiés quand l'état change)
@@ -151,6 +158,32 @@ public class Edge {
 
         return dist + floodPenalty + congestionPenalty;
     }
+
+    /** Peut-on entrer dans l'arête à ce cycle ? */
+    public boolean canEnter() {
+        return isCrossable() && hasCapacity(1);
+    }
+
+    /** Statistiques : un agent vient de terminer le passage sur l'arête. */
+    public void recordPassage(double speed) {
+        agentsPassed++;
+        totalObservedSpeed += Math.max(0.0, speed);
+    }
+
+    public int getAgentsPassed() { return agentsPassed; }
+
+    public double getAverageSpeed() {
+        return agentsPassed == 0 ? 0.0 : totalObservedSpeed / agentsPassed;
+    }
+
+    public boolean isBidirectional() { return bidirectional; }
+    public void setBidirectional(boolean bidirectional) { this.bidirectional = bidirectional; }
+
+    public double getSpeedFactor() { return speedFactor; }
+    public void setSpeedFactor(double speedFactor) { this.speedFactor = Math.max(0.1, speedFactor); }
+
+    public int getLanes() { return lanes; }
+    public void setLanes(int lanes) { this.lanes = Math.max(1, lanes); }
 
     /** Distance géographique entre les deux extrémités (en km approx). */
     public double geoDistance() {

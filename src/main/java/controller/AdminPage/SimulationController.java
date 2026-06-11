@@ -179,7 +179,12 @@ public class SimulationController {
     public void executerPas() {
         if (modele.isEnPause()) return;
 
-        modele.executerPas();
+        // En mode aléatoire, l'eau monte automatiquement.
+        // En mode manuel, on garde le niveau d'eau tel quel, mais on continue
+        // à faire avancer les agents sur leurs trajets.
+        if (modeAleatoire) {
+            modele.executerPas();
+        }
 
         double niveau = modele.getNiveauEau();
 
@@ -464,6 +469,12 @@ public class SimulationController {
         if (mapController != null) {
             mapController.addAgent(agent);
             mapController.syncAgents(modele.getAgents());
+
+            // Si l'alerte a déjà été lancée, tout nouveau citoyen doit aussi
+            // recevoir un trajet d'évacuation vers un refuge.
+            if (evacuationDeclenchee && agent instanceof Citizen c) {
+                mapController.evacuateCitizen(c);
+            }
         }
     
         Platform.runLater(() -> {
