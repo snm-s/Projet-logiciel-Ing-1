@@ -614,6 +614,16 @@ private double floodRadiusStep = 2.0;
 
     private void handleMapClick(Point screenPoint) {
         GeoPosition clickPos = mapViewer.convertPointToGeoPosition(screenPoint);
+
+        if (manualFloodMode) {
+            floodCenter = clickPos;
+            floodRadius = 0;
+            startFloodPropagation();
+            setInfo("Inondation manuelle déclenchée — les citoyens commencent l'évacuation.");
+            mapViewer.repaint();
+            return;
+        }
+
         double lat = clickPos.getLatitude();
         double lng = clickPos.getLongitude();
         Zone closest = null;

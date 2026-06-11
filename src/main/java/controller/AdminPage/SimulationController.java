@@ -149,12 +149,19 @@ public class SimulationController {
         modele.demarrer();
         modele.publishSimulationStartAlert();
 
-        if (!evacuationDeclenchee) {
+        if (modeAleatoire && !evacuationDeclenchee) {
+            // Mode aléatoire : l'eau se propage directement, donc les citoyens
+            // commencent l'évacuation dès le lancement.
             declencherEvacuationAutomatique();
             evacuationDeclenchee = true;
+            notifyStatus("Simulation aléatoire — alerte envoyée, agents en évacuation");
+        } else if (!modeAleatoire) {
+            // Mode manuel : on envoie l'alerte, mais les agents ne partent pas
+            // tant que l'utilisateur n'a pas cliqué sur la carte pour lancer l'inondation.
+            notifyStatus("Mode manuel — alerte envoyée, cliquez sur la carte pour déclencher l'évacuation");
+        } else {
+            notifyStatus("Simulation en cours — alerte envoyée aux citoyens");
         }
-
-        notifyStatus("Simulation en cours — alerte envoyée aux citoyens");
     }
 
     public void mettreEnPause() {
@@ -188,13 +195,24 @@ public class SimulationController {
 
         double niveau = modele.getNiveauEau();
 
-        if (!evacuationDeclenchee && niveau >= SEUIL_EVACUATION_M) {
-            declencherEvacuationAutomatique();
-            evacuationDeclenchee = true;
+        if (modeAleatoire) {
+            if (!evacuationDeclenchee && niveau >= SEUIL_EVACUATION_M) {
+                declencherEvacuationAutomatique();
+                evacuationDeclenchee = true;
+            }
+        } else {
+            // Mode manuel : l'évacuation ne démarre qu'après propagation manuelle
+            // sur au moins une arête. Avant le clic, les Mii restent en place.
+            if (!evacuationDeclenchee && hasManualFloodStarted()) {
+                declencherEvacuationAutomatique();
+                evacuationDeclenchee = true;
+            }
         }
 
-        if (mapController != null) {
+        if (mapController != null && evacuationDeclenchee) {
             mapController.tick(DELTA_SECONDS);
+            mapController.updateAllZones(modele.getZones());
+        } else if (mapController != null) {
             mapController.updateAllZones(modele.getZones());
         }
 
@@ -454,6 +472,14 @@ public class SimulationController {
     // ─────────────────────────────────────────────────────────────────────
     // PRIVÉS
     // ─────────────────────────────────────────────────────────────────────
+
+    private boolean hasManualFloodStarted() {
+        if (mapController == null) return false;
+        return mapController.getEdges().stream()
+            .anyMatch(e -> e.getFloodLevel() > 0.0
+                    || e.getState() == EdgeState.FLOODING
+                    || e.getState() == EdgeState.FLOODED);
+    }
 
     private void declencherEvacuationAutomatique() {
         if (mapController == null) return;

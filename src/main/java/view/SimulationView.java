@@ -136,15 +136,15 @@ btnManuelle.setOnAction(e -> {
     if (controller != null) {
         controller.setModeAleatoire(false);
 
-        // IMPORTANT : le mode manuel lance AUSSI officiellement la simulation.
-        // On envoie donc l'alerte et on déclenche les trajets, mais l'eau ne monte
-        // pas automatiquement : seuls les clics manuels modifient l'inondation.
+        // Mode manuel : on lance officiellement la simulation et l'alerte,
+        // mais les agents ne bougent PAS tant qu'aucune inondation manuelle
+        // n'a été placée sur la carte.
         controller.demarrerSimulation();
-        startSimLoop(); // nécessaire pour faire avancer les AgentMovement
+        startSimLoop(); // boucle active, mais le controller attend le clic manuel
     }
 
     if (lblSimStatus != null) {
-        lblSimStatus.setText("Mode manuel — alerte envoyée, agents en route");
+        lblSimStatus.setText("Mode manuel — cliquez sur la carte pour lancer l’inondation");
     }
 });
 

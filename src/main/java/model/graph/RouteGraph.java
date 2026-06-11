@@ -10,10 +10,12 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -77,6 +79,7 @@ public class RouteGraph {
         try (InputStream is = getClass().getResourceAsStream(JSON_PATH)) {
             if (is == null) { generateDefaultRoutes(); return; }
             parseJson(new String(is.readAllBytes(), StandardCharsets.UTF_8));
+            ensureShelterConnectivity();
         } catch (Exception e) {
             LOG.warning("Erreur chargement routes : " + e.getMessage());
             generateDefaultRoutes();
@@ -85,45 +88,76 @@ public class RouteGraph {
     }
 
     private void generateDefaultRoutes() {
+        // Réseau dense et lisible adapté aux zones réellement chargées depuis data/zones.json.
+        // Les IDs 8 et 9 sont les refuges dans le jeu de données actuel.
         int[][] connections = {
-            {1, 2, 1200}, // Bellecour -> Part-Dieu
-            {1, 3, 900},  // Bellecour -> Guillotière
-            {1, 5, 900},  // Bellecour -> Confluence
-            {1, 7, 700},  // Bellecour -> Fourvière
-    
-            {2, 3, 700},  // Part-Dieu -> Guillotière
-            {2, 6, 1000}, // Part-Dieu -> Croix-Rousse
-    
-            {3, 4, 900},  // Guillotière -> Gerland
-            {4, 5, 700},  // Gerland -> Confluence
-    
-            {6, 8, 600},  // Croix-Rousse -> Refuge Croix-Rousse
-            {7, 9, 600},  // Fourvière -> Refuge Fourvière
-    
-            {6, 7, 800}   // Croix-Rousse -> Fourvière
+            {1,2,6},{1,3,6},{1,5,5},{1,6,4},{1,7,4},{1,8,5},{1,9,5},
+            {2,3,6},{2,4,5},{2,6,5},{2,8,5},{2,9,5},
+            {3,4,5},{3,5,5},{3,7,5},{3,8,4},{3,9,4},
+            {4,5,5},{4,7,4},{4,8,4},{4,9,4},
+            {5,6,4},{5,7,4},{5,8,5},{5,9,5},
+            {6,7,5},{6,8,7},{6,9,5},
+            {7,8,5},{7,9,7},
+            {8,9,6}
         };
-    
         int id = 1;
-    
         for (int[] c : connections) {
             Zone from = zoneMap.get(c[0]);
-            Zone to = zoneMap.get(c[1]);
-    
+            Zone to   = zoneMap.get(c[1]);
             if (from == null || to == null) continue;
-    
             List<GeoPosition> wp = fetchOsrmRoute(from, to);
-    
-            edges.add(new Edge(
-                id++,
-                from.getName() + " → " + to.getName(),
-                from,
-                to,
-                wp,
-                c[2],
-                0,
-                0
-            ));
+            edges.add(new Edge(id++, from.getName() + " → " + to.getName(), from, to, wp, c[2], 0, 0));
         }
+        ensureShelterConnectivity();
+    }
+
+    private void ensureShelterConnectivity() {
+        List<Zone> allZones = new ArrayList<>(zoneMap.values());
+        List<Zone> shelters = allZones.stream()
+            .filter(z -> z instanceof Shelter)
+            .collect(Collectors.toList());
+
+        int nextId = edges.stream().mapToInt(Edge::getId).max().orElse(0) + 1;
+
+        for (Zone from : allZones) {
+            if (from instanceof Shelter) continue;
+
+            // Chaque quartier doit avoir plusieurs sorties vers les refuges.
+            for (Zone shelter : shelters) {
+                if (!hasEdgeBetween(from, shelter)) {
+                    edges.add(new Edge(nextId++, from.getName() + " → " + shelter.getName(),
+                        from, shelter, fallbackLine(from, shelter), 5, 0, 0));
+                }
+            }
+
+            // Et plusieurs connexions locales pour que Dijkstra puisse contourner une route rouge.
+            allZones.stream()
+                .filter(z -> z.getId() != from.getId())
+                .filter(z -> !(z instanceof Shelter))
+                .sorted(Comparator.comparingDouble(z -> geoDistanceSquared(from, z)))
+                .limit(3)
+                .forEach(to -> {
+                    if (!hasEdgeBetween(from, to)) {
+                        int id = edges.stream().mapToInt(Edge::getId).max().orElse(0) + 1;
+                        edges.add(new Edge(id, from.getName() + " → " + to.getName(),
+                            from, to, fallbackLine(from, to), 5, 0, 0));
+                    }
+                });
+        }
+    }
+
+    private boolean hasEdgeBetween(Zone a, Zone b) {
+        if (a == null || b == null) return true;
+        return edges.stream().anyMatch(e ->
+            (e.getFromZone().getId() == a.getId() && e.getToZone().getId() == b.getId()) ||
+            (e.getFromZone().getId() == b.getId() && e.getToZone().getId() == a.getId())
+        );
+    }
+
+    private double geoDistanceSquared(Zone a, Zone b) {
+        double dLat = a.getLatitude() - b.getLatitude();
+        double dLng = a.getLongitude() - b.getLongitude();
+        return dLat * dLat + dLng * dLng;
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -140,82 +174,43 @@ public class RouteGraph {
      * @return le mouvement créé, ou null si aucun chemin possible
      */
     public AgentMovement planEvacuation(Agent agent, Zone from, List<Zone> zones) {
-        if (agent == null || from == null) return null;
-
-        Zone assignedRefuge = findAssignedRefuge(agent, zones);
-        if (assignedRefuge != null && assignedRefuge.getId() != from.getId() && !assignedRefuge.isFlooded()) {
-            AgentMovement mv = planEvacuationToDestination(agent, from, assignedRefuge);
-            if (mv != null) return mv;
-        }
-
+        // IMPORTANT : le but d'une évacuation est un vrai refuge, pas une zone aléatoire.
+        // On ne garde donc que les objets Shelter chargés depuis zones.json.
         List<Zone> safeZones = zones.stream()
             .filter(z -> z instanceof Shelter)
             .filter(z -> !z.isFlooded() && z.getId() != from.getId())
             .collect(Collectors.toList());
 
         if (safeZones.isEmpty()) {
-            LOG.warning("Aucun refuge disponible : évacuation impossible depuis " + from.getName());
+            LOG.warning("Aucun refuge disponible dans zones.json : évacuation impossible depuis " + from.getName());
             return null;
         }
 
         EvacuationPath path = router.findNearestSafe(from, safeZones);
-        return createMovement(agent, path);
-    }
-
-    /**
-     * Planifie vers un refuge/destination précis déjà assigné au citoyen.
-     */
-    public AgentMovement planEvacuationToDestination(Agent agent, Zone from, Zone destination) {
-        if (agent == null || from == null || destination == null) return null;
-        if (from.getId() == destination.getId()) return null;
-
-        EvacuationPath path = router.findPath(from, destination);
-        return createMovement(agent, path);
-    }
-
-    private AgentMovement createMovement(Agent agent, EvacuationPath path) {
-        if (path == null || path.isEmpty()) return null;
-
-        if (agent != null) {
-            removeMovementsOfAgent(agent.getId());
+        if (path == null) {
+            LOG.fine("Aucun chemin trouvé depuis " + from.getName()
+                + " pour l'agent " + agent.getId());
+            return null;
         }
 
         AgentMovement movement = new AgentMovement(agent, path);
         movement.start();
         activeMovements.add(movement);
-        LOG.fine("Déplacement planifié : " + path);
+        LOG.fine("Évacuation planifiée : " + path);
         return movement;
-    }
-
-    private Zone findAssignedRefuge(Agent agent, List<Zone> zones) {
-        if (agent == null || agent.getDestination() == null || zones == null) return null;
-
-        double lat = agent.getDestination().getLat();
-        double lng = agent.getDestination().getLng();
-
-        Zone best = null;
-        double bestDist = Double.MAX_VALUE;
-
-        for (Zone z : zones) {
-            if (!(z instanceof Shelter)) continue;
-            double dLat = z.getLatitude() - lat;
-            double dLng = z.getLongitude() - lng;
-            double d = dLat * dLat + dLng * dLng;
-            if (d < bestDist) {
-                bestDist = d;
-                best = z;
-            }
-        }
-
-        return best;
     }
 
     /**
      * Planifie le déplacement d'un RescueAgent vers une zone cible.
      */
     public AgentMovement planRescueMission(RescueAgent agent, Zone from, Zone to) {
-        EvacuationPath path = router.findPath(from, to);
-        return createMovement(agent, path);
+        EvacuationPath path = findPathForRescue(from, to);
+        if (path == null) return null;
+
+        AgentMovement movement = new AgentMovement(agent, path);
+        movement.start();
+        activeMovements.add(movement);
+        return movement;
     }
 
     /**
@@ -235,30 +230,25 @@ public class RouteGraph {
             } else if (mv.isBlocked()) {
                 toRemove.add(mv);
                 notifyBlocked(mv);
+                // Replanifier depuis la position actuelle si possible
                 replanBlocked(mv);
             }
         }
-
         activeMovements.removeAll(toRemove);
     }
 
-    /** Replanifie un agent bloqué depuis sa position actuelle vers le même refuge si possible. */
+    /** Replanifie un agent bloqué depuis sa position actuelle. */
     private void replanBlocked(AgentMovement blocked) {
-        if (blocked == null || blocked.getAgent() == null) return;
-
         Agent agent = blocked.getAgent();
+        // On retrouve la zone la plus proche de la position actuelle
         GeoPosition pos = blocked.getCurrentPosition();
         Zone closestZone = findClosestZone(pos);
-        Zone destination = blocked.getDestinationZone();
+        if (closestZone == null || closestZone.isFlooded()) return;
 
-        if (closestZone == null || destination == null) return;
-        if (closestZone.isFlooded()) return;
-
-        AgentMovement newMovement = planEvacuationToDestination(agent, closestZone, destination);
-        if (newMovement != null) {
-            LOG.fine("Agent " + agent.getId() + " replanifié depuis " + closestZone.getName()
-                    + " vers " + destination.getName());
-        }
+        List<Zone> allZones = new ArrayList<>(zoneMap.values());
+        AgentMovement newMovement = planEvacuation(agent, closestZone, allZones);
+        if (newMovement != null)
+            LOG.fine("Agent " + agent.getId() + " replanifié depuis " + closestZone.getName());
     }
 
     private Zone findClosestZone(GeoPosition pos) {
@@ -293,6 +283,76 @@ public class RouteGraph {
                 edge.addFlow(1);
             }
         }
+    }
+
+    /**
+     * Dijkstra spécial secouristes : les arêtes rouges restent traversables
+     * mais coûtent beaucoup plus cher. Cela permet d'aller chercher des
+     * citoyens bloqués quand aucun chemin bleu/orange n'existe.
+     */
+    public EvacuationPath findPathForRescue(Zone from, Zone to) {
+        if (from == null || to == null) return null;
+        if (from.getId() == to.getId()) return EvacuationPath.trivial(from);
+
+        Map<Integer, List<EdgeEntryForRescue>> adj = new HashMap<>();
+        for (Edge edge : edges) {
+            int a = edge.getFromZone().getId();
+            int b = edge.getToZone().getId();
+            adj.computeIfAbsent(a, k -> new ArrayList<>()).add(new EdgeEntryForRescue(edge, b));
+            adj.computeIfAbsent(b, k -> new ArrayList<>()).add(new EdgeEntryForRescue(edge, a));
+        }
+
+        final double INF = Double.MAX_VALUE / 4.0;
+        Map<Integer, Double> dist = new HashMap<>();
+        Map<Integer, Integer> prevZone = new HashMap<>();
+        Map<Integer, Edge> prevEdge = new HashMap<>();
+        PriorityQueue<Integer> pq = new PriorityQueue<>(Comparator.comparingDouble(id -> dist.getOrDefault(id, INF)));
+
+        dist.put(from.getId(), 0.0);
+        pq.offer(from.getId());
+
+        while (!pq.isEmpty()) {
+            int curr = pq.poll();
+            if (curr == to.getId()) break;
+            double currDist = dist.getOrDefault(curr, INF);
+            for (EdgeEntryForRescue entry : adj.getOrDefault(curr, Collections.emptyList())) {
+                double cost = entry.edge.rescueRoutingCost();
+                double nd = currDist + cost;
+                if (nd < dist.getOrDefault(entry.toId, INF)) {
+                    dist.put(entry.toId, nd);
+                    prevZone.put(entry.toId, curr);
+                    prevEdge.put(entry.toId, entry.edge);
+                    pq.offer(entry.toId);
+                }
+            }
+        }
+
+        if (!dist.containsKey(to.getId())) return null;
+
+        List<Zone> zoneSeq = new ArrayList<>();
+        List<Edge> edgeSeq = new ArrayList<>();
+        int curr = to.getId();
+        while (curr != from.getId()) {
+            Zone z = zoneMap.get(curr);
+            if (z == null && curr == to.getId()) z = to;
+            if (z != null) zoneSeq.add(0, z);
+            Edge e = prevEdge.get(curr);
+            if (e != null) edgeSeq.add(0, e);
+            Integer prev = prevZone.get(curr);
+            if (prev == null) return null;
+            curr = prev;
+        }
+        zoneSeq.add(0, from);
+
+        double total = 0.0;
+        for (Edge e : edgeSeq) total += e.rescueRoutingCost();
+        return new EvacuationPath(zoneSeq, edgeSeq, total);
+    }
+
+    private static class EdgeEntryForRescue {
+        final Edge edge;
+        final int toId;
+        EdgeEntryForRescue(Edge edge, int toId) { this.edge = edge; this.toId = toId; }
     }
 
     // ─────────────────────────────────────────────────────────────────────

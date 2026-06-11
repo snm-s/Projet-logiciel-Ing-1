@@ -34,10 +34,12 @@ public class Edge {
     private EdgeState        state;
     private double floodLevel = 0.0;
 
-    // Propriétés de circulation demandées par les consignes
+    // Propriétés de circulation demandées dans le sujet
     private boolean bidirectional = true;
-    private double speedFactor = 1.0; // < 1 ralentit, > 1 accélère
+    private double speedFactor = 1.0;
     private int lanes = 2;
+
+    // Statistiques d'arête
     private int agentsPassed = 0;
     private double totalObservedSpeed = 0.0;
     
@@ -147,16 +149,50 @@ public class Edge {
      * @return coût ≥ 0, Double.MAX_VALUE si infranchissable
      */
     public double routingCost(double floodWeight) {
-        if (state == EdgeState.FLOODED) return Double.MAX_VALUE; // route coupée
+        if (state == EdgeState.FLOODED) return Double.MAX_VALUE; // rouge = interdit aux citoyens
 
         double dist = geoDistance();
-        double floodPenalty = (state == EdgeState.AT_RISK) ? floodWeight * dist : 0.0;
-
-        // Pénalité congestion proportionnelle au taux de remplissage
         double congestionRatio = (capacityMax > 0) ? (double) currentFlow / capacityMax : 0.0;
-        double congestionPenalty = dist * congestionRatio * 2.0;
+        double statePenalty;
 
-        return dist + floodPenalty + congestionPenalty;
+        switch (state) {
+            case SAFE:
+                statePenalty = 0.0;
+                break;
+            case FLOODING:
+            case AT_RISK:
+                statePenalty = dist * 2.5; // orange = possible, mais le Dijkstra préfère l'éviter
+                break;
+            case CONGESTED:
+                statePenalty = dist * 4.0;
+                break;
+            case OVERLOADED:
+                statePenalty = dist * 7.0;
+                break;
+            case FLOODED:
+            default:
+                return Double.MAX_VALUE;
+        }
+
+        return (dist / Math.max(0.1, speedFactor)) + statePenalty + dist * congestionRatio * 2.0;
+    }
+
+    /**
+     * Coût réservé aux secouristes : ils peuvent traverser une arête rouge,
+     * mais très lentement et avec une forte pénalité. Cela évite de bloquer
+     * définitivement les missions de secours.
+     */
+    public double rescueRoutingCost() {
+        double dist = geoDistance();
+        double congestionRatio = (capacityMax > 0) ? (double) currentFlow / capacityMax : 0.0;
+
+        return switch (state) {
+            case SAFE -> dist / Math.max(0.1, speedFactor);
+            case FLOODING, AT_RISK -> dist * 2.0;
+            case CONGESTED -> dist * 3.0;
+            case OVERLOADED -> dist * 5.0;
+            case FLOODED -> dist * 8.0; // autorisé pour secours, mais dangereux/lent
+        } + dist * congestionRatio;
     }
 
     /** Peut-on entrer dans l'arête à ce cycle ? */
@@ -164,7 +200,12 @@ public class Edge {
         return isCrossable() && hasCapacity(1);
     }
 
-    /** Statistiques : un agent vient de terminer le passage sur l'arête. */
+    /** Peut-on entrer dans l'arête comme secouriste ? */
+    public boolean canEnterAsRescue() {
+        return hasCapacity(1);
+    }
+
+    /** Statistiques : un agent a traversé cette arête. */
     public void recordPassage(double speed) {
         agentsPassed++;
         totalObservedSpeed += Math.max(0.0, speed);

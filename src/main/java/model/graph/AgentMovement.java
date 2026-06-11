@@ -1,21 +1,21 @@
 package model.graph;
 
+import org.jxmapviewer.viewer.GeoPosition;
+
 import model.agent.Agent;
 import model.agent.Citizen;
 import model.agent.RescueAgent;
 import model.algorithms.EvacuationPath;
 import model.enums.CitizenState;
 import model.zone.Zone;
-import org.jxmapviewer.viewer.GeoPosition;
 
 /**
  * Déplacement temporel d'un agent sur un chemin Dijkstra.
  *
  * Règles :
- * - arête SAFE : déplacement normal ;
- * - arête FLOODING / AT_RISK : le citoyen devient STRESSED et accélère ;
- * - arête FLOODED : le mouvement se bloque, RouteGraph recalcule un autre chemin ;
- * - capacité pleine : l'agent attend, puis réessaie.
+ * - Citoyen : arête rouge/FLOODED interdite → blocage puis replanification.
+ * - Citoyen : arête orange/FLOODING/AT_RISK → état STRESSED et vitesse accélérée.
+ * - Secouriste : peut traverser rouge/orange, mais rouge est ralenti.
  */
 public class AgentMovement {
 
@@ -43,25 +43,20 @@ public class AgentMovement {
 
     public void start() {
         if (status != Status.PENDING) return;
-
         if (path == null || path.isEmpty()) {
             status = Status.ARRIVED;
             return;
         }
-
         if (!tryEnterCurrentEdge()) {
             status = Status.WAITING;
-            updateAgentPosition(currentPosition);
             return;
         }
-
         status = Status.MOVING;
         updateAgentPosition(currentPosition);
     }
 
     public boolean step(double deltaSeconds) {
         if (status == Status.ARRIVED || status == Status.BLOCKED) return false;
-
         if (path == null) {
             status = Status.BLOCKED;
             return false;
@@ -81,21 +76,24 @@ public class AgentMovement {
         status = Status.MOVING;
 
         double factor = occupiedEdge != null ? occupiedEdge.getSpeedFactor() : 1.0;
-
         if (occupiedEdge != null) {
-            EdgeState edgeState = occupiedEdge.getState();
+            EdgeState st = occupiedEdge.getState();
 
             if (agent instanceof Citizen c) {
-                if (edgeState == EdgeState.FLOODING || edgeState == EdgeState.AT_RISK) {
+                if (st == EdgeState.FLOODING || st == EdgeState.AT_RISK) {
                     c.setState(CitizenState.STRESSED);
-                    factor *= 1.35; // stress : il avance plus vite
-                } else if (c.getState() == CitizenState.STRESSED) {
+                    factor *= 1.35; // stress = fuite plus rapide
+                } else if (c.getState() != CitizenState.SAFE) {
                     c.setState(CitizenState.ESCAPING);
                 }
+                if (st == EdgeState.CONGESTED) factor *= 0.55;
+                if (st == EdgeState.OVERLOADED) factor *= 0.35;
             }
 
-            if (edgeState == EdgeState.CONGESTED) factor *= 0.70;
-            if (edgeState == EdgeState.OVERLOADED) factor *= 0.45;
+            if (agent instanceof RescueAgent) {
+                if (st == EdgeState.FLOODED) factor *= 0.45;
+                if (st == EdgeState.FLOODING || st == EdgeState.AT_RISK) factor *= 0.80;
+            }
         }
 
         progress = Math.min(1.0, progress + speed * factor * deltaSeconds);
@@ -122,9 +120,12 @@ public class AgentMovement {
         int wantedIndex = edgeIndexForProgress();
         Edge wanted = path.getEdges().get(wantedIndex);
 
-        if (wanted == null) return true;
         if (occupiedEdge == wanted) return true;
-        if (!wanted.canEnter()) return false;
+
+        boolean canEnter = agent instanceof RescueAgent
+                ? wanted.canEnterAsRescue()
+                : wanted.canEnter();
+        if (!canEnter) return false;
 
         releaseOccupiedEdge();
         occupiedEdge = wanted;
@@ -167,22 +168,22 @@ public class AgentMovement {
     }
 
     private boolean isPathStillCrossable() {
-        return path == null || path.getEdges().stream().allMatch(Edge::isCrossable);
+        if (agent instanceof RescueAgent) return true;
+        return path.getEdges().stream().allMatch(Edge::isCrossable);
     }
 
     private double computeSpeed(Agent a) {
         if (a == null) return 0.03;
-
-        double base = a.getMaxSpeed() > 0 ? a.getMaxSpeed() / 65.0 : 0.045;
+        double base = a.getMaxSpeed() > 0 ? a.getMaxSpeed() / 70.0 : 0.045;
 
         if (a instanceof Citizen c) {
             String mob = c.getMobilityStatus();
-            if ("elderly".equalsIgnoreCase(String.valueOf(mob))) return base * 0.65;
-            if ("child".equalsIgnoreCase(String.valueOf(mob))) return base * 0.75;
-            if (a.getCongestionTolerance() < 0.6) return base * 0.90;
+            if ("elderly".equalsIgnoreCase(String.valueOf(mob))) return base * 0.6;
+            if ("child".equalsIgnoreCase(String.valueOf(mob))) return base * 0.7;
+            if (a.getCongestionTolerance() < 0.6) return base * 0.85;
         }
 
-        if (a instanceof RescueAgent) return base * 1.5;
+        if (a instanceof RescueAgent) return base * 1.8;
         return base;
     }
 

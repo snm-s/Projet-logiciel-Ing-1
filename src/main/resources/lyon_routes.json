@@ -1,15 +1,221 @@
 {
   "routes": [
-    { "id": 1, "fromZoneId": 1, "toZoneId": 2, "name": "Bellecour → Part-Dieu", "capacityMax": 1200 },
-    { "id": 2, "fromZoneId": 1, "toZoneId": 3, "name": "Bellecour → Guillotière", "capacityMax": 900 },
-    { "id": 3, "fromZoneId": 1, "toZoneId": 5, "name": "Bellecour → Confluence", "capacityMax": 900 },
-    { "id": 4, "fromZoneId": 1, "toZoneId": 7, "name": "Bellecour → Fourvière", "capacityMax": 700 },
-    { "id": 5, "fromZoneId": 2, "toZoneId": 3, "name": "Part-Dieu → Guillotière", "capacityMax": 700 },
-    { "id": 6, "fromZoneId": 2, "toZoneId": 6, "name": "Part-Dieu → Croix-Rousse", "capacityMax": 1000 },
-    { "id": 7, "fromZoneId": 3, "toZoneId": 4, "name": "Guillotière → Gerland", "capacityMax": 900 },
-    { "id": 8, "fromZoneId": 4, "toZoneId": 5, "name": "Gerland → Confluence", "capacityMax": 700 },
-    { "id": 9, "fromZoneId": 6, "toZoneId": 8, "name": "Croix-Rousse → Refuge Croix-Rousse", "capacityMax": 600 },
-    { "id": 10, "fromZoneId": 7, "toZoneId": 9, "name": "Fourvière → Refuge Fourvière", "capacityMax": 600 },
-    { "id": 11, "fromZoneId": 6, "toZoneId": 7, "name": "Croix-Rousse → Fourvière", "capacityMax": 800 }
+    {
+      "id": 1,
+      "fromZoneId": 1,
+      "toZoneId": 2,
+      "name": "Bellecour → Part-Dieu",
+      "capacityMax": 6
+    },
+    {
+      "id": 2,
+      "fromZoneId": 1,
+      "toZoneId": 3,
+      "name": "Bellecour → Guillotière",
+      "capacityMax": 6
+    },
+    {
+      "id": 3,
+      "fromZoneId": 1,
+      "toZoneId": 5,
+      "name": "Bellecour → Confluence",
+      "capacityMax": 5
+    },
+    {
+      "id": 4,
+      "fromZoneId": 1,
+      "toZoneId": 6,
+      "name": "Bellecour → Croix-Rousse",
+      "capacityMax": 4
+    },
+    {
+      "id": 5,
+      "fromZoneId": 1,
+      "toZoneId": 7,
+      "name": "Bellecour → Fourvière",
+      "capacityMax": 4
+    },
+    {
+      "id": 6,
+      "fromZoneId": 1,
+      "toZoneId": 8,
+      "name": "Bellecour → Refuge Croix-Rousse",
+      "capacityMax": 5
+    },
+    {
+      "id": 7,
+      "fromZoneId": 1,
+      "toZoneId": 9,
+      "name": "Bellecour → Refuge Fourvière",
+      "capacityMax": 5
+    },
+    {
+      "id": 8,
+      "fromZoneId": 2,
+      "toZoneId": 3,
+      "name": "Part-Dieu → Guillotière",
+      "capacityMax": 6
+    },
+    {
+      "id": 9,
+      "fromZoneId": 2,
+      "toZoneId": 4,
+      "name": "Part-Dieu → Gerland",
+      "capacityMax": 5
+    },
+    {
+      "id": 10,
+      "fromZoneId": 2,
+      "toZoneId": 6,
+      "name": "Part-Dieu → Croix-Rousse",
+      "capacityMax": 5
+    },
+    {
+      "id": 11,
+      "fromZoneId": 2,
+      "toZoneId": 8,
+      "name": "Part-Dieu → Refuge Croix-Rousse",
+      "capacityMax": 5
+    },
+    {
+      "id": 12,
+      "fromZoneId": 2,
+      "toZoneId": 9,
+      "name": "Part-Dieu → Refuge Fourvière",
+      "capacityMax": 5
+    },
+    {
+      "id": 13,
+      "fromZoneId": 3,
+      "toZoneId": 4,
+      "name": "Guillotière → Gerland",
+      "capacityMax": 5
+    },
+    {
+      "id": 14,
+      "fromZoneId": 3,
+      "toZoneId": 5,
+      "name": "Guillotière → Confluence",
+      "capacityMax": 5
+    },
+    {
+      "id": 15,
+      "fromZoneId": 3,
+      "toZoneId": 7,
+      "name": "Guillotière → Fourvière",
+      "capacityMax": 5
+    },
+    {
+      "id": 16,
+      "fromZoneId": 3,
+      "toZoneId": 8,
+      "name": "Guillotière → Refuge Croix-Rousse",
+      "capacityMax": 4
+    },
+    {
+      "id": 17,
+      "fromZoneId": 3,
+      "toZoneId": 9,
+      "name": "Guillotière → Refuge Fourvière",
+      "capacityMax": 4
+    },
+    {
+      "id": 18,
+      "fromZoneId": 4,
+      "toZoneId": 5,
+      "name": "Gerland → Confluence",
+      "capacityMax": 5
+    },
+    {
+      "id": 19,
+      "fromZoneId": 4,
+      "toZoneId": 7,
+      "name": "Gerland → Fourvière",
+      "capacityMax": 4
+    },
+    {
+      "id": 20,
+      "fromZoneId": 4,
+      "toZoneId": 8,
+      "name": "Gerland → Refuge Croix-Rousse",
+      "capacityMax": 4
+    },
+    {
+      "id": 21,
+      "fromZoneId": 4,
+      "toZoneId": 9,
+      "name": "Gerland → Refuge Fourvière",
+      "capacityMax": 4
+    },
+    {
+      "id": 22,
+      "fromZoneId": 5,
+      "toZoneId": 6,
+      "name": "Confluence → Croix-Rousse",
+      "capacityMax": 4
+    },
+    {
+      "id": 23,
+      "fromZoneId": 5,
+      "toZoneId": 7,
+      "name": "Confluence → Fourvière",
+      "capacityMax": 4
+    },
+    {
+      "id": 24,
+      "fromZoneId": 5,
+      "toZoneId": 8,
+      "name": "Confluence → Refuge Croix-Rousse",
+      "capacityMax": 5
+    },
+    {
+      "id": 25,
+      "fromZoneId": 5,
+      "toZoneId": 9,
+      "name": "Confluence → Refuge Fourvière",
+      "capacityMax": 5
+    },
+    {
+      "id": 26,
+      "fromZoneId": 6,
+      "toZoneId": 7,
+      "name": "Croix-Rousse → Fourvière",
+      "capacityMax": 5
+    },
+    {
+      "id": 27,
+      "fromZoneId": 6,
+      "toZoneId": 8,
+      "name": "Croix-Rousse → Refuge Croix-Rousse",
+      "capacityMax": 7
+    },
+    {
+      "id": 28,
+      "fromZoneId": 6,
+      "toZoneId": 9,
+      "name": "Croix-Rousse → Refuge Fourvière",
+      "capacityMax": 5
+    },
+    {
+      "id": 29,
+      "fromZoneId": 7,
+      "toZoneId": 8,
+      "name": "Fourvière → Refuge Croix-Rousse",
+      "capacityMax": 5
+    },
+    {
+      "id": 30,
+      "fromZoneId": 7,
+      "toZoneId": 9,
+      "name": "Fourvière → Refuge Fourvière",
+      "capacityMax": 7
+    },
+    {
+      "id": 31,
+      "fromZoneId": 8,
+      "toZoneId": 9,
+      "name": "Refuge Croix-Rousse → Refuge Fourvière",
+      "capacityMax": 6
+    }
   ]
 }
