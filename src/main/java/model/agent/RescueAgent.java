@@ -8,8 +8,13 @@ import model.graph.Node;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class RescueAgent extends Agent {
+    
+    private static final double VITESSE_RESCUE = 1.5; 
+    
     private String teamType;
     private RescueState state;
+    private final double speed = VITESSE_RESCUE;
+
 
     // Constructeur vide nécessaire pour Jackson
     public RescueAgent() {
@@ -28,6 +33,10 @@ public class RescueAgent extends Agent {
 
     public void setTeamType(String teamType) {
         this.teamType = teamType;
+    }
+
+    public double getSpeed() {
+        return speed;
     }
 
     public RescueState getState() {

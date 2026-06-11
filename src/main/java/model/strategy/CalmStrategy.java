@@ -12,18 +12,11 @@ public class CalmStrategy implements Strategy {
 
     @Override
     public Node chooseDestination(Agent agent, List<Zone> zones) {
-        if (agent == null || zones == null || zones.isEmpty()) {
-            return null;
-        }
 
         if (agent.getDestination() != null) {
             return agent.getDestination();
         }
 
-        if (agent instanceof Citizen) {
-            ((Citizen) agent).setState(CitizenState.CALM);
-        }
-
-        return Strategy.findHighestSafeZone(zones);
+        return Strategy.findNearestSafeZone(agent.getPosition(), zones);
     }
 }

@@ -1,4 +1,4 @@
-package model.agent;
+package model.enums;
 
 public enum HouseType {
     APARTMENT, 

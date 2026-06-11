@@ -6,10 +6,10 @@ import app.Main;
 import javafx.stage.Stage;
 import model.agent.Agent;
 import model.agent.Citizen;
-import model.agent.HouseType;
 import model.agent.PMRAgent;
 import model.agent.RescueAgent;
 import model.auth.UserService;
+import model.enums.HouseType;
 import model.graph.Node;
 import view.RegisterView;
 

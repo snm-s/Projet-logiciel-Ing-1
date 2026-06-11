@@ -12,19 +12,17 @@ public class PMRStrategy implements Strategy {
 
     @Override
     public Node chooseDestination(Agent agent, List<Zone> zones) {
-        if (agent == null || zones == null || zones.isEmpty()) {
-            return null;
-        }
 
         if (agent.getDestination() != null) {
             return agent.getDestination();
         }
 
-        if (agent instanceof Citizen) {
-            ((Citizen) agent).setState(CitizenState.PMR);
+        Node target = Strategy.findNearestSafeZone(agent.getPosition(), zones);
+
+        if (target != null) {
+            return target;
         }
 
-        Node target = Strategy.findNearestSafeZone(agent.getPosition(), zones);
-        return target != null ? target : Strategy.findHighestSafeZone(zones);
+        return Strategy.findHighestSafeZone(zones);
     }
 }

@@ -82,12 +82,12 @@ public class Edge {
         if (flowRatio > 0.8) return EdgeState.CONGESTED;  // Congestion critique
         if (flowRatio > 0.5) return EdgeState.AT_RISK;    // Risque modéré
 
-        // 4. État sain (SAFE et NORMAL fusionnés)
+        // 4. État sain
         return EdgeState.SAFE;
     }
 
     /** Met à jour l'état et notifie les observateurs si changement. */
-    public void refreshState() {
+    private void refreshState() {
         EdgeState newState = computeState();
         if (newState != this.state) {
             this.state = newState;

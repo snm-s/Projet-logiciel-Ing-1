@@ -6,7 +6,9 @@ import java.time.Period;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import model.enums.CitizenMood;
 import model.enums.CitizenState;
+import model.enums.HouseType;
 import model.enums.MobilityStatus;
 import model.graph.Node;
 
@@ -14,6 +16,8 @@ import model.graph.Node;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Citizen extends Agent {
     private CitizenState state;
+    private CitizenMood mood;
+
 
     private MobilityStatus mobilityStatus;
     private HouseType houseType;
@@ -22,6 +26,7 @@ public class Citizen extends Agent {
     private boolean hasPets;
     private String medicalNeeds;
     private String emergencyContact;
+    
 
     private boolean emergencyAlertsEnabled = true;
     private boolean soundNotificationsEnabled = false;
@@ -31,14 +36,16 @@ public class Citizen extends Agent {
 
     public Citizen() {
         super();
-        this.state = CitizenState.CALM;
+        this.state = CitizenState.SAFE;
         this.mobilityStatus = MobilityStatus.NORMAL;
+        this.mood = CitizenMood.CALM;
     }
 
     public Citizen(int id, String firstName, String lastName, Node position) {
         super(id, firstName, lastName, position);
-        this.state = CitizenState.CALM;
+        this.state = CitizenState.SAFE;
         this.mobilityStatus = MobilityStatus.NORMAL;
+        this.mood = CitizenMood.CALM;
     }
 
     @JsonIgnore
@@ -48,6 +55,14 @@ public class Citizen extends Agent {
 
     public void setState(CitizenState state) {
         this.state = state;
+    }
+
+    public CitizenMood getMood() {
+        return mood;
+    }
+
+    public void setMood(CitizenMood mood) {
+        this.mood = mood;
     }
 
     public MobilityStatus getMobilityStatus() {
