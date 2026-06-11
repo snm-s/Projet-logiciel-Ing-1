@@ -1,5 +1,10 @@
 package controller;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+
+import javafx.application.Platform;
 import model.agent.Agent;
 import model.agent.Citizen;
 import model.agent.RescueAgent;
@@ -11,11 +16,6 @@ import model.graph.RouteGraph;
 import model.zone.Shelter;
 import model.zone.Zone;
 import view.MapView;
-
-import javafx.application.Platform;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * Contrôleur de la carte : relie {@link MapView}, {@link RouteGraph} et les agents.
@@ -128,10 +128,14 @@ public class MapController {
      */
     public boolean removeAgent(int agentId) {
         boolean removed = agents.removeIf(a -> a.getId() == agentId);
-        if (removed) {
-            mapView.setAgents(agents);
-            mapView.refreshRouteColors();
+    
+        if (routeGraph != null) {
+            routeGraph.removeMovementsOfAgent(agentId);
         }
+    
+        mapView.setAgents(agents);
+        mapView.refreshRouteColors();
+    
         return removed;
     }
 
