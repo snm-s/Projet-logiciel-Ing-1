@@ -553,6 +553,25 @@ private double floodRadiusStep = 2.0;
         });
     }
 
+    public void showRoute(Zone from, Zone to, model.algorithms.EvacuationPath path, String hexColor) {
+        if (from == null || to == null) return;
+        SwingUtilities.invokeLater(() -> {
+            if (path != null && !path.isEmpty()) {
+                routePainter.setHighlightedPath(path, hexColor);
+            } else {
+                routePainter.setHighlightedPath(null);
+            }
+            mapViewer.setAddressLocation(new GeoPosition(
+                (from.getLatitude() + to.getLatitude()) / 2.0,
+                (from.getLongitude() + to.getLongitude()) / 2.0
+            ));
+            mapViewer.setZoom(4);
+            zonePainter.setSelectedZone(to);
+            mapViewer.repaint();
+        });
+    }
+
+    
     public void clearRoute() { SwingUtilities.invokeLater(() -> { routeHighlightPainter.clear(); mapViewer.repaint(); }); }
 
     private void startFloodPropagation() {
@@ -960,5 +979,13 @@ private double floodRadiusStep = 2.0;
         GraphNode from, to;
         int capacity;
         GraphEdge(GraphNode from, GraphNode to, int capacity) { this.from = from; this.to = to; this.capacity = capacity; }
+    }
+
+    public void setConnectedUser(Agent user) {
+        if (user != null) {
+            // Supposons que vous ayez ajouté cette méthode dans AgentPainter
+            this.agentPainter.setCurrentUserId(user.getId());
+            this.mapViewer.repaint();
+        }
     }
 }

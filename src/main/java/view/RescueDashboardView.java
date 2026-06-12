@@ -1,7 +1,9 @@
 package view;
 
 import app.Main;
+import controller.MapController;
 import controller.RescuePage.RescueController;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -20,33 +22,38 @@ import javafx.scene.shape.Circle;
 import javafx.scene.shape.SVGPath;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import model.agent.Agent;
 import model.alert.Alert;
-import model.simulation.FloodSimulation;
 import model.simulation.SimulationDataService;
 import model.zone.Zone;
 
 public class RescueDashboardView extends BorderPane {
 
-    private static final String BG_DARK = "#06172b";
-    private static final String BG_SIDEBAR = "#0b1a30";
-    private static final String GLASS = "rgba(8, 22, 42, 0.72)";
-    private static final String BLUE = "#0e73eb";
-    private static final String BLUE_2 = "#1683ff";
-    private static final String LIGHT = "#b8c7dd";
-    private static final String WHITE = "#ffffff";
-    private static final String RED = "#ef4444";
-    private static final String GREEN = "#22c55e";
-    private static final String ORANGE = "#f59e0b";
+    private static final String BG_DARK     = "#06172b";
+    private static final String BG_SIDEBAR  = "#0b1a30";
+    private static final String GLASS       = "rgba(8, 22, 42, 0.72)";
+    private static final String BLUE        = "#0e73eb";
+    private static final String BLUE_2      = "#1683ff";
+    private static final String LIGHT       = "#b8c7dd";
+    private static final String WHITE       = "#ffffff";
+    private static final String RED         = "#ef4444";
+    private static final String GREEN       = "#22c55e";
+    private static final String ORANGE      = "#f59e0b";
     private static final String BORDER_GLASS = "rgba(255,255,255,0.18)";
 
     private final RescueController controller;
+    /** MapView partagée avec le reste de l'application (même instance que CitizenDashboardView). */
     private final MapView mapComponent;
 
-    private VBox dashboardContent;
-    private StackPane contentRoot;
-    private VBox sidebar;
-    private Button activeButton;
+    private VBox       dashboardContent;
+    private StackPane  contentRoot;
+    private VBox       sidebar;
+    private Button     activeButton;
     private final SimulationDataService dataService;
+
+    // ─────────────────────────────────────────────────────────────────────
+    // CONSTRUCTION
+    // ─────────────────────────────────────────────────────────────────────
 
     public RescueDashboardView() {
         this(new RescueController(Main.getSharedSimulation()));
@@ -54,8 +61,29 @@ public class RescueDashboardView extends BorderPane {
 
     public RescueDashboardView(RescueController controller) {
         this.controller = controller;
-        this.mapComponent = new MapView(controller.getZones());
         this.dataService = new SimulationDataService();
+
+        // ── Carte partagée ─────────────────────────────────────────────
+        // On réutilise la MapView du MapController partagé (même graphe,
+        // mêmes agents) exactement comme CitizenDashboardView.
+        MapController sharedMC = Main.getSharedMapController();
+        if (sharedMC != null) {
+            this.mapComponent = sharedMC.getMapView();
+        } else {
+            this.mapComponent = Main.getSharedMapView();
+        }
+        if (Main.currentUser != null) {
+        mapComponent.setConnectedUser(Main.currentUser);
+    }
+
+        // Le secouriste voit TOUS les agents (citoyens + secouristes),
+        // contrairement au citoyen qui ne se voit que lui-même.
+        mapComponent.setAgents(controller.getAgents());
+
+        // Mise à jour live si la liste d'agents change
+        Main.getSharedSimulation().addAgentObserver(updatedAgents ->
+            Platform.runLater(() -> mapComponent.setAgents(controller.getAgents()))
+        );
 
         setPrefSize(1100, 650);
         setStyle("-fx-background-color:" + BG_DARK + ";");
@@ -70,16 +98,22 @@ public class RescueDashboardView extends BorderPane {
         showPage(dashboardContent);
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // SIDEBAR
+    // ─────────────────────────────────────────────────────────────────────
+
     private VBox buildSidebar() {
         sidebar = new VBox(9);
         sidebar.setPrefWidth(252);
         sidebar.setPadding(new Insets(22, 14, 18, 14));
-        sidebar.setStyle("-fx-background-color:" + BG_SIDEBAR + "; -fx-border-color:rgba(255,255,255,0.10); -fx-border-width:0 1 0 0;");
+        sidebar.setStyle("-fx-background-color:" + BG_SIDEBAR
+            + "; -fx-border-color:rgba(255,255,255,0.10); -fx-border-width:0 1 0 0;");
 
         HBox brand = new HBox(12);
         brand.setAlignment(Pos.CENTER_LEFT);
         brand.setPadding(new Insets(0, 8, 20, 8));
-        brand.getChildren().addAll(createLogoIcon(), new VBox(title("Inondation", 21), muted("Poste secours", 12)));
+        brand.getChildren().addAll(createLogoIcon(),
+            new VBox(title("Inondation", 21), muted("Poste secours", 12)));
 
         HBox profile = new HBox(10);
         profile.setAlignment(Pos.CENTER_LEFT);
@@ -88,7 +122,8 @@ public class RescueDashboardView extends BorderPane {
 
         Circle avatar = new Circle(20, Color.web(RED));
         VBox names = new VBox(2);
-        String name = Main.currentUser != null && Main.currentUser.getFirstName() != null ? Main.currentUser.getFirstName() : "Coordinateur";
+        String name = Main.currentUser != null && Main.currentUser.getFirstName() != null
+            ? Main.currentUser.getFirstName() : "Coordinateur";
         Label full = new Label(name);
         full.setTextFill(Color.WHITE);
         full.setFont(Font.font("Segoe UI", FontWeight.BOLD, 14));
@@ -129,15 +164,19 @@ public class RescueDashboardView extends BorderPane {
         logout.setOnAction(e -> { Main.currentUser = null; Main.showWelcomeView(); });
 
         sidebar.getChildren().addAll(
-                brand, profile,
-                btnDashboard, btnMap, btnAgents, btnAlerts,
-                btnResources, btnMissions, btnProfile, btnSettings,
-                spacer, logout
+            brand, profile,
+            btnDashboard, btnMap, btnAgents, btnAlerts,
+            btnResources, btnMissions, btnProfile, btnSettings,
+            spacer, logout
         );
 
         setActive(btnDashboard);
         return sidebar;
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // DASHBOARD
+    // ─────────────────────────────────────────────────────────────────────
 
     private VBox buildDashboardContent() {
         VBox root = new VBox(22);
@@ -149,10 +188,10 @@ public class RescueDashboardView extends BorderPane {
 
         HBox stats = new HBox(16);
         stats.getChildren().addAll(
-                miniCard("Agents déployés", "👥 " + controller.getDeployedAgents(), BLUE_2),
-                miniCard("Victimes secourues", "🧍 " + Math.max(controller.getRescuedVictims(), 15), GREEN),
-                miniCard("Missions actives", "⚙ " + controller.getActiveMissions(), GREEN),
-                miniCard("Alertes actives", "⚠ " + Math.max(controller.getActiveAlertsCount(), 4), RED)
+            miniCard("Agents déployés",   "👥 " + controller.getDeployedAgents(), BLUE_2),
+            miniCard("Victimes secourues","🧍 " + Math.max(controller.getRescuedVictims(), 15), GREEN),
+            miniCard("Missions actives",  "⚙ " + controller.getActiveMissions(), GREEN),
+            miniCard("Alertes actives",   "⚠ " + Math.max(controller.getActiveAlertsCount(), 4), RED)
         );
         for (Node n : stats.getChildren()) HBox.setHgrow(n, Priority.ALWAYS);
 
@@ -165,15 +204,14 @@ public class RescueDashboardView extends BorderPane {
 
         if (controller.getRecentAlerts().isEmpty()) {
             alertList.getChildren().addAll(
-                    logItem("⚠ Route D12 inondée", "10:24"),
-                    logItem("⚠ Pont des Lilas fermé", "09:58"),
-                    logItem("🔸 Quartier Gare évacué", "09:12"),
-                    logItem("🟢 Hôpital Central accessible", "08:45")
+                logItem("⚠ Route D12 inondée", "10:24"),
+                logItem("⚠ Pont des Lilas fermé", "09:58"),
+                logItem("🔸 Quartier Gare évacué", "09:12"),
+                logItem("🟢 Hôpital Central accessible", "08:45")
             );
         } else {
-            for (Alert a : controller.getRecentAlerts()) {
+            for (Alert a : controller.getRecentAlerts())
                 alertList.getChildren().add(logItem("⚠ " + a.getDescription(), a.getTime()));
-            }
         }
 
         Hyperlink allAlerts = link("Voir toutes les alertes");
@@ -185,9 +223,9 @@ public class RescueDashboardView extends BorderPane {
         Label missionTitle = title("Missions en cours", 16);
         VBox missionList = new VBox(10);
         missionList.getChildren().addAll(
-                statusItem("Évacuation Quartier Nord", "En cours", GREEN),
-                statusItem("Secours PMR - Rue des Écoles", "Prioritaire", RED),
-                statusItem("Transport vers Hôpital", "En attente", ORANGE)
+            statusItem("Évacuation Quartier Nord",        "En cours",   GREEN),
+            statusItem("Secours PMR - Rue des Écoles",    "Prioritaire", RED),
+            statusItem("Transport vers Hôpital",          "En attente",  ORANGE)
         );
         Hyperlink allMissions = link("Voir toutes les missions");
         allMissions.setOnAction(e -> showPage(new RescueMissionsView(mapComponent, controller)));
@@ -199,10 +237,10 @@ public class RescueDashboardView extends BorderPane {
         Label resTitle = title("Ressources disponibles", 16);
         HBox resRow = new HBox(26);
         resRow.getChildren().addAll(
-                resourceBadge("👤 Secouristes", "12"),
-                resourceBadge("🚘 Véhicules", "5"),
-                resourceBadge("⛵ Bateaux", "2"),
-                resourceBadge("🛸 Drones", "3")
+            resourceBadge("👤 Secouristes", "12"),
+            resourceBadge("🚘 Véhicules",   "5"),
+            resourceBadge("⛵ Bateaux",      "2"),
+            resourceBadge("🛸 Drones",       "3")
         );
         resources.getChildren().addAll(resTitle, resRow);
 
@@ -216,27 +254,34 @@ public class RescueDashboardView extends BorderPane {
         return wrapper;
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // PAGE CARTE
+    // ─────────────────────────────────────────────────────────────────────
+
     private BorderPane buildMapPage() {
         BorderPane page = new BorderPane();
         page.setPadding(new Insets(26));
         page.setStyle("-fx-background-color:transparent;");
 
         VBox top = new VBox(12);
-        Label title = title("Carte opérationnelle", 24);
+        Label titleLbl = title("Carte opérationnelle", 24);
         Label sub = muted("Visualisez les zones inondées, les routes à risque et les secteurs prioritaires.", 13);
 
         HBox toolbar = new HBox(10);
         toolbar.setAlignment(Pos.CENTER_LEFT);
-        Button zoomIn = blueButton("+ Zoom");
+        Button zoomIn  = blueButton("+ Zoom");
         Button zoomOut = darkButton("- Zoom");
-        Button reset = darkButton("Recentrer");
-        zoomIn.setOnAction(e -> mapComponent.zoomIn());
+        Button reset   = darkButton("Recentrer");
+        zoomIn.setOnAction(e  -> mapComponent.zoomIn());
         zoomOut.setOnAction(e -> mapComponent.zoomOut());
-        reset.setOnAction(e -> mapComponent.resetView());
+        reset.setOnAction(e   -> mapComponent.resetView());
         toolbar.getChildren().addAll(zoomIn, zoomOut, reset);
 
-        top.getChildren().addAll(title, sub, toolbar);
+        top.getChildren().addAll(titleLbl, sub, toolbar);
         top.setPadding(new Insets(0, 0, 14, 0));
+
+        // Tous les agents visibles pour le secouriste
+        mapComponent.setAgents(controller.getAgents());
 
         StackPane mapBox = new StackPane(mapComponent.getSwingNode());
         mapBox.setPrefHeight(480);
@@ -248,9 +293,9 @@ public class RescueDashboardView extends BorderPane {
         for (Zone z : controller.getZones()) {
             if (z.isFlooded() || z.getAltitude() < 1.2) chips.getChildren().add(zoneChip(z));
         }
-        if (chips.getChildren().isEmpty()) {
+        if (chips.getChildren().isEmpty())
             chips.getChildren().add(muted("Aucune zone critique détectée pour le moment.", 13));
-        }
+
         ScrollPane scroll = new ScrollPane(chips);
         scroll.setFitToHeight(true);
         scroll.setStyle("-fx-background:transparent; -fx-background-color:transparent;");
@@ -264,11 +309,16 @@ public class RescueDashboardView extends BorderPane {
         return page;
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // COMPOSANTS UI
+    // ─────────────────────────────────────────────────────────────────────
+
     private VBox zoneChip(Zone z) {
         VBox chip = new VBox(5);
         chip.setPrefWidth(190);
         chip.setPadding(new Insets(12));
-        chip.setStyle("-fx-background-color:rgba(255,255,255,0.06); -fx-background-radius:12; -fx-border-color:rgba(255,255,255,0.12); -fx-border-radius:12;");
+        chip.setStyle("-fx-background-color:rgba(255,255,255,0.06); -fx-background-radius:12;"
+            + " -fx-border-color:rgba(255,255,255,0.12); -fx-border-radius:12;");
         Label name = label("📍 " + z.getName(), WHITE, 13, true);
         Label info = muted("Alt. " + String.format("%.1f m", z.getAltitude()) + " • Pop. " + z.getPopulation(), 11);
         Button btn = blueButton("Centrer");
@@ -277,9 +327,7 @@ public class RescueDashboardView extends BorderPane {
         return chip;
     }
 
-    private void showPage(Node page) {
-        contentRoot.getChildren().setAll(page);
-    }
+    private void showPage(Node page) { contentRoot.getChildren().setAll(page); }
 
     private void setActive(Button selected) {
         if (activeButton != null) activeButton.setStyle(sidebarStyle(false));
@@ -296,62 +344,30 @@ public class RescueDashboardView extends BorderPane {
         btn.setPadding(new Insets(13, 16, 13, 16));
         btn.setFont(Font.font("Segoe UI", FontWeight.SEMI_BOLD, 13));
         btn.setStyle(sidebarStyle(false));
-    
-        btn.setOnMouseEntered(e -> {
-            if (btn != activeButton) {
-                btn.setStyle("-fx-background-color:rgba(255,255,255,0.07);"
-                        + "-fx-text-fill:white;"
-                        + "-fx-background-radius:12;"
-                        + "-fx-border-color:rgba(255,255,255,0.08);"
-                        + "-fx-border-radius:12;"
-                        + "-fx-cursor:hand;");
-            }
-        });
-    
-        btn.setOnMouseExited(e -> {
-            if (btn != activeButton) btn.setStyle(sidebarStyle(false));
-        });
-    
+        btn.setOnMouseEntered(e -> { if (btn != activeButton)
+            btn.setStyle("-fx-background-color:rgba(255,255,255,0.07); -fx-text-fill:white;"
+                + " -fx-background-radius:12; -fx-border-color:rgba(255,255,255,0.08);"
+                + " -fx-border-radius:12; -fx-cursor:hand;"); });
+        btn.setOnMouseExited(e -> { if (btn != activeButton) btn.setStyle(sidebarStyle(false)); });
         return btn;
     }
 
     private Node createSidebarIcon(String type) {
         SVGPath icon = new SVGPath();
-    
         switch (type) {
-            case "dashboard":
-                icon.setContent("M3 3 H10 V10 H3 Z M14 3 H21 V10 H14 Z M3 14 H10 V21 H3 Z M14 14 H21 V21 H14 Z");
-                break;
-            case "map":
-                icon.setContent("M12 21 C12 21 5 14 5 8 A7 7 0 0 1 19 8 C19 14 12 21 12 21 Z M12 10 A2 2 0 1 0 12 6 A2 2 0 0 0 12 10");
-                break;
-            case "agents":
-                icon.setContent("M8 11 A3 3 0 1 0 8 5 A3 3 0 0 0 8 11 M16 11 A3 3 0 1 0 16 5 A3 3 0 0 0 16 11 M3 21 Q8 15 13 21 M11 21 Q16 15 21 21");
-                break;
-            case "alert":
-                icon.setContent("M12 3 L22 20 H2 Z M12 9 V14 M12 17 V18");
-                break;
-            case "resources":
-                icon.setContent("M4 7 L12 3 L20 7 V17 L12 21 L4 17 Z M4 7 L12 11 L20 7 M12 11 V21");
-                break;
-            case "missions":
-                icon.setContent("M6 3 H18 V21 H6 Z M9 7 H15 M9 11 H15 M9 15 H13");
-                break;
-            case "user":
-                icon.setContent("M12 12 A4 4 0 1 0 12 4 A4 4 0 0 0 12 12 M4 21 Q12 15 20 21");
-                break;
-            case "settings":
-                icon.setContent("M12 8 A4 4 0 1 0 12 16 A4 4 0 0 0 12 8 M12 2 V5 M12 19 V22 M4.9 4.9 L7 7 M17 17 L19.1 19.1 M2 12 H5 M19 12 H22 M4.9 19.1 L7 17 M17 7 L19.1 4.9");
-                break;
-            case "logout":
-                icon.setContent("M10 4 H5 V20 H10 M14 8 L18 12 L14 16 M18 12 H8");
-                break;
+            case "dashboard" -> icon.setContent("M3 3 H10 V10 H3 Z M14 3 H21 V10 H14 Z M3 14 H10 V21 H3 Z M14 14 H21 V21 H14 Z");
+            case "map"       -> icon.setContent("M12 21 C12 21 5 14 5 8 A7 7 0 0 1 19 8 C19 14 12 21 12 21 Z M12 10 A2 2 0 1 0 12 6 A2 2 0 0 0 12 10");
+            case "agents"    -> icon.setContent("M8 11 A3 3 0 1 0 8 5 A3 3 0 0 0 8 11 M16 11 A3 3 0 1 0 16 5 A3 3 0 0 0 16 11 M3 21 Q8 15 13 21 M11 21 Q16 15 21 21");
+            case "alert"     -> icon.setContent("M12 3 L22 20 H2 Z M12 9 V14 M12 17 V18");
+            case "resources" -> icon.setContent("M4 7 L12 3 L20 7 V17 L12 21 L4 17 Z M4 7 L12 11 L20 7 M12 11 V21");
+            case "missions"  -> icon.setContent("M6 3 H18 V21 H6 Z M9 7 H15 M9 11 H15 M9 15 H13");
+            case "user"      -> icon.setContent("M12 12 A4 4 0 1 0 12 4 A4 4 0 0 0 12 12 M4 21 Q12 15 20 21");
+            case "settings"  -> icon.setContent("M12 8 A4 4 0 1 0 12 16 A4 4 0 0 0 12 8 M12 2 V5 M12 19 V22 M4.9 4.9 L7 7 M17 17 L19.1 19.1 M2 12 H5 M19 12 H22 M4.9 19.1 L7 17 M17 7 L19.1 4.9");
+            case "logout"    -> icon.setContent("M10 4 H5 V20 H10 M14 8 L18 12 L14 16 M18 12 H8");
         }
-    
-        icon.setStroke(Color.web("#b8c7dd"));
+        icon.setStroke(Color.web(LIGHT));
         icon.setStrokeWidth(1.8);
         icon.setFill(Color.TRANSPARENT);
-    
         StackPane box = new StackPane(icon);
         box.setPrefSize(22, 22);
         return box;
@@ -359,54 +375,42 @@ public class RescueDashboardView extends BorderPane {
 
     private String sidebarStyle(boolean active) {
         return active
-                ? "-fx-background-color:linear-gradient(to right, #b91c1c, #ef4444);"
-                + "-fx-text-fill:white;"
-                + "-fx-background-radius:12;"
-                + "-fx-font-weight:bold;"
-                + "-fx-cursor:hand;"
-                + "-fx-effect:dropshadow(gaussian, rgba(239,68,68,0.35), 18, 0, 0, 4);"
-                : "-fx-background-color:rgba(255,255,255,0.025);"
-                + "-fx-text-fill:#b8c7dd;"
-                + "-fx-background-radius:12;"
-                + "-fx-border-color:rgba(255,255,255,0.07);"
-                + "-fx-border-radius:12;"
-                + "-fx-cursor:hand;";
+            ? "-fx-background-color:linear-gradient(to right, #b91c1c, #ef4444);"
+              + "-fx-text-fill:white; -fx-background-radius:12; -fx-font-weight:bold;"
+              + "-fx-cursor:hand; -fx-effect:dropshadow(gaussian, rgba(239,68,68,0.35), 18, 0, 0, 4);"
+            : "-fx-background-color:rgba(255,255,255,0.025); -fx-text-fill:#b8c7dd;"
+              + "-fx-background-radius:12; -fx-border-color:rgba(255,255,255,0.07);"
+              + "-fx-border-radius:12; -fx-cursor:hand;";
     }
 
-    private VBox miniCard(String title, String value, String color) {
+    private VBox miniCard(String titleStr, String value, String color) {
         VBox card = glassCard(16);
-        Label t = muted(title, 12);
-        Label v = label(value, color, 18, true);
-        card.getChildren().addAll(t, v);
+        card.getChildren().addAll(muted(titleStr, 12), label(value, color, 18, true));
         return card;
     }
 
-    private HBox logItem(String title, String time) {
+    private HBox logItem(String text, String time) {
         HBox item = new HBox(10);
         item.setAlignment(Pos.CENTER_LEFT);
-        Label l = muted(title, 13);
-        Label t = muted(time == null ? "--:--" : time, 12);
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);
-        item.getChildren().addAll(l, sp, t);
+        item.getChildren().addAll(muted(text, 13), sp, muted(time == null ? "--:--" : time, 12));
         return item;
     }
 
-    private HBox statusItem(String title, String status, String color) {
+    private HBox statusItem(String text, String status, String color) {
         HBox item = new HBox(10);
-        Label l = muted(title, 13);
-        Label s = label(status, color, 13, true);
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);
-        item.getChildren().addAll(l, sp, s);
+        item.getChildren().addAll(muted(text, 13), sp, label(status, color, 13, true));
         return item;
     }
 
-    private VBox resourceBadge(String label, String value) {
+    private VBox resourceBadge(String labelStr, String value) {
         VBox b = new VBox(4);
         b.setPadding(new Insets(12));
         b.setStyle("-fx-background-color:rgba(255,255,255,0.06); -fx-background-radius:12;");
-        b.getChildren().addAll(muted(label, 12), title(value, 20));
+        b.getChildren().addAll(muted(labelStr, 12), title(value, 20));
         return b;
     }
 
@@ -426,12 +430,12 @@ public class RescueDashboardView extends BorderPane {
 
     private String glassStyle(int radius) {
         return "-fx-background-color:" + GLASS + "; -fx-background-radius:" + radius + ";"
-                + "-fx-border-color:" + BORDER_GLASS + "; -fx-border-radius:" + radius + ";"
-                + "-fx-effect:dropshadow(gaussian, rgba(0,0,0,0.30), 24, 0, 0, 8);";
+            + "-fx-border-color:" + BORDER_GLASS + "; -fx-border-radius:" + radius + ";"
+            + "-fx-effect:dropshadow(gaussian, rgba(0,0,0,0.30), 24, 0, 0, 8);";
     }
 
     private Label title(String text, int size) { return label(text, WHITE, size, true); }
-    private Label muted(String text, int size) { return label(text, LIGHT, size, false); }
+    private Label muted(String text, int size)  { return label(text, LIGHT, size, false); }
 
     private Label label(String text, String color, int size, boolean bold) {
         Label l = new Label(text);
@@ -442,13 +446,16 @@ public class RescueDashboardView extends BorderPane {
 
     private Button blueButton(String text) {
         Button b = new Button(text);
-        b.setStyle("-fx-background-color:linear-gradient(to right, #0b5cbf, #1683ff); -fx-text-fill:white; -fx-background-radius:8; -fx-font-weight:bold; -fx-cursor:hand;");
+        b.setStyle("-fx-background-color:linear-gradient(to right, #0b5cbf, #1683ff);"
+            + "-fx-text-fill:white; -fx-background-radius:8; -fx-font-weight:bold; -fx-cursor:hand;");
         return b;
     }
 
     private Button darkButton(String text) {
         Button b = new Button(text);
-        b.setStyle("-fx-background-color:rgba(255,255,255,0.07); -fx-text-fill:#b8c7dd; -fx-border-color:rgba(255,255,255,0.16); -fx-border-radius:8; -fx-background-radius:8; -fx-cursor:hand;");
+        b.setStyle("-fx-background-color:rgba(255,255,255,0.07); -fx-text-fill:#b8c7dd;"
+            + "-fx-border-color:rgba(255,255,255,0.16); -fx-border-radius:8;"
+            + "-fx-background-radius:8; -fx-cursor:hand;");
         return b;
     }
 

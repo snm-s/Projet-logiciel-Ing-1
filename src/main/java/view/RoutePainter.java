@@ -33,6 +33,7 @@ public class RoutePainter implements Painter<JXMapViewer> {
     private RouteGraph routeGraph;
     private EvacuationPath highlightedPath;
     private JXMapViewer mapViewer;
+    private Color overridePathColor = null;
 
     private static final Color SAFE       = new Color(34, 197, 94, 140);
     private static final Color RISK       = new Color(245, 158, 11, 150);
@@ -87,15 +88,16 @@ public class RoutePainter implements Painter<JXMapViewer> {
             GeneralPath path = buildPath(map, points);
 
             if (highlighted) {
-                g2.setColor(new Color(14, 115, 235, 80));
+                Color base = overridePathColor != null ? overridePathColor : PATH_BLUE;
+                g2.setColor(new Color(base.getRed(), base.getGreen(), base.getBlue(), 80));
                 g2.setStroke(new BasicStroke(10f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                 g2.draw(path);
 
-                g2.setColor(PATH_BLUE);
+                g2.setColor(overridePathColor != null ? overridePathColor : PATH_BLUE);
                 g2.setStroke(new BasicStroke(4.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f, new float[]{14, 8}, 0));
                 g2.draw(path);
 
-                drawArrow(g2, map, points, PATH_BLUE);
+                drawArrow(g2, map, points, overridePathColor != null ? overridePathColor : PATH_BLUE);
                 return;
             }
 
@@ -106,6 +108,16 @@ public class RoutePainter implements Painter<JXMapViewer> {
 
             drawSmallCapacityDot(g2, map, edge, points);
         } catch (Exception ignored) {
+        }
+    }
+    public void setHighlightedPath(model.algorithms.EvacuationPath path, String hexColor) {
+        this.highlightedPath = path;
+        try {
+            java.awt.Color parsed = java.awt.Color.decode(hexColor);
+            this.overridePathColor = new Color(
+                parsed.getRed(), parsed.getGreen(), parsed.getBlue(), 235);
+        } catch (Exception e) {
+            this.overridePathColor = null;
         }
     }
 

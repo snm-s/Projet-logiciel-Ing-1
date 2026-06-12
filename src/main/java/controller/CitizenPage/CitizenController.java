@@ -9,6 +9,7 @@ import model.agent.Agent;
 import model.agent.Citizen;
 import model.alert.Alert;
 import model.alert.AlertSystem;
+import model.algorithms.EvacuationPath;
 import model.graph.Node;
 import model.graph.Route;
 import model.simulation.FloodSimulation;
@@ -252,6 +253,15 @@ public class CitizenController {
 
     public Route calculateEvacuationRoute(Node citizenNode) {
         return new Route();
+    }
+
+    public EvacuationPath computePath(Zone from, Zone to) {
+        if (from == null || to == null) return null;
+        model.graph.RouteGraph rg = app.Main.getSharedMapController() != null
+            ? app.Main.getSharedMapController().getRouteGraph()
+            : null;
+        if (rg == null) return null;
+        return rg.findPathForRescue(from, to);
     }
 
     public String shortDescription(Zone zone) {

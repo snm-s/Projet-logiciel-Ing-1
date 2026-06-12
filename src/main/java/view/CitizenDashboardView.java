@@ -32,6 +32,8 @@ import model.zone.Zone;
 
 public class CitizenDashboardView extends BorderPane {
 
+
+
     private static final String BG_DARK = "#06172b";
     private static final String BG_SIDEBAR = "#0b1a30";
     private static final String GLASS = "rgba(8, 22, 42, 0.72)";
@@ -44,6 +46,7 @@ public class CitizenDashboardView extends BorderPane {
     private static final String MUTED = "#7f91aa";
     private static final String WHITE = "#ffffff";
     private static final String BORDER_GLASS = "rgba(255,255,255,0.18)";
+
 
     private final CitizenController controller;
     private final Agent user;
@@ -132,7 +135,17 @@ public class CitizenDashboardView extends BorderPane {
         Button btnRoutes = sidebarButton("Mes trajets", "route");
         btnRoutes.setOnAction(e -> {
             setActive(btnRoutes);
-            showPage(new CitizenRoutesView(controller, user, mapComponent));
+            showPage(new CitizenRoutesView(controller, user, mapComponent, routeRequest -> {
+                setActive(null);
+                showPage(buildMapPage(
+                    routeRequest.refuge(),
+                    routeRequest.from(),
+                    routeRequest.instructions(),
+                    routeRequest.recommended() ? "Recommandé" : "Alternatif",
+                    routeRequest.recommended(),   // <-- c'est ce boolean qui décide la couleur dans buildMapPage
+                    routeRequest.path()
+                ));
+            }));
         });
 
         Button btnAlerts = sidebarButton("Alertes", "alert");
@@ -415,7 +428,17 @@ public class CitizenDashboardView extends BorderPane {
         actions.getChildren().addAll(
                 actionButton("Voir la carte", "⌖", () -> showPage(buildMapPage(null))),
                 actionButton("Mes refuges", "⌂", () -> showPage(new CitizenRefugesView(controller, user, this::openRouteToRefuge))),
-                actionButton("Mes trajets", "⇢", () -> showPage(new CitizenRoutesView(controller, user, mapComponent))),
+                actionButton("Mes trajets", "⇢", () -> showPage(new CitizenRoutesView(controller, user, mapComponent, routeRequest -> {
+                    setActive(null);
+                    showPage(buildMapPage(
+                        routeRequest.refuge(),
+                        routeRequest.from(),
+                        routeRequest.instructions(),
+                        routeRequest.recommended() ? "Recommandé" : "Alternatif",
+                        routeRequest.recommended(),
+                        routeRequest.path()
+                    ));
+                }))),
                 actionButton("Mon profil", "◎", () -> showPage(new CitizenProfileView(controller, user)))
         );
 
@@ -481,54 +504,8 @@ public class CitizenDashboardView extends BorderPane {
         return box;
     }
 
-    private BorderPane buildMapPage(Zone selectedRefuge) {
-        BorderPane page = new BorderPane();
-        page.setPadding(new Insets(26));
-        page.setStyle("-fx-background-color:transparent;");
 
-        VBox top = new VBox(12);
-        Label title = title("Carte & itinéraire", 24);
-        Label sub = muted("Déplacez la carte, zoomez, cliquez sur une zone ou affichez un trajet vers un refuge.", 13);
 
-        HBox toolbar = new HBox(10);
-        toolbar.setAlignment(Pos.CENTER_LEFT);
-
-        Button zoomIn = blueButton("+ Zoom");
-        Button zoomOut = darkButton("- Zoom");
-        Button reset = darkButton("Recentrer");
-
-        zoomIn.setOnAction(e -> mapComponent.zoomIn());
-        zoomOut.setOnAction(e -> mapComponent.zoomOut());
-        reset.setOnAction(e -> mapComponent.resetView());
-
-        toolbar.getChildren().addAll(zoomIn, zoomOut, reset);
-
-        top.getChildren().addAll(title, sub, toolbar);
-        top.setPadding(new Insets(0, 0, 14, 0));
-
-        StackPane mapBox = new StackPane(mapComponent.getSwingNode());
-        mapBox.setPrefHeight(430);
-        mapBox.setStyle(glassStyle(18));
-
-        VBox refugesBottom = buildRefugeStrip();
-
-        page.setTop(top);
-        page.setCenter(mapBox);
-        page.setBottom(refugesBottom);
-
-        BorderPane.setMargin(refugesBottom, new Insets(14, 0, 0, 0));
-
-        if (selectedRefuge != null) {
-            Zone from = controller.getNearestZone(user);
-            mapComponent.showRoute(from, selectedRefuge);
-        }
-        
-        mapComponent.setAgents(List.of(user));
-
-        mapComponent.centerOnAgent(user);
-
-        return page;
-    }
 
     private VBox buildRefugeStrip() {
         VBox box = glassCard(16);
@@ -551,6 +528,185 @@ public class CitizenDashboardView extends BorderPane {
         scroll.setStyle("-fx-background:transparent; -fx-background-color:transparent;");
 
         box.getChildren().addAll(title, scroll);
+        return box;
+    }
+
+
+
+    private BorderPane buildMapPage(Zone selectedRefuge) {
+        return buildMapPage(selectedRefuge, null, null, null, false, null);
+    }
+
+
+    // Nouvelle surcharge complète
+    private BorderPane buildMapPage(Zone selectedRefuge, Zone fromZone, List<String> instructions, String badgeLabel, boolean recommended,model.algorithms.EvacuationPath routePath) {
+        BorderPane page = new BorderPane();
+        page.setPadding(new Insets(26));
+        page.setStyle("-fx-background-color:transparent;");
+
+        VBox top = new VBox(12);
+        Label titleLbl = title("Carte & itinéraire", 24);
+        Label sub = muted("Déplacez la carte, zoomez, cliquez sur une zone ou affichez un trajet vers un refuge.", 13);
+
+        HBox toolbar = new HBox(10);
+        toolbar.setAlignment(Pos.CENTER_LEFT);
+
+        Button zoomIn = blueButton("+ Zoom");
+        Button zoomOut = darkButton("- Zoom");
+        Button reset = darkButton("Recentrer");
+
+        zoomIn.setOnAction(e -> mapComponent.zoomIn());
+        zoomOut.setOnAction(e -> mapComponent.zoomOut());
+        reset.setOnAction(e -> mapComponent.resetView());
+
+        toolbar.getChildren().addAll(zoomIn, zoomOut, reset);
+        top.getChildren().addAll(titleLbl, sub, toolbar);
+        top.setPadding(new Insets(0, 0, 14, 0));
+
+        StackPane mapBox = new StackPane(mapComponent.getSwingNode());
+        mapBox.setPrefHeight(instructions != null ? 360 : 430);
+        mapBox.setStyle(glassStyle(18));
+
+        page.setTop(top);
+        page.setCenter(mapBox);
+
+        if (selectedRefuge != null && fromZone != null) {
+            String routeColor = recommended ? "#22c55e" : "#f59e0b";
+            if (routePath != null && !routePath.isEmpty()) {
+                mapComponent.showRoute(fromZone, selectedRefuge, routePath, routeColor);
+            } else {
+                mapComponent.showRoute(fromZone, selectedRefuge);
+            }
+        }
+
+        mapComponent.setAgents(List.of(user));
+        mapComponent.centerOnAgent(user);
+
+        // Bloc itinéraire en bas (uniquement si instructions fournies)
+        if (instructions != null && selectedRefuge != null && fromZone != null) {
+            VBox itinerary = buildItineraryPanel(fromZone, selectedRefuge, instructions, badgeLabel, recommended);
+            ScrollPane itinScroll = new ScrollPane(itinerary);
+            itinScroll.setFitToWidth(true);
+            itinScroll.setPrefHeight(210);
+            itinScroll.setMaxHeight(210);
+            itinScroll.setStyle("-fx-background:transparent; -fx-background-color:transparent;");
+
+            VBox bottomArea = new VBox(14);
+            bottomArea.getChildren().addAll(buildRefugeStrip(), itinScroll);
+            page.setBottom(bottomArea);
+            BorderPane.setMargin(bottomArea, new Insets(14, 0, 0, 0));
+        } else {
+            VBox refugesBottom = buildRefugeStrip();
+            page.setBottom(refugesBottom);
+            BorderPane.setMargin(refugesBottom, new Insets(14, 0, 0, 0));
+        }
+
+        return page;
+    }
+
+
+
+
+    //construit le bloc itinéraire 
+    private VBox buildItineraryPanel(Zone from, Zone refuge, List<String> instructions, String badgeLabel, boolean recommended) {
+        VBox panel = new VBox(14);
+        panel.setPadding(new Insets(22));
+        panel.setStyle(
+            "-fx-background-color:rgba(8,22,42,0.82);" +
+            "-fx-background-radius:18;" +
+            "-fx-border-color:rgba(22,131,255,0.5);" +
+            "-fx-border-radius:18;" +
+            "-fx-effect:dropshadow(gaussian,rgba(0,0,0,0.4),20,0,0,6);"
+        );
+
+        // En-tête
+        HBox header = new HBox(14);
+        header.setAlignment(Pos.CENTER_LEFT);
+
+        StackPane icon = roundIcon("⇢", BLUE_2, 48);
+
+        VBox texts = new VBox(4);
+        texts.getChildren().addAll(
+            label("Itinéraire d'évacuation", WHITE, 20, true),
+            label(from.getName() + " → " + refuge.getName(), LIGHT, 13, false)
+        );
+
+        Label badge = badge(badgeLabel != null ? badgeLabel : (recommended ? "Recommandé" : "Alternatif"),
+                            recommended ? GREEN : ORANGE);
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        header.getChildren().addAll(icon, texts, spacer, badge);
+
+        // Séparateur
+        javafx.scene.control.Separator sep = new javafx.scene.control.Separator();
+        sep.setStyle("-fx-background-color:rgba(255,255,255,0.12);");
+
+        // Étapes
+        VBox stepsBox = new VBox(10);
+        for (int i = 0; i < instructions.size(); i++) {
+            stepsBox.getChildren().add(buildStepRow(i + 1, instructions.get(i)));
+        }
+
+        // Résumé
+        HBox summary = new HBox(24);
+        summary.setPadding(new Insets(14, 0, 0, 0));
+        summary.setAlignment(Pos.CENTER_LEFT);
+        summary.getChildren().addAll(
+            detailBox("Distance", controller.getDistanceLabel(user), BLUE_2),
+            detailBox("Temps estimé", controller.getEtaLabel(user), ORANGE),
+            detailBox("Destination", refuge.getName(), GREEN)
+        );
+
+        panel.getChildren().addAll(header, sep, stepsBox, summary);
+        return panel;
+    }
+
+    private HBox buildStepRow(int stepNumber, String instruction) {
+        HBox row = new HBox(14);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(10, 14, 10, 14));
+        row.setStyle(
+            "-fx-background-color:rgba(255,255,255,0.04);" +
+            "-fx-background-radius:12;" +
+            "-fx-border-color:rgba(255,255,255,0.08);" +
+            "-fx-border-radius:12;"
+        );
+
+        StackPane numBadge = new StackPane();
+        numBadge.setPrefSize(32, 32);
+        numBadge.setMinSize(32, 32);
+        numBadge.setMaxSize(32, 32);
+        numBadge.setStyle("-fx-background-color:" + BLUE_2 + "; -fx-background-radius:999;");
+        Label numLbl = label(String.valueOf(stepNumber), WHITE, 13, true);
+        numBadge.getChildren().add(numLbl);
+
+        String emoji = instruction.contains("refuge") || instruction.contains("arrivée") ? "🏕" :
+                    instruction.contains("inondée") || instruction.contains("risque") ? "⚠" :
+                    stepNumber == 1 ? "📍" : "➡";
+
+        Label iconLbl = label(emoji, WHITE, 16, false);
+
+        Label instrLbl = label(instruction, LIGHT, 13, false);
+        instrLbl.setWrapText(true);
+        HBox.setHgrow(instrLbl, Priority.ALWAYS);
+
+        row.getChildren().addAll(numBadge, iconLbl, instrLbl);
+        return row;
+    }
+
+    private VBox detailBox(String titleStr, String value, String color) {
+        VBox box = new VBox(5);
+        box.setPadding(new Insets(14));
+        box.setStyle(
+            "-fx-background-color:rgba(255,255,255,0.045);" +
+            "-fx-background-radius:14;" +
+            "-fx-border-color:" + color + "66;" +
+            "-fx-border-radius:14;"
+        );
+        Label t = label(titleStr, MUTED, 11, true);
+        Label v = label(value == null || value.isBlank() ? "--" : value, WHITE, 14, true);
+        v.setWrapText(true);
+        box.getChildren().addAll(t, v);
         return box;
     }
 
@@ -578,8 +734,12 @@ public class CitizenDashboardView extends BorderPane {
     }
 
     public void openRouteToRefuge(Zone refuge) {
+        if (refuge == null) return;
+        Zone from = controller.getNearestZone(user);
+        List<String> instructions = controller.getRouteInstructions(user, from, refuge);
+        model.algorithms.EvacuationPath path = controller.computePath(from, refuge);
         setActive(null);
-        showPage(buildMapPage(refuge));
+        showPage(buildMapPage(refuge, from, instructions, "Recommandé", true, path));
     }
 
     private void showPage(Node page) {

@@ -40,7 +40,9 @@ public class CitizenRoutesView extends BorderPane {
     private static final String MUTED = "#7f91aa";
     private static final String WHITE = "#ffffff";
 
+    private final java.util.function.Consumer<RouteRequest> onShowOnMap;
     private static final List<RouteItem> ROUTE_HISTORY = new ArrayList<>();
+
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM HH:mm");
 
     private final CitizenController controller;
@@ -54,10 +56,11 @@ public class CitizenRoutesView extends BorderPane {
     private Label historyCountLabel;
     private VBox root;
 
-    public CitizenRoutesView(CitizenController controller, Agent user, MapView mapView) {
+    public CitizenRoutesView(CitizenController controller, Agent user, MapView mapView, java.util.function.Consumer<RouteRequest> onShowOnMap) {
         this.controller = controller;
         this.user = user;
         this.mapView = mapView;
+        this.onShowOnMap = onShowOnMap;
 
         this.from = controller.getNearestZone(user);
         this.recommendedRefuge = controller.getNearestSafeRefuge(user);
@@ -80,6 +83,11 @@ public class CitizenRoutesView extends BorderPane {
         scroll.setStyle("-fx-background:transparent; -fx-background-color:transparent;");
 
         setCenter(scroll);
+    }
+
+
+    public CitizenRoutesView(CitizenController controller, Agent user, MapView mapView) {
+        this(controller, user, mapView, null);
     }
 
     private VBox buildHeader() {
@@ -282,120 +290,22 @@ public class CitizenRoutesView extends BorderPane {
         return card;
     }
 
-    private VBox instructionsPanel;
 
-    private void showRouteInstructionsPanel(Zone from, Zone refuge, List<String> instructions, boolean recommended) {
-        if (instructionsPanel != null && root != null) {
-            root.getChildren().remove(instructionsPanel);
-        }
-
-        instructionsPanel = new VBox(14);
-        instructionsPanel.setPadding(new Insets(22));
-        instructionsPanel.setStyle(
-            "-fx-background-color:rgba(8,22,42,0.82);" +
-            "-fx-background-radius:18;" +
-            "-fx-border-color:rgba(22,131,255,0.5);" +
-            "-fx-border-radius:18;" +
-            "-fx-effect:dropshadow(gaussian,rgba(0,0,0,0.4),20,0,0,6);"
-        );
-
-        // En-tête
-        HBox header = new HBox(14);
-        header.setAlignment(Pos.CENTER_LEFT);
-        StackPane icon = roundIcon("⇢", BLUE, 48);
-        VBox texts = new VBox(4);
-        texts.getChildren().addAll(
-            label("Itinéraire d'évacuation", WHITE, 20, true),
-            label(from.getName() + " → " + refuge.getName(), LIGHT, 13, false)
-        );
-        Label badge = badge(recommended ? "Recommandé" : "Alternatif", recommended ? GREEN : ORANGE);
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        header.getChildren().addAll(icon, texts, spacer, badge);
-
-        // Séparateur
-        javafx.scene.control.Separator sep = new javafx.scene.control.Separator();
-        sep.setStyle("-fx-background-color:rgba(255,255,255,0.12);");
-
-        // Étapes
-        VBox stepsBox = new VBox(10);
-        for (int i = 0; i < instructions.size(); i++) {
-            stepsBox.getChildren().add(buildStepRow(i + 1, instructions.get(i)));
-        }
-
-        // Résumé distance / temps
-        HBox summary = new HBox(24);
-        summary.setPadding(new Insets(14, 0, 0, 0));
-        summary.setAlignment(Pos.CENTER_LEFT);
-        summary.getChildren().addAll(
-            detailBox("Distance", controller.getDistanceLabel(user), BLUE),
-            detailBox("Temps estimé", controller.getEtaLabel(user), ORANGE),
-            detailBox("Destination", refuge.getName(), GREEN)
-        );
-
-        instructionsPanel.getChildren().addAll(header, sep, stepsBox, summary);
-
-        // Insérer dans le scroll
-        if (instructionsPanel != null && root.getChildren().contains(instructionsPanel)) {
-            root.getChildren().remove(instructionsPanel);
-        }
-        root.getChildren().add(instructionsPanel);
-        ScrollPane scroll = (ScrollPane) getCenter();
-        Platform.runLater(() -> scroll.setVvalue(1.0));
-    }
-
-    private HBox buildStepRow(int stepNumber, String instruction) {
-        HBox row = new HBox(14);
-        row.setAlignment(Pos.CENTER_LEFT);
-        row.setPadding(new Insets(10, 14, 10, 14));
-        row.setStyle(
-            "-fx-background-color:rgba(255,255,255,0.04);" +
-            "-fx-background-radius:12;" +
-            "-fx-border-color:rgba(255,255,255,0.08);" +
-            "-fx-border-radius:12;"
-        );
-
-        // Numéro d'étape
-        StackPane numBadge = new StackPane();
-        numBadge.setPrefSize(32, 32);
-        numBadge.setMinSize(32, 32);
-        numBadge.setMaxSize(32, 32);
-        numBadge.setStyle(
-            "-fx-background-color:" + BLUE + ";" +
-            "-fx-background-radius:999;"
-        );
-        Label numLbl = label(String.valueOf(stepNumber), WHITE, 13, true);
-        numBadge.getChildren().add(numLbl);
-
-        // Icône selon contenu
-        String emoji = instruction.contains("refuge") || instruction.contains("arrivée") ? "🏕" :
-                    instruction.contains("inondée") || instruction.contains("risque") ? "⚠" :
-                    stepNumber == 1 ? "📍" : "➡";
-
-        Label iconLbl = label(emoji, WHITE, 16, false);
-
-        Label instrLbl = label(instruction, LIGHT, 13, false);
-        instrLbl.setWrapText(true);
-        HBox.setHgrow(instrLbl, Priority.ALWAYS);
-
-        row.getChildren().addAll(numBadge, iconLbl, instrLbl);
-        return row;
-    }
+    
 
 
 
     private void openRoute(Zone refuge, boolean recommended) {
         if (from == null || refuge == null) return;
 
-        // Calculer et enregistrer le chemin dans FloodSimulation via le controller
         controller.registerEvacuationPath(user, from, refuge);
 
-        // Afficher sur la carte
-        mapView.showRoute(from, refuge);
-
-        // Générer les instructions pas à pas
         List<String> instructions = controller.getRouteInstructions(user, from, refuge);
-        showRouteInstructionsPanel(from, refuge, instructions, recommended);
+        model.algorithms.EvacuationPath path = controller.computePath(from, refuge);
+
+        if (onShowOnMap != null) {
+            onShowOnMap.accept(new RouteRequest(from, refuge, instructions, recommended, path));
+        }
 
         RouteItem item = new RouteItem(
             LocalDateTime.now().format(DATE_FORMAT),
@@ -696,4 +606,12 @@ public class CitizenRoutesView extends BorderPane {
             return Objects.hash(start, end);
         }
     }
+
+    public record RouteRequest(
+        Zone from,
+        Zone refuge,
+        List<String> instructions,
+        boolean recommended,
+        model.algorithms.EvacuationPath path
+    ) {}
 }
