@@ -37,22 +37,22 @@ public class ZoneManager {
             reader.close();
 
             if (zoneDataList != null) {
-            for (ZoneData data : zoneDataList) {
-                Zone zone;
-                
-                // Détection du type
-                if ("shelter".equalsIgnoreCase(data.type)) {
-                    zone = new Shelter(data.id, data.name, data.latitude, data.longitude, 
-                                    data.altitude, data.population, data.description, data.capacity);
-                } else {
-                    // Par défaut, on crée un Neighborhood
-                    zone = new Neighborhood(data.id, data.name, data.latitude, data.longitude, 
-                                            data.altitude, data.population, data.description);
+                for (ZoneData data : zoneDataList) {
+                    Zone zone;
+                    
+                    // Détection du type
+                    if ("shelter".equalsIgnoreCase(data.type)) {
+                        zone = new Shelter(data.id, data.name, data.latitude, data.longitude, 
+                                        data.altitude, data.population, data.description, data.capacity);
+                    } else {
+                        // Par défaut, on crée un Neighborhood
+                        zone = new Neighborhood(data.id, data.name, data.latitude, data.longitude, 
+                                                data.altitude, data.population, data.description);
+                    }
+                    
+                    zones.add(zone);
                 }
-                
-                zones.add(zone);
-            }
-                System.out.println("✅ " + zones.size() + " zones chargées depuis zones.json");
+            System.out.println("✅ " + zones.size() + " zones chargees depuis zones.json");
             }
         } catch (Exception e) {
             System.err.println("❌ Erreur lors de la lecture des zones : " + e.getMessage());

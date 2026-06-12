@@ -120,27 +120,28 @@ public class RouteGraph {
         int nextId = edges.stream().mapToInt(Edge::getId).max().orElse(0) + 1;
 
         for (Zone from : allZones) {
-            if (from instanceof Shelter) continue;
-
-            // Chaque quartier doit avoir plusieurs sorties vers les refuges.
-            for (Zone shelter : shelters) {
-                if (!hasEdgeBetween(from, shelter)) {
-                    edges.add(new Edge(nextId++, from.getName() + " → " + shelter.getName(),
-                        from, shelter, fallbackLine(from, shelter), 5, 0, 0));
-                }
-            }
-
-            // Et plusieurs connexions locales pour que Dijkstra puisse contourner une route rouge.
+            // Connexions locales : seulement les 2 voisins les plus proches
             allZones.stream()
                 .filter(z -> z.getId() != from.getId())
-                .filter(z -> !(z instanceof Shelter))
                 .sorted(Comparator.comparingDouble(z -> geoDistanceSquared(from, z)))
-                .limit(3)
+                .limit(2)
                 .forEach(to -> {
                     if (!hasEdgeBetween(from, to)) {
                         int id = edges.stream().mapToInt(Edge::getId).max().orElse(0) + 1;
                         edges.add(new Edge(id, from.getName() + " → " + to.getName(),
                             from, to, fallbackLine(from, to), 5, 0, 0));
+                    }
+                });
+
+            if (from instanceof Shelter) continue;
+
+            // Refuge : connecter seulement au refuge le plus proche
+            shelters.stream()
+                .min(Comparator.comparingDouble(s -> geoDistanceSquared(from, s)))
+                .ifPresent(nearest -> {
+                    if (!hasEdgeBetween(from, nearest)) {
+                        edges.add(new Edge(nextId, from.getName() + " → " + nearest.getName(),
+                            from, nearest, fallbackLine(from, nearest), 5, 0, 0));
                     }
                 });
         }

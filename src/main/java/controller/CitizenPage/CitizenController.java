@@ -200,25 +200,34 @@ public class CitizenController {
         List<String> steps = new ArrayList<>();
         if (from == null || to == null) return steps;
 
+        EvacuationPath path = computePath(from, to);
+
+
+        if (path == null || path.isEmpty()) {
+            steps.add("Départ depuis " + from.getName() + " — restez calme et suivez les indications.");
+            steps.add("Arrivée au refuge " + to.getName() + " — signalez-vous aux secours.");
+            return steps;
+        }
+
+        List<Zone> zoneSeq = path.getZones();
+
         steps.add("Départ depuis " + from.getName() + " — restez calme et suivez les indications.");
 
-        List<Zone> allZones = simulation.getZones();
-        // Zones intermédiaires (entre départ et destination, non inondées)
-        allZones.stream()
-            .filter(z -> z.getId() != from.getId() && z.getId() != to.getId())
-            .filter(z -> !z.isFlooded())
-            .limit(3)
-            .forEach(z -> steps.add("Traversez " + z.getName() + 
-                (z.getAltitude() > from.getAltitude() ? " (zone en hauteur, plus sûre)" : "") + "."));
+        for (int i = 1; i < zoneSeq.size() - 1; i++) {
+            Zone z = zoneSeq.get(i);
+            String suffix = z.getAltitude() > from.getAltitude() ? " (zone en hauteur, plus sûre)" : "";
+            String warning = z.isFlooded() ? " ⚠ zone inondée — traversée rapide !" : "";
+            steps.add("Traversez " + z.getName() + suffix + warning + ".");
+        }
 
-        // Avertissement si zones inondées proches
-        long floodedCount = allZones.stream().filter(Zone::isFlooded).count();
-        if (floodedCount > 0)
-            steps.add("⚠ Attention : " + floodedCount + " zone(s) inondée(s) sur l'itinéraire — évitez les bas-fonds.");
+        long atRiskCount = path.countAtRiskEdges();
+        if (atRiskCount > 0)
+            steps.add("⚠ Attention : " + atRiskCount + " tronçon(s) à risque sur l'itinéraire — restez vigilant.");
 
         steps.add("Arrivée au refuge " + to.getName() + " — signalez-vous aux secours.");
         return steps;
     }
+
 
 
     public String getDistanceFromUserLabel(Agent user, Zone zone) {
@@ -257,10 +266,18 @@ public class CitizenController {
 
     public EvacuationPath computePath(Zone from, Zone to) {
         if (from == null || to == null) return null;
-        model.graph.RouteGraph rg = app.Main.getSharedMapController() != null
-            ? app.Main.getSharedMapController().getRouteGraph()
-            : null;
-        if (rg == null) return null;
+
+        model.graph.RouteGraph rg = null;
+
+        if (app.Main.getSharedMapController() != null) {
+            rg = app.Main.getSharedMapController().getRouteGraph();
+        }
+
+        if (rg == null) {
+            // Fallback : construire un RouteGraph temporaire avec les zones de la simulation
+            rg = new model.graph.RouteGraph(simulation.getZones());
+        }
+
         return rg.findPathForRescue(from, to);
     }
 
