@@ -358,4 +358,38 @@
   "backgroundLocationEnabled" : true,
   "displayScale" : 100.0,
   "saved" : false
+}, {
+  "type" : "citizen",
+  "id" : 0,
+  "firstName" : "vc",
+  "lastName" : "vfdc",
+  "birthDate" : [ 2024, 3, 5 ],
+  "email" : "haarise@test.com",
+  "phone" : "0102030405",
+  "passwordHash" : "d6eec7d6f54b2ad776f7c345dfc7ce9046dfc0f64f9c24142fbb898a282837aa",
+  "address" : "12 Rue Ney",
+  "city" : "Lyon",
+  "country" : "France",
+  "position" : {
+    "id" : 0,
+    "lat" : 45.7710818,
+    "lng" : 4.8548557
+  },
+  "destination" : null,
+  "maxSpeed" : 3.0,
+  "congestionTolerance" : 1.0,
+  "strategy" : null,
+  "mobilityStatus" : "child",
+  "houseType" : "HOUSE",
+  "floor" : 12,
+  "householdSize" : 1,
+  "hasPets" : true,
+  "medicalNeeds" : "",
+  "emergencyContact" : "1",
+  "emergencyAlertsEnabled" : true,
+  "soundNotificationsEnabled" : false,
+  "routeUpdatesEnabled" : true,
+  "backgroundLocationEnabled" : true,
+  "displayScale" : 100.0,
+  "saved" : false
 } ]

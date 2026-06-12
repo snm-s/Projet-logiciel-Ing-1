@@ -54,15 +54,18 @@ public class UserService {
 
     // ── Authentification — inchangée ───────────────────────────────────
 
-    public static Agent authenticate(String email, String passwordHash) {
-        if (ADMIN_EMAIL.equalsIgnoreCase(email) && ADMIN_PASSWORD_HASH.equals(passwordHash)) {
+    public static Agent authenticate(String email, String password) {
+        String hashedPassword = PasswordHasher.hash(password);
+    
+        if (ADMIN_EMAIL.equalsIgnoreCase(email) && ADMIN_PASSWORD_HASH.equals(hashedPassword)) {
             return new AdminAgent(999, "Admin", "System", null);
         }
+    
         return loadAgents().stream()
             .filter(a -> a.getEmail() != null
                       && a.getPasswordHash() != null
                       && a.getEmail().equalsIgnoreCase(email)
-                      && a.getPasswordHash().equals(passwordHash))
+                      && a.getPasswordHash().equals(hashedPassword))
             .findFirst()
             .orElse(null);
     }
