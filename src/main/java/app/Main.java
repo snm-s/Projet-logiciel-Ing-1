@@ -7,9 +7,11 @@ import controller.CitizenPage.CitizenController;
 import controller.MapController;
 import controller.RescuePage.RescueController;
 import javafx.application.Application;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
+import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import model.agent.Agent;
@@ -31,6 +33,7 @@ public class Main extends Application {
     public static Agent currentUser;
     public static ListView<String> alertesListView;
     public static TextArea logArea;
+    private static StackPane rootContainer = new StackPane();
 
     // ── Instance unique partagée ──────────────────────────────────────────
     private static SimulationDataService sharedDataService;
@@ -42,6 +45,8 @@ public class Main extends Application {
     @Override
     public void start(Stage stage) {
         mainStage = stage;
+        Scene scene = new Scene(rootContainer, 1000, 650);
+        mainStage.setScene(scene);
 
         // Créer une seule fois les objets partagés
         sharedDataService = new SimulationDataService();
@@ -95,41 +100,29 @@ public class Main extends Application {
     // ── Navigation ────────────────────────────────────────────────────────
     public static void showWelcomeView() {
         WelcomeView welcomeView = new WelcomeView();
+        rootContainer.getChildren().setAll(welcomeView);
 
-        Scene scene = new Scene(welcomeView, 1000, 650);
-        scene.setFill(Color.web("#060a12"));
-
-        mainStage.setScene(scene);
     }
 
     public static void showLoginView() {
         LoginView loginView = new LoginView();
         new controller.AuthPage.LoginController(loginView, mainStage);
+        rootContainer.getChildren().setAll(loginView);
 
-        Scene scene = new Scene(loginView, 1000, 650);
-        scene.setFill(Color.web("#060a12"));
-
-        mainStage.setScene(scene);
     }
 
     public static void showRegisterView() {
         RegisterView registerView = new RegisterView();
         new controller.AuthPage.RegisterController(registerView, mainStage);
-
-        Scene scene = new Scene(registerView, 1000, 650);
-        scene.setFill(Color.web("#060a12"));
-
-        mainStage.setScene(scene);
+        rootContainer.getChildren().setAll(registerView);
+   
     }
 
     public static void showForgotPasswordView(String email) {
         ForgotPasswordView view = new ForgotPasswordView();
         new ForgotPasswordController(view, mainStage, email);
+        rootContainer.getChildren().setAll(view);
 
-        Scene scene = new Scene(view, 1000, 650);
-        scene.setFill(Color.web("#060a12"));
-
-        mainStage.setScene(scene);
     }
 
     public static void showSimulationView() {
@@ -139,49 +132,42 @@ public class Main extends Application {
         SimulationController simulationController = sharedSimCtrl;
         simulationController.setMapController(sharedMapController);
         SimulationView simulationView = new SimulationView(simulationController);
+        rootContainer.getChildren().setAll(simulationView);
 
-        Scene scene = new Scene(simulationView, 1100, 700);
-        scene.setFill(Color.web("#060a12"));
-
-        mainStage.setScene(scene);
+  
         mainStage.setTitle("Flood Simulation - Administration");
     }
 
     public static void showDashboardView(String role) {
         if (role == null) role = "citizen";
         String cleanRole = role.trim().toLowerCase();
-        Scene scene;
+        
+        // 1. On définit la vue à afficher
+        Parent dashboardView;
+        String title;
+
         switch (cleanRole) {
             case "admin":
-                // AdminController lit depuis sharedSimulation
-                scene = new Scene(
-                    new AdminDashboardView(sharedAdminCtrl, sharedDataService),
-                    1000, 650);
-                scene.setFill(Color.web("#060a12"));
-                mainStage.setTitle("Flood Simulation - Admin Panel");
+                dashboardView = new AdminDashboardView(sharedAdminCtrl, sharedDataService);
+                title = "Flood Simulation - Admin Panel";
                 break;
 
             case "rescue":
             case "rescueagent":
-                scene = new Scene(
-                    new RescueDashboardView(new RescueController(sharedSimulation)),
-                    1000, 650
-                );
-                scene.setFill(Color.web("#060a12"));
-                mainStage.setTitle("Flood Simulation - Rescue Command");
+                dashboardView = new RescueDashboardView(new RescueController(sharedSimulation));
+                title = "Flood Simulation - Rescue Command";
                 break;
 
             case "citizen":
             default:
-                scene = new Scene(
-                    new CitizenDashboardView(new CitizenController(sharedSimulation)),
-                    1000, 650
-                );
-                scene.setFill(Color.web("#060a12"));
-                mainStage.setTitle("Flood Simulation - Citizen Portal");
+                dashboardView = new CitizenDashboardView(new CitizenController(sharedSimulation));
+                title = "Flood Simulation - Citizen Portal";
                 break;
         }
-        mainStage.setScene(scene);
+
+        
+        rootContainer.getChildren().setAll(dashboardView);
+        mainStage.setTitle(title);
     }
 
     public static void main(String[] args) {
