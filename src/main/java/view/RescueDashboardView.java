@@ -72,6 +72,9 @@ public class RescueDashboardView extends BorderPane {
         } else {
             this.mapComponent = Main.getSharedMapView();
         }
+        if (Main.currentUser != null) {
+        mapComponent.setConnectedUser(Main.currentUser);
+    }
 
         // Le secouriste voit TOUS les agents (citoyens + secouristes),
         // contrairement au citoyen qui ne se voit que lui-même.

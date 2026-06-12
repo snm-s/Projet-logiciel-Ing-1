@@ -50,6 +50,7 @@ public class AgentPainter implements Painter<JXMapViewer> {
     private Agent draggedAgent;
     private Agent hoveredAgent;
     private boolean animateStaticAgents = false;
+    private Integer currentUserId;
 
     public void setRouteGraph(RouteGraph routeGraph) {
         this.routeGraph = routeGraph;
@@ -88,6 +89,10 @@ public class AgentPainter implements Painter<JXMapViewer> {
     public void setAnimateStaticAgents(boolean animateStaticAgents) {
         this.animateStaticAgents = animateStaticAgents;
     }
+
+    public void setCurrentUserId(Integer id) {
+            this.currentUserId = id;
+     }
 
     public Agent getDraggedAgent() { return draggedAgent; }
     public Agent getHoveredAgent() { return hoveredAgent; }
@@ -352,6 +357,10 @@ public class AgentPainter implements Painter<JXMapViewer> {
     }
 
     private Color colorFor(Agent agent, boolean panicking) {
+        if (currentUserId != null && agent.getId() == currentUserId && agent instanceof RescueAgent) {
+            return new Color(255, 215, 0); // Jaune Or pour se repérer
+        }
+
         if (agent instanceof RescueAgent) return new Color(67, 160, 71);
         if (agent instanceof AdminAgent) return new Color(38, 198, 218);
         if (panicking) return new Color(229, 57, 53);
