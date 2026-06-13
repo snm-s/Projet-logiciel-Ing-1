@@ -33,8 +33,8 @@ public class AdminAlertsView extends BorderPane {
     private static final String SIDEBAR_BG = "#1e3a5f";
     private static final String SIDEBAR_HOVER = "#2a4f82";
     private static final String SIDEBAR_ACTIVE = "#2563eb";
-    private static final String CONTENT_BG = "#e8edf5";
-    private static final String CARD_BG = "#ffffff";
+    private static final String CONTENT_BG = "#06172b";
+    private static final String CARD_BG = "rgba(8, 22, 42, 0.72)";
     private static final String BLUE_BTN = "#2563eb";
     private static final String TEXT_DARK = "#1a2744";
     private static final String TEXT_GRAY = "#9aa5b4";
@@ -95,7 +95,7 @@ public class AdminAlertsView extends BorderPane {
         content.setStyle("-fx-background-color:" + CONTENT_BG + ";");
 
         Label title = new Label("Gestion des alertes");
-        title.setStyle("-fx-font-size:22px;-fx-font-weight:bold;-fx-text-fill:" + TEXT_DARK + ";");
+        title.setStyle("-fx-font-size:22px;-fx-font-weight:bold;-fx-text-fill:white;");
 
         VBox card = buildCard();
         VBox.setVgrow(card, Priority.ALWAYS);
@@ -109,10 +109,13 @@ public class AdminAlertsView extends BorderPane {
     private VBox buildCard() {
         VBox card = new VBox(0);
         card.setStyle(
-                "-fx-background-color:" + CARD_BG + ";" +
-                        "-fx-background-radius:12;" +
-                        "-fx-effect:dropshadow(gaussian,rgba(0,0,0,0.08),12,0,0,3);"
-        );
+            "-fx-background-color:" + CARD_BG + ";" +
+            "-fx-background-radius:18;" +
+            "-fx-border-color:rgba(255,255,255,0.18);" +
+            "-fx-border-radius:18;" +
+            "-fx-border-width:1;" +
+            "-fx-effect:dropshadow(gaussian,rgba(0,0,0,0.30),24,0,0,8);"
+    );
         card.setPadding(new Insets(20, 24, 0, 24));
         VBox.setVgrow(card, Priority.ALWAYS);
 
@@ -225,7 +228,13 @@ public class AdminAlertsView extends BorderPane {
     @SuppressWarnings("unchecked")
     private void buildTable() {
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        table.setStyle("-fx-background-color:transparent;-fx-border-color:transparent;");
+        table.setStyle(
+            "-fx-background-color:transparent;" +
+            "-fx-border-color:rgba(255,255,255,0.18);" +
+            "-fx-border-radius:8;" +
+            "-fx-control-inner-background:#06172b;" +
+            "-fx-table-cell-border-color:rgba(255,255,255,0.08);"
+        );
         table.setFixedCellSize(52);
 
         TableColumn<Alert, AlertType> colType = new TableColumn<>("Type");
@@ -256,7 +265,7 @@ public class AdminAlertsView extends BorderPane {
                 );
 
                 Label txt = new Label(formatType(item));
-                txt.setStyle("-fx-font-size:13px;-fx-text-fill:" + TEXT_DARK + ";");
+                txt.setStyle("-fx-font-size:13px;-fx-text-fill:white;");
 
                 box.getChildren().addAll(code, txt);
 
@@ -421,7 +430,7 @@ public class AdminAlertsView extends BorderPane {
 
             row.setOnMouseEntered(e -> {
                 if (!row.isEmpty()) {
-                    row.setStyle("-fx-background-color:#f0f5ff;");
+                    row.setStyle("-fx-background-color:#0b2d4f;");
                 }
             });
 
@@ -434,15 +443,14 @@ public class AdminAlertsView extends BorderPane {
     }
 
     private void applyRowStyle(TableRow<Alert> row) {
-        if (row.isEmpty()) return;
-
-        Alert alert = row.getItem();
-
-        if (alert != null && alert.isSuggestion()) {
-            row.setStyle("-fx-background-color:#fffbeb;");
-        } else {
-            row.setStyle(row.getIndex() % 2 == 0 ? "-fx-background-color:#ffffff;" : "-fx-background-color:#f8fafc;");
+        if (row.isEmpty()) {
+            row.setStyle("-fx-background-color:#06172b;");
+            return;
         }
+    
+        row.setStyle(row.getIndex() % 2 == 0
+                ? "-fx-background-color:#06172b;"
+                : "-fx-background-color:#081f38;");
     }
 
     private Button actionBtn(String label, String bg, String fg) {
@@ -475,7 +483,7 @@ public class AdminAlertsView extends BorderPane {
                     setStyle("");
                 } else {
                     setText(item.toString());
-                    setStyle("-fx-font-size:13px;-fx-text-fill:" + TEXT_DARK + ";");
+                    setStyle("-fx-font-size:13px;-fx-text-fill:white;");
                 }
             }
         });
