@@ -557,6 +557,29 @@ public class RouteGraph {
         refreshAllEdges();
     }
 
+    public List<Edge> addZoneAndConnectToNearest(Zone newZone, int count) {
+        List<Edge> created = new ArrayList<>();
+    
+        if (newZone == null) return created;
+    
+        // Ajouter la zone au graphe
+        zoneMap.put(newZone.getId(), newZone);
+    
+        List<Zone> nearestZones = zoneMap.values().stream()
+            .filter(z -> z.getId() != newZone.getId())
+            .sorted(Comparator.comparingDouble(z -> geoDistanceSquared(newZone, z)))
+            .limit(count)
+            .collect(Collectors.toList());
+    
+        for (Zone z : nearestZones) {
+            Edge e = addEdge(newZone, z);
+            if (e != null) created.add(e);
+        }
+    
+        refreshAllEdges();
+        return created;
+    }
+
     public List<Edge> getEdgesForZone(Zone zone) {
         return edges.stream()
             .filter(e -> e.getFromZone().getId() == zone.getId()
