@@ -378,24 +378,6 @@ java -jar target/FloodRoute-1.0.jar
 
 
 
----
-
-<br/>
-
-## ⚠️ Difficultés rencontrées
-
-- **Synchronisation de la simulation** — gérer la propagation sans bloquer le thread JavaFX
-- **Mise à jour dynamique du graphe** — recalculer les itinéraires sans recréer le graphe entier
-- **Gestion des accès concurrents** — plusieurs agents interagissant simultanément sur les mêmes nœuds
-- **Différenciation des interfaces par profil** — vues flexibles sans duplication de code
-- **Modélisation des contraintes PMR** — pondération correcte des arêtes selon le type d'agent
-
----
-
-<br/>
-
-
-
 
 
 
