@@ -63,15 +63,19 @@ public class RegisterController {
 
 
         if ("rescue".equalsIgnoreCase(roleKey)) {
-            newAgent = new RescueAgent(0, firstName, lastName, null);
+            RescueAgent rescue = new RescueAgent(0, firstName, lastName, null);
+            rescue.setState(model.enums.RescueState.DISPONIBLE);
+            newAgent = rescue;
         } 
         else if ("citizen".equalsIgnoreCase(roleKey)) {
             if (isPmr) {
-                newAgent = new PMRAgent(0, firstName, lastName, null);
+                PMRAgent pmr = new PMRAgent(0, firstName, lastName, null);
+                pmr.setState(model.enums.CitizenState.CALM);
+                newAgent = pmr;
             } else {
                 Citizen citizen = new Citizen(0, firstName, lastName, null);
-                // Calcul automatique de l'âge et du statut via la méthode de la classe Citizen
                 citizen.calculateMobilityStatus(birthDate);
+                citizen.setState(model.enums.CitizenState.CALM);
                 newAgent = citizen;
             }
         } else {

@@ -276,12 +276,11 @@ public class ZonePainter implements Painter<JXMapViewer> {
                 "<b style='font-size:13px;'>%s</b><hr style='margin:4px 0;border-color:#1e293b'/>" +
                 "<table cellspacing='2'>" +
                 "<tr><td style='color:#94a3b8;'>Statut</td><td><b>%s</b></td></tr>" +
-                "<tr><td style='color:#94a3b8;'>Population</td><td>%,d hab.</td></tr>" +
                 "<tr><td style='color:#94a3b8;'>Altitude</td><td>%s%s</td></tr>" +
                 "</table>" +
                 "<div style='font-size:10px;color:#94a3b8;margin-top:4px;'>%s</div>" +
                 "</div></html>",
-                zone.getName(), status, zone.getPopulation(), altInfo, altWarning,
+                zone.getName(), status, altInfo, altWarning,
                 truncate(zone.getDescription(), 60));
 
             JOptionPane.showMessageDialog(

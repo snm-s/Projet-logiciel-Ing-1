@@ -448,8 +448,9 @@ public class FloodSimulation {
 
     public void setAgents(List<Agent> agents) {
         this.agents.clear();
-        if (agents != null) this.agents.addAll(agents);
-        notifyAgentChange();
+        if (agents != null) {
+            this.agents.addAll(agents);
+        }
     }
 
     private void persist() {

@@ -107,6 +107,7 @@ public class Edge {
     // Au démarrage : arête normale
     return EdgeState.SAFE;
 }
+
     /** Met à jour l'état et notifie les observateurs si changement. */
     public void refreshState() {
         EdgeState newState = computeState();

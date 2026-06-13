@@ -1,6 +1,5 @@
 package model.agent;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import model.enums.RescueState;
@@ -38,12 +37,12 @@ public class RescueAgent extends Agent {
     // Constructeur vide nécessaire pour Jackson
     public RescueAgent() {
         super();
-        this.state = RescueState.INDISPONIBLE; // État par défaut
+        this.state = RescueState.DISPONIBLE; // État par défaut
     }
     
     public RescueAgent(int id, String firstName, String lastName, Node position) {
         super(id, firstName, lastName, position);
-        this.state = RescueState.INDISPONIBLE; // État par défaut
+        this.state = RescueState.DISPONIBLE; // État par défaut
     }
 
         public RescueAgent(int id,String firstName,String lastName, Node position,Zone currentZone) {

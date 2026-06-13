@@ -82,7 +82,6 @@ public class RegisterView extends StackPane {
     private CheckBox pmrCheckBox = new CheckBox("Je suis une personne à mobilité réduite (PMR)");
     private TextArea medicalNeeds = new TextArea();
     private TextField emergencyContact = new TextField();
-    private CheckBox checkLoc = new CheckBox("J'accepte de partager ma localisation en temps réel*");
     private Button registerBtn = new Button("Créer mon compte");
 
     private Label errFirstName = errLabel(), errLastName = errLabel(), errBirthDate = errLabel(),
@@ -497,14 +496,14 @@ public class RegisterView extends StackPane {
         });
 
         city.setText("Lyon");
-        city.setEditable(false);
-        city.setPromptText("Ville");
-        applyTextFieldStyle(city);
+city.setEditable(false);
+city.setPromptText("Ville");
+applyTextFieldStyle(city);
 
-        country.setText("France");
-        country.setEditable(false);
-        country.setPromptText("Pays");
-        applyTextFieldStyle(country);
+country.setText("France");
+country.setEditable(false);
+country.setPromptText("Pays");
+applyTextFieldStyle(country);
 
         country.setPromptText("Pays");
         applyTextFieldStyle(country);
@@ -613,11 +612,6 @@ public class RegisterView extends StackPane {
         citizenBox.setManaged(false);
         root.getChildren().add(citizenBox);
 
-        styleCheckBox(checkLoc);
-        checkLoc.setTextFill(Color.web(TEXT)); 
-        VBox.setMargin(checkLoc, new Insets(20, 0, 5, 0)); // Un peu d'espace avant le bouton
-        root.getChildren().add(checkLoc);
-
         registerBtn.setMaxWidth(Double.MAX_VALUE);
         registerBtn.setPrefHeight(52);
         registerBtn.setFont(Font.font("System", FontWeight.BOLD, 15));
@@ -626,18 +620,6 @@ public class RegisterView extends StackPane {
         registerBtn.setOnMouseEntered(e -> registerBtn.setStyle(mainButtonStyle(true)));
         registerBtn.setOnMouseExited(e -> registerBtn.setStyle(mainButtonStyle(false)));
         registerBtn.setOnAction(e -> handleRegister());
-
-        registerBtn.setOnAction(e -> {
-            if (!checkLoc.isSelected()) {
-                // Retour visuel simple pour indiquer l'erreur
-                checkLoc.setStyle("-fx-text-fill: " + ERROR + "; -fx-cursor: hand;");
-                return; // On arrête l'exécution ici
-            }
-            
-            // Si coché, on réinitialise et on continue
-            checkLoc.setStyle("-fx-text-fill: " + TEXT + "; -fx-cursor: hand;");
-            handleRegister();
-        });
 
         VBox.setMargin(registerBtn, new Insets(16, 0, 0, 0));
         root.getChildren().add(registerBtn);

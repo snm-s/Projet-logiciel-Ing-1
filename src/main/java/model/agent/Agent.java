@@ -5,8 +5,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.time.Period;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
@@ -156,7 +154,13 @@ public abstract class Agent {
     
 
     // Getters et Setters basiques pour que le code compile
-    public int getId() {return id;}
+    public int getId() {
+        return id;
+    }
+    
+    public void setId(int id) {
+        this.id = id;
+    }
     public String getFirstName() { return firstName; }
     public String getLastName() { return lastName; }
     public Node getPosition() { return position; }

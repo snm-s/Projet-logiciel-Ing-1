@@ -6,6 +6,10 @@ import java.util.Map;
 
 import model.agent.AdminAgent;
 import model.agent.Agent;
+import model.agent.Citizen;
+import model.agent.RescueAgent;
+import model.enums.CitizenState;
+import model.enums.RescueState;
 import model.simulation.SimulationDataService;
 
 public class UserService {
@@ -30,10 +34,28 @@ public class UserService {
     }
 
     public static void addAgent(Agent agent) {
-        List<Agent> agents = loadAgents();
-        agents.add(agent);
-        saveAgents(agents);
+    List<Agent> agents = loadAgents();
+
+    int nextId = agents.stream()
+            .mapToInt(Agent::getId)
+            .max()
+            .orElse(0) + 1;
+
+    agent.setId(nextId);
+
+    if (agent instanceof RescueAgent rescue) {
+        rescue.setState(RescueState.DISPONIBLE);
     }
+
+    if (agent instanceof Citizen citizen) {
+        citizen.setState(CitizenState.CALM);
+    }
+
+    agents.add(agent);
+    saveAgents(agents);
+
+    app.Main.getSharedSimulation().addAgent(agent);
+}
 
     public static boolean updateAgent(Agent updatedAgent) {
         if (updatedAgent == null) return false;
