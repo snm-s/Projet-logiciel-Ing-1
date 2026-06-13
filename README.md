@@ -11,15 +11,6 @@
 
 <img src="src/main/resources/images/header.svg" alt="FloodRoute Banner" width="100%"/>
 
-<br/>
-
-[![Java](https://img.shields.io/badge/Java-21-007396?style=for-the-badge&logo=openjdk&logoColor=white)](https://www.java.com)
-[![JavaFX](https://img.shields.io/badge/JavaFX-21-0078D7?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjfx.io)
-[![Maven](https://img.shields.io/badge/Maven-3.9-C71A36?style=for-the-badge&logo=apachemaven&logoColor=white)](https://maven.apache.org)
-[![Licence](https://img.shields.io/badge/Licence-Académique-4A90E2?style=for-the-badge)](.)
-[![Statut](https://img.shields.io/badge/Statut-Soutenu-22c55e?style=for-the-badge)](.)
-
-<br/>
 
 **Projet de fin d'année — ING1 GI4 · CY Tech · 2025–2026**  
 Matière : Agents et Graphes &nbsp;·&nbsp; Tutrice : D. Zaouche &nbsp;·&nbsp; Jury : S. Hawari
