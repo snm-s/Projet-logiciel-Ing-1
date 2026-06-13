@@ -3,8 +3,6 @@ package model.strategy;
 import java.util.List;
 
 import model.agent.Agent;
-import model.agent.Citizen;
-import model.enums.CitizenState;
 import model.graph.Node;
 import model.zone.Zone;
 
@@ -20,10 +18,8 @@ public class PMRStrategy implements Strategy {
             return agent.getDestination();
         }
 
-        if (agent instanceof Citizen) {
-            ((Citizen) agent).setState(CitizenState.PMR);
-        }
-
+        // Les PMR utilisent temporairement le même comportement
+// d'évacuation que les autres citoyens.
         Node target = Strategy.findNearestSafeZone(agent.getPosition(), zones);
         return target != null ? target : Strategy.findHighestSafeZone(zones);
     }

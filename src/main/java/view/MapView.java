@@ -422,13 +422,32 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     public EditMode getEditMode() { return editMode; }
 
     public void setFloodSpeedFromSlider(double sliderValue) {
-        floodTimerDelayMs = (int) sliderValue;
-    
-        floodRadiusStep = Math.max(0.5, 1000.0 / sliderValue);
+        // Slider range [200..5000]ms, where low = fast and high = slow.
+        // We keep the flood clearly visible but much slower by default.
+        double clamped = Math.max(200.0, Math.min(5000.0, sliderValue));
+        double ratioFast = (5000.0 - clamped) / 4800.0; // 0=slow, 1=fast
+
+        // Timer cadence: slow 450ms -> fast 150ms
+        floodTimerDelayMs = (int) Math.round(450.0 - (300.0 * ratioFast));
+
+        // Radius growth per tick: slow 0.35px -> fast 1.60px
+        floodRadiusStep = 0.35 + (1.25 * ratioFast);
     
         if (floodTimer != null && floodTimer.isRunning()) {
             startFloodPropagation();
         }
+    }
+
+    public void pauseFloodPropagation() {
+        if (floodTimer != null) {
+            floodTimer.stop();
+        }
+    }
+
+    public void resumeFloodPropagation() {
+        if (floodCenter == null) return;
+        if (floodRadius >= 260) return;
+        startFloodPropagation();
     }
 
     public void addRandomNodes(int count) {
@@ -668,7 +687,7 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
             }
     
             if (touched) {
-                edge.setFloodLevel(edge.getFloodLevel() + 0.12);
+                edge.setFloodLevel(edge.getFloodLevel() + 0.05);
             }
         }
     
