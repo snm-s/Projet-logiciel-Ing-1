@@ -15,6 +15,16 @@
 **Projet de fin d'année — ING1 GI4 · CY Tech · 2025–2026**  
 Matière : Agents et Graphes &nbsp;·&nbsp; Tutrice : D. Zaouche &nbsp;·&nbsp; Jury : S. Hawari
 
+<br/>
+
+[![Java](https://img.shields.io/badge/Java-21-007396?style=for-the-badge&logo=openjdk&logoColor=white)](https://www.java.com)
+[![JavaFX](https://img.shields.io/badge/JavaFX-21-0078D7?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjfx.io)
+[![Maven](https://img.shields.io/badge/Maven-3.9-C71A36?style=for-the-badge&logo=apachemaven&logoColor=white)](https://maven.apache.org)
+[![Licence](https://img.shields.io/badge/Licence-Académique-4A90E2?style=for-the-badge)](.)
+[![Statut](https://img.shields.io/badge/Statut-Soutenu-22c55e?style=for-the-badge)](.)
+
+<br/>
+
 </div>
 
 
@@ -22,15 +32,6 @@ Matière : Agents et Graphes &nbsp;·&nbsp; Tutrice : D. Zaouche &nbsp;·&nbsp; 
 
 <img width="100%" src="https://capsule-render.vercel.app/api?type=waving&height=200&color=0:001B44,35:003B8F,70:006DFF,100:00B7FF&text=FloodRoute&fontColor=FFFFFF&fontSize=80&fontAlignY=42&desc=Simulation%20d'inondation%20avec%20agents%20et%20graphes&descAlignY=62&descSize=20"/>
 
-
-
-<img src="src/main/resources/images/header.svg" alt="FloodRoute Banner" width="100%"/>
-
-<br/>
-
-> _Anticiper. Alerter. Protéger._
-
-<br/>
 
 | Formation | Groupe | Matière | Année |
 |:---------:|:------:|:-------:|:-----:|
