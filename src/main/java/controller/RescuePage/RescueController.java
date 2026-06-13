@@ -16,10 +16,18 @@ public class RescueController {
 
     private final FloodSimulation simulation;
 
+    /**
+     * Constructs a new RescueController.
+     * @param simulation the simulation.
+     */
     public RescueController(FloodSimulation simulation) {
         this.simulation = simulation;
     }
 
+    /**
+     * Returns the simulation.
+     * @return the FloodSimulation.
+     */
     public FloodSimulation getSimulation() {
         return simulation;
     }
@@ -28,42 +36,82 @@ public class RescueController {
     // STATISTIQUES
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Returns the deployed agents.
+     * @return the int result.
+     */
     public int getDeployedAgents() {
         return Math.max(simulation.getActiveAgentsCount(), 24);
     }
 
+    /**
+     * Returns the rescued victims.
+     * @return the int result.
+     */
     public int getRescuedVictims() {
         return simulation.getRescuedVictimsCount();
     }
 
+    /**
+     * Returns the active missions.
+     * @return the int result.
+     */
     public int getActiveMissions() {
         return Math.max(simulation.getActiveMissionsCount(), 3);
     }
 
+    /**
+     * Returns the active alerts count.
+     * @return the int result.
+     */
     public int getActiveAlertsCount() {
         return simulation.getAlertSystem().getActiveAlerts().size();
     }
 
+    /**
+     * Returns the recent alerts.
+     * @return the List<Alert>.
+     */
     public List<Alert> getRecentAlerts() {
         return simulation.getAlertSystem().getActiveAlerts();
     }
 
+    /**
+     * Returns the zones.
+     * @return the List<Zone>.
+     */
     public List<Zone> getZones() {
         return new ZoneManager().getZones();
     }
 
+    /**
+     * Returns the agents.
+     * @return the List<Agent>.
+     */
     public List<Agent> getAgents() {
         return simulation.getAgents();
     }
 
+    /**
+     * Returns the flooded zones count.
+     * @return the int result.
+     */
     public int getFloodedZonesCount() {
         return (int) getZones().stream().filter(Zone::isFlooded).count();
     }
 
+    /**
+     * Returns the safe zones count.
+     * @return the int result.
+     */
     public int getSafeZonesCount() {
         return (int) getZones().stream().filter(z -> !z.isFlooded()).count();
     }
 
+    /**
+     * Returns the operational status.
+     * @return the String.
+     */
     public String getOperationalStatus() {
         int alerts = getActiveAlertsCount();
         if (alerts >= 5) return "Crise majeure";

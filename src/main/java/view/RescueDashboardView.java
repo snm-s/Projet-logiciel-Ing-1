@@ -54,10 +54,17 @@ public class RescueDashboardView extends BorderPane {
     // CONSTRUCTION
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Constructs a new RescueDashboardView.
+     */
     public RescueDashboardView() {
         this(new RescueController(Main.getSharedSimulation()));
     }
 
+    /**
+     * Constructs a new RescueDashboardView.
+     * @param controller the controller.
+     */
     public RescueDashboardView(RescueController controller) {
         this.controller = controller;
         this.dataService = new SimulationDataService();
@@ -101,6 +108,10 @@ public class RescueDashboardView extends BorderPane {
     // SIDEBAR
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Builds sidebar.
+     * @return the VBox.
+     */
     private VBox buildSidebar() {
         sidebar = new VBox(9);
         sidebar.setPrefWidth(252);
@@ -171,6 +182,10 @@ public class RescueDashboardView extends BorderPane {
     // DASHBOARD
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Builds dashboard content.
+     * @return the VBox.
+     */
     private VBox buildDashboardContent() {
         VBox root = new VBox(24);
         root.setPadding(new Insets(30));
@@ -263,6 +278,10 @@ if (missionsActives == 0) {
     // PAGE CARTE
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Builds map page.
+     * @return the BorderPane.
+     */
     private BorderPane buildMapPage() {
         BorderPane page = new BorderPane();
         page.setPadding(new Insets(26));
@@ -318,6 +337,11 @@ if (missionsActives == 0) {
     // COMPOSANTS UI
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Performs chip.
+     * @param z the z.
+     * @return the VBox.
+     */
     private VBox zoneChip(Zone z) {
         VBox chip = new VBox(5);
         chip.setPrefWidth(190);
@@ -332,14 +356,28 @@ if (missionsActives == 0) {
         return chip;
     }
 
+    /**
+     * Displays page.
+     * @param page the page.
+     */
     private void showPage(Node page) { contentRoot.getChildren().setAll(page); }
 
+    /**
+     * Sets the active.
+     * @param selected the selected.
+     */
     private void setActive(Button selected) {
         if (activeButton != null) activeButton.setStyle(sidebarStyle(false));
         activeButton = selected;
         if (activeButton != null) activeButton.setStyle(sidebarStyle(true));
     }
 
+    /**
+     * Performs button.
+     * @param text the text.
+     * @param iconType the iconType.
+     * @return the Button.
+     */
     private Button sidebarButton(String text, String iconType) {
         Button btn = new Button(text);
         btn.setGraphic(createSidebarIcon(iconType));
@@ -357,6 +395,11 @@ if (missionsActives == 0) {
         return btn;
     }
 
+    /**
+     * Creates sidebar icon.
+     * @param type the type.
+     * @return the Node.
+     */
     private Node createSidebarIcon(String type) {
         SVGPath icon = new SVGPath();
         switch (type) {
@@ -378,6 +421,11 @@ if (missionsActives == 0) {
         return box;
     }
 
+    /**
+     * Performs style.
+     * @param active the active.
+     * @return the String.
+     */
     private String sidebarStyle(boolean active) {
         return active
             ? "-fx-background-color:linear-gradient(to right, #b91c1c, #ef4444);"
@@ -388,12 +436,25 @@ if (missionsActives == 0) {
               + "-fx-border-radius:12; -fx-cursor:hand;";
     }
 
+    /**
+     * Performs card.
+     * @param titleStr the titleStr.
+     * @param value the value.
+     * @param color the color.
+     * @return the VBox.
+     */
     private VBox miniCard(String titleStr, String value, String color) {
         VBox card = glassCard(16);
         card.getChildren().addAll(muted(titleStr, 12), label(value, color, 18, true));
         return card;
     }
 
+    /**
+     * Performs item.
+     * @param text the text.
+     * @param time the time.
+     * @return the HBox.
+     */
     private HBox logItem(String text, String time) {
         HBox item = new HBox(10);
         item.setAlignment(Pos.CENTER_LEFT);
@@ -403,6 +464,13 @@ if (missionsActives == 0) {
         return item;
     }
 
+    /**
+     * Performs item.
+     * @param text the text.
+     * @param status the status.
+     * @param color the color.
+     * @return the HBox.
+     */
     private HBox statusItem(String text, String status, String color) {
         HBox item = new HBox(10);
         Region sp = new Region();
@@ -411,6 +479,12 @@ if (missionsActives == 0) {
         return item;
     }
 
+    /**
+     * Performs badge.
+     * @param labelStr the labelStr.
+     * @param value the value.
+     * @return the VBox.
+     */
     private VBox resourceBadge(String labelStr, String value) {
         VBox b = new VBox(4);
         b.setPadding(new Insets(12));
@@ -419,6 +493,11 @@ if (missionsActives == 0) {
         return b;
     }
 
+    /**
+     * Performs link.
+     * @param text the text.
+     * @return the Hyperlink.
+     */
     private Hyperlink link(String text) {
         Hyperlink h = new Hyperlink(text);
         h.setTextFill(Color.web(BLUE_2));
@@ -426,6 +505,11 @@ if (missionsActives == 0) {
         return h;
     }
 
+    /**
+     * Performs card.
+     * @param padding the padding.
+     * @return the VBox.
+     */
     private VBox glassCard(int padding) {
         VBox box = new VBox(10);
         box.setPadding(new Insets(padding));
@@ -433,15 +517,40 @@ if (missionsActives == 0) {
         return box;
     }
 
+    /**
+     * Performs style.
+     * @param radius the radius.
+     * @return the String.
+     */
     private String glassStyle(int radius) {
         return "-fx-background-color:" + GLASS + "; -fx-background-radius:" + radius + ";"
             + "-fx-border-color:" + BORDER_GLASS + "; -fx-border-radius:" + radius + ";"
             + "-fx-effect:dropshadow(gaussian, rgba(0,0,0,0.30), 24, 0, 0, 8);";
     }
 
+    /**
+     * Performs title.
+     * @param text the text.
+     * @param size the size.
+     * @return the Label.
+     */
     private Label title(String text, int size) { return label(text, WHITE, size, true); }
+    /**
+     * Performs muted.
+     * @param text the text.
+     * @param size the size.
+     * @return the Label.
+     */
     private Label muted(String text, int size)  { return label(text, LIGHT, size, false); }
 
+    /**
+     * Performs label.
+     * @param text the text.
+     * @param color the color.
+     * @param size the size.
+     * @param bold the bold.
+     * @return the Label.
+     */
     private Label label(String text, String color, int size, boolean bold) {
         Label l = new Label(text);
         l.setTextFill(Color.web(color));
@@ -449,6 +558,11 @@ if (missionsActives == 0) {
         return l;
     }
 
+    /**
+     * Performs button.
+     * @param text the text.
+     * @return the Button.
+     */
     private Button blueButton(String text) {
         Button b = new Button(text);
         b.setStyle("-fx-background-color:linear-gradient(to right, #0b5cbf, #1683ff);"
@@ -456,6 +570,11 @@ if (missionsActives == 0) {
         return b;
     }
 
+    /**
+     * Performs button.
+     * @param text the text.
+     * @return the Button.
+     */
     private Button darkButton(String text) {
         Button b = new Button(text);
         b.setStyle("-fx-background-color:rgba(255,255,255,0.07); -fx-text-fill:#b8c7dd;"
@@ -464,6 +583,10 @@ if (missionsActives == 0) {
         return b;
     }
 
+    /**
+     * Creates logo icon.
+     * @return the StackPane.
+     */
     private StackPane createLogoIcon() {
         SVGPath logo = new SVGPath();
         logo.setContent("M15 2 L28 12 H23 V22 H7 V12 H2 Z M2 25 Q8 23 15 25 T28 25 M2 28 Q8 26 15 28 T28 28");

@@ -26,6 +26,9 @@ public class MapLegendPanel extends JPanel {
     private static final Color TEXT   = new Color(241, 245, 249);
     private static final Color MUTED  = new Color(148, 163, 184);
 
+    /**
+     * Constructs a new MapLegendPanel.
+     */
     public MapLegendPanel() {
         setBackground(BG);
         setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
@@ -33,6 +36,9 @@ public class MapLegendPanel extends JPanel {
         build();
     }
 
+    /**
+     * Builds.
+     */
     private void build() {
         addTitle("Zones");
         addItem(new Color(34, 197, 94, 200),  "Zone sûre");
@@ -51,6 +57,10 @@ public class MapLegendPanel extends JPanel {
         addRouteItem(new Color(239, 68, 68),  true,  "Inondée");
     }
 
+    /**
+     * Adds title.
+     * @param text the text.
+     */
     private void addTitle(String text) {
         JLabel lbl = new JLabel(text.toUpperCase());
         lbl.setForeground(MUTED);
@@ -60,6 +70,11 @@ public class MapLegendPanel extends JPanel {
         add(Box.createVerticalStrut(4));
     }
 
+    /**
+     * Adds item.
+     * @param color the color.
+     * @param label the label.
+     */
     private void addItem(Color color, String label) {
         JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
         row.setBackground(BG);
@@ -90,6 +105,12 @@ public class MapLegendPanel extends JPanel {
         add(row);
     }
 
+    /**
+     * Adds route item.
+     * @param color the color.
+     * @param dashed the dashed.
+     * @param label the label.
+     */
     private void addRouteItem(Color color, boolean dashed, String label) {
         JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
         row.setBackground(BG);

@@ -56,11 +56,21 @@ public class AdminAlertsView extends BorderPane {
 
     private controller.AdminPage.AdminAlertsController controller;
 
+    /**
+     * Create the admin alerts management view.
+     */
     public AdminAlertsView() {
         this.setStyle("-fx-background-color:" + CONTENT_BG + ";");
         this.setCenter(buildContent());
     }
 
+    /**
+     * Performs item.
+     * @param icon the icon.
+     * @param label the label.
+     * @param active the active.
+     * @return the HBox.
+     */
     private HBox sideItem(String icon, String label, boolean active) {
         HBox item = new HBox(12);
         item.setPadding(new Insets(10, 14, 10, 14));
@@ -89,6 +99,11 @@ public class AdminAlertsView extends BorderPane {
         return item;
     }
 
+    /**
+     * Build the main content node containing title and alerts card.
+     *
+     * @return VBox root content
+     */
     private VBox buildContent() {
         VBox content = new VBox(16);
         content.setPadding(new Insets(30, 30, 30, 30));
@@ -106,6 +121,11 @@ public class AdminAlertsView extends BorderPane {
         return content;
     }
 
+    /**
+     * Build the card UI that contains the alerts table and actions.
+     *
+     * @return VBox card node
+     */
     private VBox buildCard() {
         VBox card = new VBox(0);
         card.setStyle(
@@ -132,6 +152,11 @@ public class AdminAlertsView extends BorderPane {
         return card;
     }
 
+    /**
+     * Build the top row with tabs and create button.
+     *
+     * @return HBox containing tabs and actions
+     */
     private HBox buildTopRow() {
         tabToutes = makeTab("Toutes", true);
         tabActives = makeTab("Actives", false);
@@ -188,6 +213,12 @@ public class AdminAlertsView extends BorderPane {
         return row;
     }
 
+    /**
+     * Performs tab.
+     * @param text the text.
+     * @param active the active.
+     * @return the Label.
+     */
     private Label makeTab(String text, boolean active) {
         Label lbl = new Label(text);
         lbl.setCursor(Cursor.HAND);
@@ -195,6 +226,11 @@ public class AdminAlertsView extends BorderPane {
         return lbl;
     }
 
+    /**
+     * Performs tab.
+     * @param lbl the lbl.
+     * @param active the active.
+     */
     private void styleTab(Label lbl, boolean active) {
         if (active) {
             lbl.setStyle(
@@ -214,6 +250,11 @@ public class AdminAlertsView extends BorderPane {
         }
     }
 
+    /**
+     * Switch the visible tab of the alerts view and refresh the table.
+     *
+     * @param tab name of the tab to switch to
+     */
     private void switchTab(String tab) {
         currentTab = tab;
 
@@ -226,6 +267,9 @@ public class AdminAlertsView extends BorderPane {
     }
 
     @SuppressWarnings("unchecked")
+    /**
+     * Builds table.
+     */
     private void buildTable() {
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setStyle(
@@ -242,6 +286,11 @@ public class AdminAlertsView extends BorderPane {
         colType.setPrefWidth(140);
         colType.setCellFactory(c -> new TableCell<>() {
             @Override
+            /**
+             * Updates item.
+             * @param item the item.
+             * @param empty the empty.
+             */
             protected void updateItem(AlertType item, boolean empty) {
                 super.updateItem(item, empty);
 
@@ -283,6 +332,11 @@ public class AdminAlertsView extends BorderPane {
         colSev.setPrefWidth(90);
         colSev.setCellFactory(c -> new TableCell<>() {
             @Override
+            /**
+             * Updates item.
+             * @param value the value.
+             * @param empty the empty.
+             */
             protected void updateItem(String value, boolean empty) {
                 super.updateItem(value, empty);
 
@@ -308,6 +362,11 @@ public class AdminAlertsView extends BorderPane {
         colStat.setPrefWidth(90);
         colStat.setCellFactory(c -> new TableCell<>() {
             @Override
+            /**
+             * Updates item.
+             * @param value the value.
+             * @param empty the empty.
+             */
             protected void updateItem(String value, boolean empty) {
                 super.updateItem(value, empty);
 
@@ -402,6 +461,11 @@ public class AdminAlertsView extends BorderPane {
             }
 
             @Override
+            /**
+             * Updates item.
+             * @param value the value.
+             * @param empty the empty.
+             */
             protected void updateItem(Void value, boolean empty) {
                 super.updateItem(value, empty);
 
@@ -442,6 +506,10 @@ public class AdminAlertsView extends BorderPane {
         refreshTable();
     }
 
+    /**
+     * Performs row style.
+     * @param row the row.
+     */
     private void applyRowStyle(TableRow<Alert> row) {
         if (row.isEmpty()) {
             row.setStyle("-fx-background-color:#06172b;");
@@ -453,6 +521,13 @@ public class AdminAlertsView extends BorderPane {
                 : "-fx-background-color:#081f38;");
     }
 
+    /**
+     * Performs btn.
+     * @param label the label.
+     * @param bg the bg.
+     * @param fg the fg.
+     * @return the Button.
+     */
     private Button actionBtn(String label, String bg, String fg) {
         Button btn = new Button(label);
         btn.setStyle(
@@ -468,6 +543,13 @@ public class AdminAlertsView extends BorderPane {
         return btn;
     }
 
+    /**
+     * Performs col.
+     * @param header the header.
+     * @param prop the prop.
+     * @param width the width.
+     * @return the TableColumn<Alert, T>.
+     */
     private <T> TableColumn<Alert, T> plainCol(String header, String prop, double width) {
         TableColumn<Alert, T> col = new TableColumn<>(header);
         col.setCellValueFactory(new PropertyValueFactory<>(prop));
@@ -475,6 +557,11 @@ public class AdminAlertsView extends BorderPane {
 
         col.setCellFactory(c -> new TableCell<Alert, T>() {
             @Override
+            /**
+             * Updates item.
+             * @param item the item.
+             * @param empty the empty.
+             */
             protected void updateItem(T item, boolean empty) {
                 super.updateItem(item, empty);
 
@@ -491,6 +578,9 @@ public class AdminAlertsView extends BorderPane {
         return col;
     }
 
+    /**
+     * Refreshes table.
+     */
     public void refreshTable() {
         ObservableList<Alert> filtered = FXCollections.observableArrayList();
 
@@ -512,6 +602,9 @@ public class AdminAlertsView extends BorderPane {
         table.refresh();
     }
 
+    /**
+     * Performs create dialog.
+     */
     private void openCreateDialog() {
         Dialog<Alert> dlg = new Dialog<>();
         dlg.setTitle("Créer une alerte");
@@ -569,12 +662,21 @@ public class AdminAlertsView extends BorderPane {
         });
     }
 
+    /**
+     * Performs enum.
+     * @return the ComboBox<AlertType>.
+     */
     private ComboBox<AlertType> comboEnum() {
         ComboBox<AlertType> cb = new ComboBox<>(FXCollections.observableArrayList(AlertType.values()));
         cb.setStyle("-fx-font-size:13px;-fx-pref-width:220px;");
         return cb;
     }
 
+    /**
+     * Performs field.
+     * @param prompt the prompt.
+     * @return the TextField.
+     */
     private TextField field(String prompt) {
         TextField tf = new TextField();
         tf.setPromptText(prompt);
@@ -582,18 +684,33 @@ public class AdminAlertsView extends BorderPane {
         return tf;
     }
 
+    /**
+     * Performs combo.
+     * @param items the items.
+     * @return the ComboBox<String>.
+     */
     private ComboBox<String> combo(String... items) {
         ComboBox<String> cb = new ComboBox<>(FXCollections.observableArrayList(items));
         cb.setStyle("-fx-font-size:13px;-fx-pref-width:220px;");
         return cb;
     }
 
+    /**
+     * Performs lbl.
+     * @param text the text.
+     * @return the Label.
+     */
     private Label lbl(String text) {
         Label label = new Label(text + " :");
         label.setStyle("-fx-font-size:13px;-fx-text-fill:" + TEXT_DARK + ";-fx-min-width:90px;");
         return label;
     }
 
+    /**
+     * Performs code.
+     * @param type the type.
+     * @return the String.
+     */
     private String typeCode(AlertType type) {
         if (type == null) return "IF";
 
@@ -606,6 +723,11 @@ public class AdminAlertsView extends BorderPane {
         };
     }
 
+    /**
+     * Performs type.
+     * @param type the type.
+     * @return the String.
+     */
     private String formatType(AlertType type) {
         if (type == null) return "Information";
 
@@ -618,6 +740,11 @@ public class AdminAlertsView extends BorderPane {
         };
     }
 
+    /**
+     * Performs color.
+     * @param severity the severity.
+     * @return the String.
+     */
     private String severityColor(String severity) {
         if (severity == null) return TEXT_GRAY;
 
@@ -628,28 +755,52 @@ public class AdminAlertsView extends BorderPane {
         };
     }
 
+    /**
+     * Sets the alerts.
+     * @param alerts the alerts.
+     */
     public void setAlerts(List<Alert> alerts) {
         allAlerts.setAll(alerts);
         refreshTable();
     }
 
+    /**
+     * Sets the suggestions.
+     * @param newSuggestions the newSuggestions.
+     */
     public void setSuggestions(List<Alert> newSuggestions) {
         suggestions.setAll(newSuggestions);
         refreshTable();
     }
 
+    /**
+     * Returns the all alerts.
+     * @return the ObservableList<Alert>.
+     */
     public ObservableList<Alert> getAllAlerts() {
         return allAlerts;
     }
 
+    /**
+     * Returns the suggestions.
+     * @return the ObservableList<Alert>.
+     */
     public ObservableList<Alert> getSuggestions() {
         return suggestions;
     }
 
+    /**
+     * Returns the table.
+     * @return the TableView<Alert>.
+     */
     public TableView<Alert> getTable() {
         return table;
     }
 
+    /**
+     * Sets the controller.
+     * @param controller the controller.
+     */
     public void setController(controller.AdminPage.AdminAlertsController controller) {
         this.controller = controller;
     }

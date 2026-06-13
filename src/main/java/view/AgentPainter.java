@@ -52,10 +52,21 @@ public class AgentPainter implements Painter<JXMapViewer> {
     private boolean animateStaticAgents = false;
     private Integer currentUserId;
 
+    /**
+     * Attach a RouteGraph which provides active movements and topology information.
+     *
+     * @param routeGraph the RouteGraph to use for agent movement visualization
+     */
     public void setRouteGraph(RouteGraph routeGraph) {
         this.routeGraph = routeGraph;
     }
 
+    /**
+     * Set the agents to render and the list of zones used for snapping/default positions.
+     *
+     * @param agents list of agents to display
+     * @param zones  list of zones used for positioning/snapping
+     */
     public void setAgents(List<Agent> agents, List<Zone> zones) {
         this.agents = agents == null ? new ArrayList<>() : new ArrayList<>(agents);
         this.zones = zones == null ? new ArrayList<>() : new ArrayList<>(zones);
@@ -70,10 +81,20 @@ public class AgentPainter implements Painter<JXMapViewer> {
         ensurePositions();
     }
 
+    /**
+     * Return the current list of agents rendered by this painter.
+     *
+     * @return list of Agent
+     */
     public List<Agent> getAgents() {
         return agents;
     }
 
+    /**
+     * Returns whether displayed agent.
+     * @param agent the agent.
+     * @return the boolean result.
+     */
     private boolean isDisplayedAgent(Agent agent) {
 
         if (agent == null) return false;
@@ -82,27 +103,70 @@ public class AgentPainter implements Painter<JXMapViewer> {
                 .anyMatch(a -> a.getId() == agent.getId());
     }
 
+    /**
+     * Update the zones known to this painter (used for snapping and context).
+     *
+     * @param zones new list of zones
+     */
     public void updateZones(List<Zone> zones) {
         this.zones = zones == null ? new ArrayList<>() : new ArrayList<>(zones);
     }
 
+    /**
+     * Enable or disable small animations for static agents.
+     *
+     * @param animateStaticAgents true to animate static agents
+     */
     public void setAnimateStaticAgents(boolean animateStaticAgents) {
         this.animateStaticAgents = animateStaticAgents;
     }
 
-    public void setCurrentUserId(Integer id) {
+        /**
+         * Set the id of the current user (used to highlight a specific agent).
+         *
+         * @param id agent id to consider as current user
+         */
+        public void setCurrentUserId(Integer id) {
             this.currentUserId = id;
-     }
+         }
 
+    /**
+     * Return the agent currently being dragged, or null.
+     *
+     * @return dragged Agent or null
+     */
     public Agent getDraggedAgent() { return draggedAgent; }
+
+    /**
+     * Return the agent currently hovered by the pointer, or null.
+     *
+     * @return hovered Agent or null
+     */
     public Agent getHoveredAgent() { return hoveredAgent; }
+
+    /**
+     * Set the hovered agent used for tooltip rendering.
+     *
+     * @param hoveredAgent agent to mark as hovered
+     */
     public void setHoveredAgent(Agent hoveredAgent) { this.hoveredAgent = hoveredAgent; }
 
+    /**
+     * Begin a drag operation for the specified agent (marks agent as panicked).
+     *
+     * @param agent agent to start dragging
+     */
     public void startDrag(Agent agent) {
         this.draggedAgent = agent;
         setPanic(agent, true);
     }
 
+    /**
+     * Move an agent to a given geo position during a drag operation.
+     *
+     * @param agent    agent being dragged
+     * @param position target GeoPosition
+     */
     public void dragTo(Agent agent, GeoPosition position) {
         if (agent == null || position == null) return;
         edgeByAgent.remove(agent.getId());
@@ -111,6 +175,9 @@ public class AgentPainter implements Painter<JXMapViewer> {
         setPanic(agent, true);
     }
 
+    /**
+     * End the current drag operation and restore agent state if safe.
+     */
     public void endDrag() {
         if (draggedAgent != null) {
             boolean danger = isDangerAt(positionOf(draggedAgent).getLatitude(), positionOf(draggedAgent).getLongitude());
@@ -119,11 +186,19 @@ public class AgentPainter implements Painter<JXMapViewer> {
         draggedAgent = null;
     }
 
+    /**
+     * Snap all static agents to the nearest graph element (edge/node) when possible.
+     */
     public void snapAgentsToGraph() {
         if (routeGraph == null || agents == null) return;
         for (Agent a : agents) snapAgentToNearestGraphElement(a);
     }
 
+    /**
+     * Snap a single agent to the nearest edge on the RouteGraph and update its position.
+     *
+     * @param agent the agent to snap
+     */
     public void snapAgentToNearestGraphElement(Agent agent) {
         if (agent == null || routeGraph == null || routeGraph.getEdges().isEmpty()) return;
 
@@ -151,6 +226,11 @@ public class AgentPainter implements Painter<JXMapViewer> {
         if (snapped != null) agent.setPosition(new Node(snapped.getLatitude(), snapped.getLongitude()));
     }
 
+    /**
+     * Move the agent to the nearest node (zone) on the graph.
+     *
+     * @param agent agent to move
+     */
     public void moveAgentToNearestNode(Agent agent) {
         if (agent == null || routeGraph == null || routeGraph.getEdges().isEmpty()) return;
         GeoPosition p = positionOf(agent);
@@ -169,6 +249,13 @@ public class AgentPainter implements Painter<JXMapViewer> {
         }
     }
 
+    /**
+     * Find an agent located near a screen point (used for click/hover hit-testing).
+     *
+     * @param map         the JXMapViewer instance
+     * @param screenPoint point in screen coords to test
+     * @return the nearest Agent within hit radius, or null
+     */
     public Agent findAgentAt(JXMapViewer map, Point screenPoint) {
         if (map == null || screenPoint == null) return null;
         Agent best = null;
@@ -202,6 +289,13 @@ public class AgentPainter implements Painter<JXMapViewer> {
     }
 
     @Override
+/**
+ * Performs paint.
+ * @param g the g.
+ * @param map the map.
+ * @param w the w.
+ * @param h the h.
+ */
 public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
     if (map == null) return;
 
@@ -270,6 +364,9 @@ public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
     g2.dispose();
 }
 
+    /**
+     * Ensures positions.
+     */
     private void ensurePositions() {
         if (agents == null || agents.isEmpty()) return;
         Random rng = new Random(123);
@@ -284,6 +381,10 @@ public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
         }
     }
 
+    /**
+     * Performs agent on edge.
+     * @param agent the agent.
+     */
     private void advanceAgentOnEdge(Agent agent) {
         if (agent == null || routeGraph == null || routeGraph.getEdges().isEmpty()) return;
         if (!edgeByAgent.containsKey(agent.getId())) snapAgentToNearestGraphElement(agent);
@@ -317,6 +418,12 @@ public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
         if (gp != null) agent.setPosition(new Node(gp.getLatitude(), gp.getLongitude()));
     }
 
+    /**
+     * Performs next edge.
+     * @param from the from.
+     * @param previous the previous.
+     * @return the Edge.
+     */
     private Edge chooseNextEdge(Zone from, Edge previous) {
         if (routeGraph == null || from == null) return null;
         List<Edge> candidates = new ArrayList<>();
@@ -330,10 +437,20 @@ public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
         return candidates.get(Math.floorMod((int) System.nanoTime(), candidates.size()));
     }
 
+    /**
+     * Performs position of.
+     * @param agent the agent.
+     * @return the GeoPosition.
+     */
     private GeoPosition renderedPositionOf(Agent agent) {
         return positionOf(agent);
     }
 
+    /**
+     * Performs of.
+     * @param agent the agent.
+     * @return the GeoPosition.
+     */
     private GeoPosition positionOf(Agent agent) {
         if (agent == null || agent.getPosition() == null) {
             if (!zones.isEmpty()) {
@@ -345,11 +462,23 @@ public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
         return new GeoPosition(agent.getPosition().getLat(), agent.getPosition().getLng());
     }
 
+    /**
+     * Returns whether danger at.
+     * @param lat the lat.
+     * @param lng the lng.
+     * @return the boolean result.
+     */
     private boolean isDangerAt(double lat, double lng) {
         Zone nearest = nearestZone(lat, lng);
         return nearest != null && nearest.isFlooded();
     }
 
+    /**
+     * Performs zone.
+     * @param lat the lat.
+     * @param lng the lng.
+     * @return the Zone.
+     */
     private Zone nearestZone(double lat, double lng) {
         Zone best = null;
         double bestDist = Double.MAX_VALUE;
@@ -362,6 +491,11 @@ public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
         return best;
     }
 
+    /**
+     * Sets the panic.
+     * @param agent the agent.
+     * @param panic the panic.
+     */
     private void setPanic(Agent agent, boolean panic) {
         if (!(agent instanceof Citizen c)) return;
         if (panic) {
@@ -373,6 +507,11 @@ public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
         }
     }
 
+    /**
+     * Returns whether edge risk for panic.
+     * @param edge the edge.
+     * @return the boolean result.
+     */
     private boolean isEdgeRiskForPanic(Edge edge) {
         if (edge == null) return false;
         return switch (edge.getState()) {
@@ -381,6 +520,11 @@ public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
         };
     }
 
+/**
+ * Returns whether panicking.
+ * @param agent the agent.
+ * @return the boolean result.
+ */
 private boolean isPanicking(Agent agent) {
     if (!(agent instanceof Citizen c) || c.getState() == null) {
         return false;
@@ -393,6 +537,12 @@ private boolean isPanicking(Agent agent) {
     return c.getState() == CitizenState.STRESSED;
 }
 
+    /**
+     * Performs for.
+     * @param agent the agent.
+     * @param panicking the panicking.
+     * @return the Color.
+     */
     private Color colorFor(Agent agent, boolean panicking) {
         if (currentUserId != null && agent.getId() == currentUserId && agent instanceof RescueAgent) {
             return new Color(255, 215, 0); // Jaune Or pour se repérer
@@ -414,16 +564,35 @@ private boolean isPanicking(Agent agent) {
         return new Color(30, 136, 229);
     }
 
+    /**
+     * Performs for.
+     * @param agent the agent.
+     * @return the Color.
+     */
     private Color skinFor(Agent agent) {
         Color[] skins = { new Color(0xF2C6A0), new Color(0xE0AC69), new Color(0xC68642), new Color(0x8D5524), new Color(0xFFDBAC) };
         return skins[Math.floorMod(agent.getId(), skins.length)];
     }
 
+    /**
+     * Performs for.
+     * @param agent the agent.
+     * @return the Color.
+     */
     private Color hairFor(Agent agent) {
         Color[] hairs = { new Color(0x2B1D16), new Color(0x111827), new Color(0x5C4033), new Color(0x8B5A2B), new Color(0x3B2F2F) };
         return hairs[Math.floorMod(agent.getId() * 7, hairs.length)];
     }
 
+    /**
+     * Performs mii agent.
+     * @param g2 the g2.
+     * @param agent the agent.
+     * @param x the x.
+     * @param y the y.
+     * @param mainColor the mainColor.
+     * @param panicking the panicking.
+     */
     private void drawMiiAgent(Graphics2D g2, Agent agent, double x, double y, Color mainColor, boolean panicking) {
         long now = System.currentTimeMillis();
         double seed = agent.getId() * 37.0;
@@ -507,6 +676,13 @@ private boolean isPanicking(Agent agent) {
         }
     }
 
+    /**
+     * Performs tooltip if needed.
+     * @param g2 the g2.
+     * @param agent the agent.
+     * @param x the x.
+     * @param y the y.
+     */
     private void drawTooltipIfNeeded(Graphics2D g2, Agent agent, double x, double y) {
         if (agent != hoveredAgent && agent != draggedAgent) return;
         String text = safeName(agent) + " • " + stateLabel(agent);
@@ -520,6 +696,11 @@ private boolean isPanicking(Agent agent) {
         g2.drawString(text, (int) x - width / 2 + 6, (int) y - 34);
     }
 
+    /**
+     * Performs name.
+     * @param agent the agent.
+     * @return the String.
+     */
     private String safeName(Agent agent) {
         String first = agent.getFirstName() == null ? "" : agent.getFirstName();
         String last = agent.getLastName() == null ? "" : agent.getLastName();
@@ -527,6 +708,11 @@ private boolean isPanicking(Agent agent) {
         return full.isBlank() ? "Agent #" + agent.getId() : full;
     }
 
+    /**
+     * Performs label.
+     * @param agent the agent.
+     * @return the String.
+     */
     private String stateLabel(Agent agent) {
         if (agent instanceof Citizen c && c.getState() != null) return c.getState().name();
         if (agent instanceof RescueAgent r && r.getState() != null) return r.getState().name();
@@ -534,6 +720,11 @@ private boolean isPanicking(Agent agent) {
         return "NORMAL";
     }
 
+    /**
+     * Performs waypoints.
+     * @param e the e.
+     * @return the List<GeoPosition>.
+     */
     private List<GeoPosition> cleanWaypoints(Edge e) {
         List<GeoPosition> pts = e == null ? List.of() : e.getWaypoints();
         if (pts == null || pts.size() < 2) {
@@ -543,6 +734,12 @@ private boolean isPanicking(Agent agent) {
         return pts;
     }
 
+    /**
+     * Performs on edge.
+     * @param edge the edge.
+     * @param progress the progress.
+     * @return the GeoPosition.
+     */
     private GeoPosition positionOnEdge(Edge edge, double progress) {
         if (edge == null) return null;
         List<GeoPosition> pts = cleanWaypoints(edge);
@@ -562,6 +759,13 @@ private boolean isPanicking(Agent agent) {
         return pts.get(pts.size() - 1);
     }
 
+    /**
+     * Performs progress.
+     * @param pts the pts.
+     * @param index the index.
+     * @param t the t.
+     * @return the double result.
+     */
     private double segmentProgress(List<GeoPosition> pts, int index, double t) {
         double total = totalLength(pts);
         if (total <= 0) return 0;
@@ -571,12 +775,24 @@ private boolean isPanicking(Agent agent) {
         return acc / total;
     }
 
+    /**
+     * Performs length.
+     * @param pts the pts.
+     * @return the double result.
+     */
     private double totalLength(List<GeoPosition> pts) {
         double total = 0;
         for (int i = 0; i < pts.size() - 1; i++) total += geoDist(pts.get(i), pts.get(i + 1));
         return total;
     }
 
+    /**
+     * Performs on segment.
+     * @param p the p.
+     * @param a the a.
+     * @param b the b.
+     * @return the Projection.
+     */
     private Projection projectOnSegment(GeoPosition p, GeoPosition a, GeoPosition b) {
         double ax = a.getLongitude(), ay = a.getLatitude();
         double bx = b.getLongitude(), by = b.getLatitude();
@@ -589,11 +805,24 @@ private boolean isPanicking(Agent agent) {
         return new Projection(t, geoDist(p, projected));
     }
 
+    /**
+     * Performs lerp.
+     * @param a the a.
+     * @param b the b.
+     * @param t the t.
+     * @return the GeoPosition.
+     */
     private GeoPosition lerp(GeoPosition a, GeoPosition b, double t) {
         return new GeoPosition(a.getLatitude() + (b.getLatitude() - a.getLatitude()) * t,
                 a.getLongitude() + (b.getLongitude() - a.getLongitude()) * t);
     }
 
+    /**
+     * Performs dist.
+     * @param a the a.
+     * @param b the b.
+     * @return the double result.
+     */
     private double geoDist(GeoPosition a, GeoPosition b) {
         if (a == null || b == null) return Double.MAX_VALUE;
         double dLat = a.getLatitude() - b.getLatitude();
@@ -601,7 +830,20 @@ private boolean isPanicking(Agent agent) {
         return Math.sqrt(dLat * dLat + dLng * dLng);
     }
 
+    /**
+     * Performs clamp.
+     * @param v the v.
+     * @param min the min.
+     * @param max the max.
+     * @return the double result.
+     */
     private double clamp(double v, double min, double max) { return Math.max(min, Math.min(max, v)); }
 
+    /**
+     * Performs projection.
+     * @param t the t.
+     * @param distance the distance.
+     * @return the record.
+     */
     private record Projection(double t, double distance) {}
 }

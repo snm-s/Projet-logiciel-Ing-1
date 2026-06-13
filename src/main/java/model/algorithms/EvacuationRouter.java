@@ -40,10 +40,25 @@ public class EvacuationRouter {
 
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Constructs a new EvacuationRouter.
+     * @param graph the graph.
+     */
     public EvacuationRouter(RouteGraph graph) {
         this.graph = graph;
     }
 
+    /**
+     * Create a router for the provided RouteGraph instance.
+     *
+     * @param graph the RouteGraph to use for routing
+     */
+
+    /**
+     * Set the flood weight multiplier used when computing routing costs.
+     *
+     * @param w flood weight multiplier (larger values penalize risky edges more)
+     */
     public void setFloodWeight(double w) { this.floodWeight = w; }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -51,11 +66,11 @@ public class EvacuationRouter {
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Calcule le chemin optimal entre deux zones.
+     * Compute the optimal evacuation path between two zones using a weighted Dijkstra.
      *
-     * @param from Zone de départ (position actuelle de l'agent)
-     * @param to   Zone destination (refuge le plus proche, etc.)
-     * @return {@link EvacuationPath} ou {@code null} si aucun chemin possible
+     * @param from origin zone
+     * @param to destination zone
+     * @return EvacuationPath or null if no path is available
      */
     public EvacuationPath findPath(Zone from, Zone to) {
         if (from == null || to == null) return null;
@@ -105,12 +120,11 @@ public class EvacuationRouter {
     }
 
     /**
-     * Trouve la zone sûre la plus proche accessible depuis {@code from}.
-     * Utile pour calculer la destination d'évacuation d'un citoyen.
+     * Find the nearest safe (non-flooded) candidate zone reachable from the given origin.
      *
-     * @param from       Zone de départ (inondée)
-     * @param candidates Zones candidates (refuge, zones sûres…)
-     * @return chemin vers la destination sûre la plus proche, ou null
+     * @param from origin zone
+     * @param candidates candidate destination zones to consider
+     * @return best EvacuationPath to the nearest safe candidate, or null
      */
     public EvacuationPath findNearestSafe(Zone from, List<Zone> candidates) {
         EvacuationPath best = null;
@@ -130,9 +144,10 @@ public class EvacuationRouter {
     }
 
     /**
-     * Calcule les chemins d'évacuation depuis toutes les zones inondées
-     * vers les zones sûres les plus proches.
-     * Retourne une map zoneId → meilleur chemin.
+     * Compute evacuation paths for all flooded zones to their nearest safe zones.
+     *
+     * @param zones list of zones to analyze
+     * @return a map from zone id to the best EvacuationPath
      */
     public Map<Integer, EvacuationPath> computeAllEvacuationPaths(List<Zone> zones) {
         Map<Integer, EvacuationPath> result = new HashMap<>();
@@ -153,6 +168,10 @@ public class EvacuationRouter {
     // UTILITAIRES PRIVÉS
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Builds adjacency.
+     * @return the Map<Integer, List<EdgeEntry>>.
+     */
     private Map<Integer, List<EdgeEntry>> buildAdjacency() {
         Map<Integer, List<EdgeEntry>> adj = new HashMap<>();
         for (Edge edge : graph.getEdges()) {

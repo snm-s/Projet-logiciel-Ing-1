@@ -4,6 +4,11 @@ import java.security.MessageDigest;
 
 public class PasswordHasher {
 
+    /**
+     * Performs hash.
+     * @param password the password.
+     * @return the String.
+     */
     public static String hash(String password) {
 
         try {
@@ -24,6 +29,12 @@ public class PasswordHasher {
         }
     }
 
+    /**
+     * Performs verify.
+     * @param password the password.
+     * @param hash the hash.
+     * @return the boolean result.
+     */
     public static boolean verify(String password, String hash) {
         return hash(password).equals(hash);
     }

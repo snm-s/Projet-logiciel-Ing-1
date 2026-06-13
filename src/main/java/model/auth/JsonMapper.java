@@ -7,6 +7,9 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 public class JsonMapper {
 
+    /**
+     * Constructs a new JsonMapper.
+     */
     private JsonMapper() {}
 
     public static final ObjectMapper INSTANCE = new ObjectMapper()

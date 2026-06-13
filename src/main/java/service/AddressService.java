@@ -14,7 +14,13 @@ import org.json.JSONObject;
 
 public class AddressService {
 
-    public static List<String> searchLyonAddresses(String query) {
+        /**
+         * Search the French address API for addresses in Lyon matching the query.
+         *
+         * @param query partial address or place name
+         * @return list of matching address strings (may be empty)
+         */
+        public static List<String> searchLyonAddresses(String query) {
 
         List<String> addresses = new ArrayList<>();
 

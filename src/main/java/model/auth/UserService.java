@@ -21,18 +21,34 @@ public class UserService {
 
     // ── Délégation totale à SimulationDataService ──────────────────────
 
+    /**
+     * Performs ds.
+     * @return the SimulationDataService.
+     */
     private static SimulationDataService ds() {
         return app.Main.getSharedDataService();
     }
 
+    /**
+     * Loads agents.
+     * @return the List<Agent>.
+     */
     public static List<Agent> loadAgents() {
         return ds().loadAgents();
     }
 
+    /**
+     * Saves agents.
+     * @param agents the agents.
+     */
     public static void saveAgents(List<Agent> agents) {
         ds().saveAgents(agents);
     }
 
+    /**
+     * Adds agent.
+     * @param agent the agent.
+     */
     public static void addAgent(Agent agent) {
     List<Agent> agents = loadAgents();
 
@@ -57,6 +73,11 @@ public class UserService {
     app.Main.getSharedSimulation().addAgent(agent);
 }
 
+    /**
+     * Updates agent.
+     * @param updatedAgent the updatedAgent.
+     * @return the boolean result.
+     */
     public static boolean updateAgent(Agent updatedAgent) {
         if (updatedAgent == null) return false;
         List<Agent> agents = loadAgents();
@@ -76,6 +97,12 @@ public class UserService {
 
     // ── Authentification — inchangée ───────────────────────────────────
 
+    /**
+     * Performs authenticate.
+     * @param email the email.
+     * @param password the password.
+     * @return the Agent.
+     */
     public static Agent authenticate(String email, String password) {
         String hashedPassword = PasswordHasher.hash(password);
     
@@ -92,6 +119,11 @@ public class UserService {
             .orElse(null);
     }
 
+    /**
+     * Finds by email.
+     * @param email the email.
+     * @return the Agent.
+     */
     public static Agent findByEmail(String email) {
         return loadAgents().stream()
             .filter(a -> a.getEmail() != null && a.getEmail().equalsIgnoreCase(email))
@@ -101,14 +133,31 @@ public class UserService {
 
     // ── Reset mot de passe — inchangé ──────────────────────────────────
 
+    /**
+     * Sets the reset token.
+     * @param email the email.
+     * @param token the token.
+     */
     public static void setResetToken(String email, String token) {
         resetTokens.put(email, token);
     }
 
+    /**
+     * Performs token.
+     * @param email the email.
+     * @param token the token.
+     * @return the boolean result.
+     */
     public static boolean verifyToken(String email, String token) {
         return token != null && token.equals(resetTokens.get(email));
     }
 
+    /**
+     * Resets password.
+     * @param email the email.
+     * @param newPasswordHash the newPasswordHash.
+     * @return the boolean result.
+     */
     public static boolean resetPassword(String email, String newPasswordHash) {
         if (ADMIN_EMAIL.equalsIgnoreCase(email)) return false;
         List<Agent> agents = loadAgents();

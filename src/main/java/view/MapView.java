@@ -93,6 +93,10 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     private static final GeoPosition LYON_CENTER = new GeoPosition(45.7640, 4.8357);
     private static final int DEFAULT_ZOOM = 6;
 
+    /**
+     * Constructs a new MapView.
+     * @param zones the zones.
+     */
     public MapView(List<Zone> zones) {
         this.zones = zones == null ? new ArrayList<>() : new ArrayList<>(zones);
         this.mapViewer = new JXMapViewer();
@@ -110,6 +114,9 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         });
     }
 
+    /**
+     * Performs tiles.
+     */
     private void configureTiles() {
         System.setProperty("http.agent", "Mozilla/5.0");
         TileFactoryInfo info = new OSMTileFactoryInfo("OSM", "https://tile.openstreetmap.org");
@@ -122,6 +129,9 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         mapViewer.setAddressLocation(LYON_CENTER);
     }
 
+    /**
+     * Performs painters.
+     */
     private void configurePainters() {
         zonePainter = new ZonePainter(zones);
         routePainter = new RoutePainter();
@@ -141,6 +151,9 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         mapViewer.setOverlayPainter(compound);
     }
 
+    /**
+     * Performs interaction.
+     */
     private void configureInteraction() {
         PanMouseInputListener panListener = new PanMouseInputListener(mapViewer) {
             @Override public void mouseDragged(MouseEvent e) {
@@ -311,6 +324,9 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         mapViewer.addMouseMotionListener(adapter);
     }
 
+    /**
+     * Loads zones.
+     */
     private void loadZones() {
         zonePainter.setZones(zones);
         agentPainter.updateZones(zones);
@@ -319,21 +335,57 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     }
 
     /**
-     * Retourne l'agent actuellement sélectionné, ou null.
-     * Utilisé par SimulationView pour déléguer la suppression à SimulationController.
+     * Return the currently selected agent in the map view, or null if none.
+     * Used by other views/controllers to delegate actions on the selected agent.
+     *
+     * @return the selected Agent or null
      */
     public Agent getSelectedAgent() {
         if (selectedGraphElement instanceof Agent a) return a;
         return null;
     }
 
+    /**
+     * Get the underlying Swing `JXMapViewer` instance used to render the map.
+     *
+     * @return the JXMapViewer
+     */
     public JXMapViewer getMapViewer() { return mapViewer; }
+
+    /**
+     * Get the JavaFX `SwingNode` that hosts the map swing component.
+     *
+     * @return the SwingNode hosting the map
+     */
     public SwingNode getSwingNode() { return swingNode; }
+
+    /**
+     * Placeholder for web view integration; currently unused.
+     *
+     * @return null (no web view in this implementation)
+     */
     public Object getWebView() { return null; }
+
+    /**
+     * Placeholder for web engine integration; currently unused.
+     *
+     * @return null (no web engine in this implementation)
+     */
     public Object getWebEngine() { return null; }
 
+    /**
+     * Associate a `MapController` with this view to delegate actions and callbacks.
+     *
+     * @param controller the MapController to set
+     */
     public void setMapController(MapController controller) { this.mapController = controller; }
 
+    /**
+     * Attach a `RouteGraph` to the map view so painters can visualize routes and edges.
+     * This will also refresh route and agent painters.
+     *
+     * @param routeGraph the RouteGraph to visualize
+     */
     public void setRouteGraph(RouteGraph routeGraph) {
         this.routeGraph = routeGraph;
         routePainter.setRouteGraph(routeGraph);
@@ -341,6 +393,10 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         agentPainter.setRouteGraph(routeGraph);
         SwingUtilities.invokeLater(mapViewer::repaint);
     }
+    
+    /**
+     * Trigger a UI refresh of the map from the Swing thread.
+     */
     public void refreshMap() {
         SwingUtilities.invokeLater(() -> {
             mapViewer.revalidate();
@@ -348,11 +404,33 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         });
     }
     
+    /**
+     * Mark whether the last click was consumed by an edge hit-test.
+     *
+     * @param v true if last click targeted an edge
+     */
     public void setLastClickConsumedByEdge(boolean v) { this.lastClickConsumedByEdge = v; }
+
+    /**
+     * Return true if the last click on the map was consumed by an edge.
+     *
+     * @return boolean indicating if last click was consumed by an edge
+     */
     public boolean wasLastClickConsumedByEdge() { return lastClickConsumedByEdge; }
 
+    /**
+     * Set a callback to be executed after a node or agent drag operation finishes.
+     *
+     * @param callback runnable to execute on move completion
+     */
     public void setOnNodeMoveFinished(Runnable callback) { this.onNodeMoveFinished = callback; }
 
+    /**
+     * Replace the current agent list displayed on the map. The view will snap agents to
+     * the visible graph and repaint on the Swing thread.
+     *
+     * @param agents list of agents to display
+     */
     public void setAgents(List<Agent> agents) {
         this.agents = agents == null ? new ArrayList<>() : new ArrayList<>(agents);
     
@@ -374,21 +452,51 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         });
     }
 
+    /**
+     * Set a callback invoked when an agent is selected on the map.
+     *
+     * @param callback consumer receiving the selected Agent
+     */
     public void setOnAgentSelected(Consumer<Agent> callback) { this.onAgentSelected = callback; }
+
+    /**
+     * Set a callback invoked when a zone node is selected on the map.
+     *
+     * @param callback consumer receiving the selected Zone
+     */
     public void setOnZoneSelected(Consumer<Zone> callback) { this.onZoneSelected = callback; }
+
+    /**
+     * Set a callback to receive short info/status text from the map (used by status bars).
+     *
+     * @param callback consumer receiving status text
+     */
     public void setOnGraphInfoChanged(Consumer<String> callback) { this.onGraphInfoChanged = callback; }
 
+    /**
+     * Change the edit interaction mode of the map (select, add node/edge, move, delete).
+     *
+     * @param mode the EditMode to switch to
+     */
     public void setEditMode(EditMode mode) {
         this.editMode = mode == null ? EditMode.SELECT : mode;
         this.pendingEdgeStart = null;
         setInfo("Mode : " + this.editMode.name());
     }
 
+    /**
+     * Enable or disable manual flood mode. When enabled, clicks create a flood center.
+     *
+     * @param enabled true to enable manual flood mode
+     */
     public void setManualFloodMode(boolean enabled) {
         this.manualFloodMode = enabled;
         setInfo(enabled ? "Mode inondation manuelle : clique sur la carte." : "Mode inondation désactivé.");
     }
 
+    /**
+     * Reset and stop any manual flood propagation currently active.
+     */
     public void resetManualFlood() {
         if (floodTimer != null) {
             floodTimer.stop();
@@ -408,6 +516,9 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         mapViewer.repaint();
     }
 
+    /**
+     * Start a randomized flood propagation for demo/testing purposes.
+     */
     public void startRandomFlood() {
         if (floodTimer != null) {
             floodTimer.stop();
@@ -427,8 +538,18 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         mapViewer.repaint();
     }
 
+    /**
+     * Return the current edit mode for the map view.
+     *
+     * @return the current EditMode
+     */
     public EditMode getEditMode() { return editMode; }
 
+    /**
+     * Adjust internal flood propagation speed parameters from a UI slider value.
+     *
+     * @param sliderValue slider raw value (expected range ~200..5000 ms)
+     */
     public void setFloodSpeedFromSlider(double sliderValue) {
         // Slider range [200..5000]ms, where low = fast and high = slow.
         // We keep the flood clearly visible but much slower by default.
@@ -446,18 +567,29 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         }
     }
 
+    /**
+     * Pause any ongoing flood propagation animation.
+     */
     public void pauseFloodPropagation() {
         if (floodTimer != null) {
             floodTimer.stop();
         }
     }
 
+    /**
+     * Resume flood propagation if there is an active flood center and radius remaining.
+     */
     public void resumeFloodPropagation() {
         if (floodCenter == null) return;
         if (floodRadius >= 260) return;
         startFloodPropagation();
     }
 
+    /**
+     * Add a number of visual nodes randomly around the map center for testing.
+     *
+     * @param count number of nodes to add
+     */
     public void addRandomNodes(int count) {
         Random r = new Random();
         for (int i = 0; i < count; i++) {
@@ -470,6 +602,11 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         mapViewer.repaint();
     }
 
+    /**
+     * Add an agent to the map view and refresh painters.
+     *
+     * @param agent Agent to add (ignored if null)
+     */
     public void addAgent(Agent agent) {
         if (agent == null) return;
         if (!agents.contains(agent)) agents.add(agent);
@@ -478,6 +615,9 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         mapViewer.repaint();
     }
 
+    /**
+     * Remove the currently selected agent from the map and update the view.
+     */
     public void removeSelectedAgent() {
         if (selectedGraphElement instanceof Agent a) {
             agents.removeIf(agent -> agent.getId() == a.getId());
@@ -494,6 +634,11 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         }
     }
 
+    /**
+     * Create and add a number of synthetic agents for demo/testing purposes.
+     *
+     * @param count number of agents to add
+     */
     public void addRandomAgents(int count) {
         int maxId = agents.stream().mapToInt(Agent::getId).max().orElse(100) + 1;
         Random rng = new Random();
@@ -509,11 +654,23 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         mapViewer.repaint();
     }
 
+    /**
+     * Register a callback invoked when the map is clicked (lat, lng).
+     *
+     * @param callback bi-consumer receiving latitude and longitude
+     */
     public void setOnMapClicked(java.util.function.BiConsumer<Double, Double> callback) {
         this.onMapClicked = callback;
     }
+    /**
+     * Delete the currently selected graph element (agent, node or edge).
+     */
     public void deleteSelectedGraphElement() { deleteGraphElement(selectedGraphElement); }
 
+    /**
+     * Deletes graph element.
+     * @param element the element.
+     */
     private void deleteGraphElement(Object element) {
         if (element == null) return;
         if (element instanceof Agent) { removeSelectedAgent(); return; }
@@ -542,6 +699,11 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         }
     }
 
+    /**
+     * Update the visual color for a zone and refresh related painters on the UI thread.
+     *
+     * @param zone the Zone to update
+     */
     public void updateZoneColor(Zone zone) {
         SwingUtilities.invokeLater(() -> {
             zonePainter.updateZone(zone);
@@ -550,6 +712,12 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         });
     }
 
+    /**
+     * Update a zone with a water-level indicator (flooding) and refresh the view.
+     *
+     * @param zone the Zone to update
+     * @param niveauEau water level value
+     */
     public void updateZoneWithWaterLevel(Zone zone, double niveauEau) {
         SwingUtilities.invokeLater(() -> {
             zonePainter.updateZoneWaterLevel(zone, niveauEau);
@@ -558,8 +726,16 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         });
     }
 
+    /**
+     * Request a repaint so that route colors are recalculated and redrawn.
+     */
     public void refreshRouteColors() { SwingUtilities.invokeLater(mapViewer::repaint); }
 
+    /**
+     * Replace the current zone list and refresh all painters.
+     *
+     * @param updatedZones new list of zones
+     */
     public void updateAllZones(List<Zone> updatedZones) {
         this.zones = updatedZones == null ? new ArrayList<>() : new ArrayList<>(updatedZones);
         SwingUtilities.invokeLater(() -> {
@@ -570,13 +746,23 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         });
     }
 
+    /** Zoom the map view one step in. */
     public void zoomIn() { SwingUtilities.invokeLater(() -> { int z = mapViewer.getZoom(); if (z > 1) mapViewer.setZoom(z - 1); }); }
+    /** Zoom the map view one step out. */
     public void zoomOut() { SwingUtilities.invokeLater(() -> { int z = mapViewer.getZoom(); if (z < 17) mapViewer.setZoom(z + 1); }); }
+    /** Set an explicit zoom level. @param level zoom level */
     public void setZoom(int level) { SwingUtilities.invokeLater(() -> mapViewer.setZoom(level)); }
+    /** Reset the map view to the default center and zoom. */
     public void resetView() { SwingUtilities.invokeLater(() -> { mapViewer.setAddressLocation(LYON_CENTER); mapViewer.setZoom(DEFAULT_ZOOM); clearRoute(); }); }
+    /** Move and zoom the map to a given coordinate. */
     public void flyTo(double lat, double lng) { SwingUtilities.invokeLater(() -> { mapViewer.setAddressLocation(new GeoPosition(lat, lng)); mapViewer.setZoom(2); }); }
+    /** Pan the map to a given coordinate. */
     public void panTo(double lat, double lng) { SwingUtilities.invokeLater(() -> mapViewer.setAddressLocation(new GeoPosition(lat, lng))); }
 
+    /**
+     * Performs on agent.
+     * @param agent the agent.
+     */
     public void centerOnAgent(Agent agent) {
         if (agent == null || agent.getPosition() == null) return;
     
@@ -592,6 +778,11 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     
 
 
+    /**
+     * Focus the map on a given zone and select it.
+     *
+     * @param zone Zone to focus
+     */
     public void focusZone(Zone zone) {
         if (zone == null) return;
         SwingUtilities.invokeLater(() -> {
@@ -601,6 +792,11 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         });
     }
 
+    /**
+     * Select a zone on the map and show its popup/info.
+     *
+     * @param zone Zone to select
+     */
     public void selectZone(Zone zone) {
         if (zone == null) return;
         zonePainter.setSelectedZone(zone);
@@ -611,8 +807,19 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         setInfo("Nœud sélectionné : " + zone.getName());
     }
 
+    /**
+     * Highlight a zone by id (selects it if found).
+     *
+     * @param id zone id
+     */
     public void highlightZone(int id) { zones.stream().filter(z -> z.getId() == id).findFirst().ifPresent(this::selectZone); }
 
+    /**
+     * Display a highlighted route between two zones on the map.
+     *
+     * @param from origin zone
+     * @param to destination zone
+     */
     public void showRoute(Zone from, Zone to) {
         if (from == null || to == null) return;
         SwingUtilities.invokeLater(() -> {
@@ -624,6 +831,14 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         });
     }
 
+    /**
+     * Display a specific evacuation path between two zones with an optional color.
+     *
+     * @param from origin zone
+     * @param to destination zone
+     * @param path EvacuationPath to highlight (may be null)
+     * @param hexColor CSS hex color string for highlighting
+     */
     public void showRoute(Zone from, Zone to, model.algorithms.EvacuationPath path, String hexColor) {
         if (from == null || to == null) return;
         SwingUtilities.invokeLater(() -> {
@@ -643,8 +858,14 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     }
 
     
+    /**
+     * Clear any highlighted route on the map.
+     */
     public void clearRoute() { SwingUtilities.invokeLater(() -> { routeHighlightPainter.clear(); mapViewer.repaint(); }); }
 
+    /**
+     * Starts flood propagation.
+     */
     private void startFloodPropagation() {
         if (floodTimer != null) {
             floodTimer.stop();
@@ -665,6 +886,9 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         floodTimer.start();
     }
 
+    /**
+     * Updates flooded edges.
+     */
     private void updateFloodedEdges() {
         if (routeGraph == null || floodCenter == null) return;
     
@@ -702,6 +926,10 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         mapViewer.repaint();
     }
 
+    /**
+     * Sets the on edge selected.
+     * @param listener the listener.
+     */
     public void setOnEdgeSelected(java.util.function.Consumer<model.graph.Edge> listener) {
     this.onEdgeSelected = listener; // stocker et appeler lors du clic sur une arête
     }
@@ -722,6 +950,10 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         SwingUtilities.invokeLater(mapViewer::repaint);
     }
 
+    /**
+     * Handles map click.
+     * @param screenPoint the screenPoint.
+     */
     private void handleMapClick(Point screenPoint) {
         
         lastClickConsumedByEdge = false;
@@ -761,16 +993,30 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     @Override public void onZoneReset(Zone zone) { updateZoneColor(zone); }
     @Override public void onSimulationUpdated() { for (Zone zone : zones) updateZoneColor(zone); refreshRouteColors(); }
 
+    /**
+     * Adds visual node.
+     * @param lat the lat.
+     * @param lng the lng.
+     * @return the GraphNode.
+     */
     private GraphNode addVisualNode(double lat, double lng) {
         GraphNode n = new GraphNode("N" + (graphOverlayPainter.visualNodes.size() + 1), lat, lng, false);
         graphOverlayPainter.visualNodes.add(n);
         return n;
     }
 
+    /**
+     * Adds visual edge.
+     * @param a the a.
+     * @param b the b.
+     */
     private void addVisualEdge(GraphNode a, GraphNode b) {
         graphOverlayPainter.visualEdges.add(new GraphEdge(a, b, 20 + graphOverlayPainter.visualEdges.size() * 3));
     }
 
+    /**
+     * Performs connect visual nodes.
+     */
     private void autoConnectVisualNodes() {
         List<GraphNode> nodes = graphOverlayPainter.visualNodes;
         if (nodes.size() < 2) return;
@@ -781,20 +1027,38 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         }
     }
 
+    /**
+     * Sets the graph info.
+     * @param text the text.
+     */
     public void setGraphInfo(String text) {
         setInfo(text);
     }
 
+    /**
+     * Sets the info.
+     * @param text the text.
+     */
     private void setInfo(String text) {
         if (onGraphInfoChanged != null) Platform.runLater(() -> onGraphInfoChanged.accept(text));
     }
 
+    /**
+     * Performs of.
+     * @param a the a.
+     * @return the String.
+     */
     private String nameOf(Agent a) {
         if (a == null) return "Agent";
         String n = ((a.getFirstName() == null ? "" : a.getFirstName()) + " " + (a.getLastName() == null ? "" : a.getLastName())).trim();
         return n.isBlank() ? "Agent #" + a.getId() : n;
     }
 
+    /**
+     * Performs info.
+     * @param a the a.
+     * @return the String.
+     */
     private String agentInfo(Agent a) {
         return nameOf(a) + " | vitesse max=" + String.format("%.1f", a.getMaxSpeed()) + " | tolérance congestion=" + String.format("%.1f", a.getCongestionTolerance());
     }
@@ -813,6 +1077,13 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         }
     
         @Override
+        /**
+         * Performs paint.
+         * @param g the g.
+         * @param map the map.
+         * @param w the w.
+         * @param h the h.
+         */
         public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
             // On ne dessine rien ici.
             // Les vraies arêtes sont dessinées dans GraphOverlayPainter.
@@ -843,6 +1114,13 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
 
         @Override
 
+    /**
+     * Performs paint.
+     * @param g the g.
+     * @param map the map.
+     * @param w the w.
+     * @param h the h.
+     */
     public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
 
         Graphics2D g2 = (Graphics2D) g.create();
@@ -872,6 +1150,11 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
 
     }
 
+    /**
+     * Performs flood.
+     * @param g2 the g2.
+     * @param map the map.
+     */
     private void drawFlood(Graphics2D g2, JXMapViewer map) {
         if (floodCenter == null) return;
     
@@ -931,6 +1214,12 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         g2.fillOval(cx - inner, cy - inner, inner * 2, inner * 2);
     }
 
+        /**
+         * Performs real edge.
+         * @param g2 the g2.
+         * @param map the map.
+         * @param e the e.
+         */
         private void drawRealEdge(Graphics2D g2, JXMapViewer map, Edge e) {
             List<GeoPosition> pts = e.getWaypoints();
         
@@ -969,6 +1258,12 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
             }
         }
 
+        /**
+         * Performs visual edge.
+         * @param g2 the g2.
+         * @param map the map.
+         * @param e the e.
+         */
         private void drawVisualEdge(Graphics2D g2, JXMapViewer map, GraphEdge e) {
             Point2D a = map.convertGeoPositionToPoint(e.from.geo());
             Point2D b = map.convertGeoPositionToPoint(e.to.geo());
@@ -978,6 +1273,12 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         }
 
     
+        /**
+         * Performs node.
+         * @param g2 the g2.
+         * @param map the map.
+         * @param n the n.
+         */
         private void drawNode(Graphics2D g2, JXMapViewer map, GraphNode n) {
             Point2D p = map.convertGeoPositionToPoint(n.geo());
             boolean sel = selected == n || pendingEdgeStart == n;
@@ -1078,6 +1379,10 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         GraphEdge(GraphNode from, GraphNode to, int capacity) { this.from = from; this.to = to; this.capacity = capacity; }
     }
 
+    /**
+     * Sets the connected user.
+     * @param user the user.
+     */
     public void setConnectedUser(Agent user) {
         if (user != null) {
             // Supposons que vous ayez ajouté cette méthode dans AgentPainter

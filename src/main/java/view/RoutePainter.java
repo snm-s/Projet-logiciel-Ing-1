@@ -42,25 +42,53 @@ public class RoutePainter implements Painter<JXMapViewer> {
     private static final Color OVERLOADED = new Color(185, 28, 28, 185);
     private static final Color PATH_BLUE  = new Color(14, 115, 235, 235);
 
+    /**
+     * Constructs a new RoutePainter.
+     */
     public RoutePainter() {}
 
+    /**
+     * Attach the RouteGraph used to draw edges and compute styles.
+     *
+     * @param routeGraph the RouteGraph to visualize
+     */
     public void setRouteGraph(RouteGraph routeGraph) {
         this.routeGraph = routeGraph;
     }
 
+    /**
+     * Set the map viewer instance used to convert geo positions to screen points.
+     *
+     * @param mapViewer JXMapViewer instance
+     */
     public void setMapViewer(JXMapViewer mapViewer) {
         this.mapViewer = mapViewer;
     }
 
+    /**
+     * Highlight a computed evacuation path on top of the route graph.
+     *
+     * @param path the EvacuationPath to highlight, or null to clear
+     */
     public void setHighlightedPath(EvacuationPath path) {
         this.highlightedPath = path;
     }
 
+    /**
+     * Clears highlighted path.
+     */
     public void clearHighlightedPath() {
         this.highlightedPath = null;
     }
 
     @Override
+    /**
+     * Performs paint.
+     * @param g the g.
+     * @param map the map.
+     * @param w the w.
+     * @param h the h.
+     */
     public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -80,6 +108,13 @@ public class RoutePainter implements Painter<JXMapViewer> {
         g2.dispose();
     }
 
+    /**
+     * Performs edge.
+     * @param g2 the g2.
+     * @param map the map.
+     * @param edge the edge.
+     * @param highlighted the highlighted.
+     */
     private void drawEdge(Graphics2D g2, JXMapViewer map, Edge edge, boolean highlighted) {
         try {
             List<GeoPosition> points = cleanWaypoints(edge);
@@ -110,6 +145,12 @@ public class RoutePainter implements Painter<JXMapViewer> {
         } catch (Exception ignored) {
         }
     }
+    /**
+     * Highlight a given evacuation path using a specific hex color string.
+     *
+     * @param path     the EvacuationPath to highlight (may be null)
+     * @param hexColor CSS hex color string (e.g. "#ff0000"); invalid values are ignored
+     */
     public void setHighlightedPath(model.algorithms.EvacuationPath path, String hexColor) {
         this.highlightedPath = path;
         try {
@@ -121,6 +162,11 @@ public class RoutePainter implements Painter<JXMapViewer> {
         }
     }
 
+    /**
+     * Performs waypoints.
+     * @param edge the edge.
+     * @return the List<GeoPosition>.
+     */
     private List<GeoPosition> cleanWaypoints(Edge edge) {
         List<GeoPosition> points = edge.getWaypoints();
         if (points != null && points.size() >= 2) return points;
@@ -131,6 +177,12 @@ public class RoutePainter implements Painter<JXMapViewer> {
         return fallback;
     }
 
+    /**
+     * Builds path.
+     * @param map the map.
+     * @param points the points.
+     * @return the GeneralPath.
+     */
     private GeneralPath buildPath(JXMapViewer map, List<GeoPosition> points) {
         GeneralPath path = new GeneralPath();
         boolean first = true;
@@ -148,6 +200,13 @@ public class RoutePainter implements Painter<JXMapViewer> {
         return path;
     }
 
+    /**
+     * Performs small capacity dot.
+     * @param g2 the g2.
+     * @param map the map.
+     * @param edge the edge.
+     * @param points the points.
+     */
     private void drawSmallCapacityDot(Graphics2D g2, JXMapViewer map, Edge edge, List<GeoPosition> points) {
         if (edge.getCapacityMax() <= 0 || edge.getCurrentFlow() <= 0) return;
 
@@ -169,6 +228,13 @@ public class RoutePainter implements Painter<JXMapViewer> {
         g2.drawOval((int) p.getX() - r, (int) p.getY() - r, r * 2, r * 2);
     }
 
+    /**
+     * Performs arrow.
+     * @param g2 the g2.
+     * @param map the map.
+     * @param points the points.
+     * @param color the color.
+     */
     private void drawArrow(Graphics2D g2, JXMapViewer map, List<GeoPosition> points, Color color) {
         if (points.size() < 2) return;
 
@@ -204,6 +270,11 @@ public class RoutePainter implements Painter<JXMapViewer> {
         g2.fillPolygon(xs, ys, 3);
     }
 
+    /**
+     * Performs for.
+     * @param state the state.
+     * @return the RouteStyle.
+     */
     private RouteStyle styleFor(EdgeState state) {
         if (state == null) {
             return new RouteStyle(SAFE, new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
@@ -225,5 +296,11 @@ public class RoutePainter implements Painter<JXMapViewer> {
         };
     }
 
+    /**
+     * Performs style.
+     * @param color the color.
+     * @param stroke the stroke.
+     * @return the record.
+     */
     private record RouteStyle(Color color, Stroke stroke) {}
 }

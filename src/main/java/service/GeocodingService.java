@@ -7,7 +7,13 @@ import java.net.URL;
 
 public class GeocodingService {
 
-    public static double[] getCoordinates(String address) {
+        /**
+         * Query Nominatim (OpenStreetMap) to resolve an address to [lat, lon].
+         *
+         * @param address free-form address string to geocode
+         * @return array [lat, lon] on success, or null if not found or on error
+         */
+        public static double[] getCoordinates(String address) {
 
         try {
 

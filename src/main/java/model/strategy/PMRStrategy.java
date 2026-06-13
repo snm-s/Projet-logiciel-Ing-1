@@ -9,6 +9,12 @@ import model.zone.Zone;
 public class PMRStrategy implements Strategy {
 
     @Override
+    /**
+     * Performs destination.
+     * @param agent the agent.
+     * @param zones the zones.
+     * @return the Node.
+     */
     public Node chooseDestination(Agent agent, List<Zone> zones) {
         if (agent == null || zones == null || zones.isEmpty()) {
             return null;

@@ -57,6 +57,10 @@ public class CitizenDashboardView extends BorderPane {
     private MapView mapComponent;
     private Button activeButton;
 
+    /**
+     * Constructs a new CitizenDashboardView.
+     * @param controller the controller.
+     */
     public CitizenDashboardView(CitizenController controller) {
         this.controller = controller;
         this.user = Main.currentUser;
@@ -90,6 +94,10 @@ public class CitizenDashboardView extends BorderPane {
         showPage(dashboardContent);
     }
 
+    /**
+     * Builds sidebar.
+     * @return the VBox.
+     */
     private VBox buildSidebar() {
         sidebar = new VBox(9);
         sidebar.setPrefWidth(252);
@@ -208,6 +216,10 @@ public class CitizenDashboardView extends BorderPane {
         return sidebar;
     }
 
+    /**
+     * Builds dashboard content.
+     * @return the VBox.
+     */
     private VBox buildDashboardContent() {
         VBox root = new VBox(22);
         root.setPadding(new Insets(30));
@@ -275,6 +287,10 @@ public class CitizenDashboardView extends BorderPane {
         return wrapper;
     }
 
+    /**
+     * Builds safety overview.
+     * @return the VBox.
+     */
     private VBox buildSafetyOverview() {
         VBox card = glassCard(22);
 
@@ -310,6 +326,10 @@ public class CitizenDashboardView extends BorderPane {
         return card;
     }
 
+    /**
+     * Builds recommended shelter panel.
+     * @return the VBox.
+     */
     private VBox buildRecommendedShelterPanel() {
         VBox card = glassCard(22);
 
@@ -350,6 +370,10 @@ public class CitizenDashboardView extends BorderPane {
         return card;
     }
 
+    /**
+     * Builds alert panel.
+     * @return the VBox.
+     */
     private VBox buildAlertPanel() {
         VBox alertPanel = glassCard(20);
 
@@ -389,6 +413,10 @@ public class CitizenDashboardView extends BorderPane {
         return alertPanel;
     }
 
+    /**
+     * Builds route panel.
+     * @return the VBox.
+     */
     private VBox buildRoutePanel() {
         VBox routePanel = glassCard(20);
 
@@ -418,6 +446,10 @@ public class CitizenDashboardView extends BorderPane {
         return routePanel;
     }
 
+    /**
+     * Builds quick actions.
+     * @return the VBox.
+     */
     private VBox buildQuickActions() {
         VBox card = glassCard(20);
 
@@ -450,6 +482,13 @@ public class CitizenDashboardView extends BorderPane {
         return card;
     }
 
+    /**
+     * Performs button.
+     * @param text the text.
+     * @param icon the icon.
+     * @param action the action.
+     * @return the Button.
+     */
     private Button actionButton(String text, String icon, Runnable action) {
         Button button = new Button(icon + "  " + text);
         button.setMaxWidth(Double.MAX_VALUE);
@@ -467,6 +506,13 @@ public class CitizenDashboardView extends BorderPane {
         return button;
     }
 
+    /**
+     * Performs step.
+     * @param label the label.
+     * @param value the value.
+     * @param color the color.
+     * @return the HBox.
+     */
     private HBox routeStep(String label, String value, String color) {
         HBox row = new HBox(12);
         row.setAlignment(Pos.CENTER_LEFT);
@@ -487,6 +533,12 @@ public class CitizenDashboardView extends BorderPane {
         return row;
     }
 
+    /**
+     * Performs info.
+     * @param title the title.
+     * @param value the value.
+     * @return the VBox.
+     */
     private VBox compactInfo(String title, String value) {
         VBox box = new VBox(3);
         box.setPadding(new Insets(10));
@@ -507,6 +559,10 @@ public class CitizenDashboardView extends BorderPane {
 
 
 
+    /**
+     * Builds refuge strip.
+     * @return the VBox.
+     */
     private VBox buildRefugeStrip() {
         VBox box = glassCard(16);
         Label title = title("Refuges disponibles", 16);
@@ -533,12 +589,27 @@ public class CitizenDashboardView extends BorderPane {
 
 
 
+    /**
+     * Builds map page.
+     * @param selectedRefuge the selectedRefuge.
+     * @return the BorderPane.
+     */
     private BorderPane buildMapPage(Zone selectedRefuge) {
         return buildMapPage(selectedRefuge, null, null, null, false, null);
     }
 
 
     // Nouvelle surcharge complète
+    /**
+     * Builds map page.
+     * @param selectedRefuge the selectedRefuge.
+     * @param fromZone the fromZone.
+     * @param instructions the instructions.
+     * @param badgeLabel the badgeLabel.
+     * @param recommended the recommended.
+     * @param routePath the routePath.
+     * @return the BorderPane.
+     */
     private BorderPane buildMapPage(Zone selectedRefuge, Zone fromZone, List<String> instructions, String badgeLabel, boolean recommended,model.algorithms.EvacuationPath routePath) {
         BorderPane page = new BorderPane();
         page.setPadding(new Insets(26));
@@ -608,6 +679,15 @@ public class CitizenDashboardView extends BorderPane {
 
 
     //construit le bloc itinéraire 
+    /**
+     * Builds itinerary panel.
+     * @param from the from.
+     * @param refuge the refuge.
+     * @param instructions the instructions.
+     * @param badgeLabel the badgeLabel.
+     * @param recommended the recommended.
+     * @return the VBox.
+     */
     private VBox buildItineraryPanel(Zone from, Zone refuge, List<String> instructions, String badgeLabel, boolean recommended) {
         VBox panel = new VBox(14);
         panel.setPadding(new Insets(22));
@@ -661,6 +741,12 @@ public class CitizenDashboardView extends BorderPane {
         return panel;
     }
 
+    /**
+     * Builds step row.
+     * @param stepNumber the stepNumber.
+     * @param instruction the instruction.
+     * @return the HBox.
+     */
     private HBox buildStepRow(int stepNumber, String instruction) {
         HBox row = new HBox(14);
         row.setAlignment(Pos.CENTER_LEFT);
@@ -694,6 +780,13 @@ public class CitizenDashboardView extends BorderPane {
         return row;
     }
 
+    /**
+     * Performs box.
+     * @param titleStr the titleStr.
+     * @param value the value.
+     * @param color the color.
+     * @return the VBox.
+     */
     private VBox detailBox(String titleStr, String value, String color) {
         VBox box = new VBox(5);
         box.setPadding(new Insets(14));
@@ -710,6 +803,11 @@ public class CitizenDashboardView extends BorderPane {
         return box;
     }
 
+    /**
+     * Performs chip.
+     * @param z the z.
+     * @return the VBox.
+     */
     private VBox refugeChip(Zone z) {
         VBox chip = new VBox(6);
         chip.setPrefWidth(190);
@@ -733,6 +831,10 @@ public class CitizenDashboardView extends BorderPane {
         return chip;
     }
 
+    /**
+     * Performs route to refuge.
+     * @param refuge the refuge.
+     */
     public void openRouteToRefuge(Zone refuge) {
         if (refuge == null) return;
         Zone from = controller.getNearestZone(user);
@@ -742,10 +844,18 @@ public class CitizenDashboardView extends BorderPane {
         showPage(buildMapPage(refuge, from, instructions, "Recommandé", true, path));
     }
 
+    /**
+     * Displays page.
+     * @param page the page.
+     */
     private void showPage(Node page) {
         contentRoot.getChildren().setAll(page);
     }
 
+    /**
+     * Sets the active.
+     * @param selected the selected.
+     */
     private void setActive(Button selected) {
         if (activeButton != null) {
             activeButton.setStyle(sidebarStyle(false));
@@ -758,6 +868,12 @@ public class CitizenDashboardView extends BorderPane {
         }
     }
 
+    /**
+     * Performs button.
+     * @param text the text.
+     * @param iconType the iconType.
+     * @return the Button.
+     */
     private Button sidebarButton(String text, String iconType) {
         Button btn = new Button(text);
         btn.setGraphic(createSidebarIcon(iconType));
@@ -788,6 +904,11 @@ public class CitizenDashboardView extends BorderPane {
         return btn;
     }
 
+    /**
+     * Creates sidebar icon.
+     * @param type the type.
+     * @return the Node.
+     */
     private Node createSidebarIcon(String type) {
         SVGPath icon = new SVGPath();
 
@@ -833,6 +954,11 @@ public class CitizenDashboardView extends BorderPane {
         return box;
     }
 
+    /**
+     * Performs style.
+     * @param active the active.
+     * @return the String.
+     */
     private String sidebarStyle(boolean active) {
         return active
                 ? "-fx-background-color:linear-gradient(to right, #0b5cbf, #1683ff);"
@@ -849,6 +975,14 @@ public class CitizenDashboardView extends BorderPane {
                 + "-fx-cursor:hand;";
     }
 
+    /**
+     * Performs card.
+     * @param title the title.
+     * @param value the value.
+     * @param icon the icon.
+     * @param color the color.
+     * @return the VBox.
+     */
     private VBox miniCard(String title, String value, String icon, String color) {
         VBox c = glassCard(16);
         c.setMinWidth(170);
@@ -864,6 +998,13 @@ public class CitizenDashboardView extends BorderPane {
         return c;
     }
 
+    /**
+     * Performs icon.
+     * @param text the text.
+     * @param color the color.
+     * @param size the size.
+     * @return the StackPane.
+     */
     private StackPane roundIcon(String text, String color, int size) {
         StackPane icon = new StackPane();
         icon.setPrefSize(size, size);
@@ -880,6 +1021,12 @@ public class CitizenDashboardView extends BorderPane {
         return icon;
     }
 
+    /**
+     * Performs line icon.
+     * @param text the text.
+     * @param color the color.
+     * @return the StackPane.
+     */
     private StackPane smallLineIcon(String text, String color) {
         StackPane icon = new StackPane();
         icon.setPrefSize(34, 34);
@@ -897,6 +1044,12 @@ public class CitizenDashboardView extends BorderPane {
         return icon;
     }
 
+    /**
+     * Performs badge.
+     * @param text the text.
+     * @param color the color.
+     * @return the Label.
+     */
     private Label badge(String text, String color) {
         Label badge = label(text, WHITE, 11, true);
         badge.setPadding(new Insets(6, 10, 6, 10));
@@ -907,6 +1060,11 @@ public class CitizenDashboardView extends BorderPane {
         return badge;
     }
 
+    /**
+     * Performs card.
+     * @param padding the padding.
+     * @return the VBox.
+     */
     private VBox glassCard(int padding) {
         VBox box = new VBox(12);
         box.setPadding(new Insets(padding));
@@ -914,20 +1072,45 @@ public class CitizenDashboardView extends BorderPane {
         return box;
     }
 
+    /**
+     * Performs style.
+     * @param radius the radius.
+     * @return the String.
+     */
     private String glassStyle(int radius) {
         return "-fx-background-color:" + GLASS + "; -fx-background-radius:" + radius + ";"
                 + "-fx-border-color:" + BORDER_GLASS + "; -fx-border-radius:" + radius + ";"
                 + "-fx-effect:dropshadow(gaussian, rgba(0,0,0,0.30), 24, 0, 0, 8);";
     }
 
+    /**
+     * Performs title.
+     * @param text the text.
+     * @param size the size.
+     * @return the Label.
+     */
     private Label title(String text, int size) {
         return label(text, WHITE, size, true);
     }
 
+    /**
+     * Performs muted.
+     * @param text the text.
+     * @param size the size.
+     * @return the Label.
+     */
     private Label muted(String text, int size) {
         return label(text, LIGHT, size, false);
     }
 
+    /**
+     * Performs label.
+     * @param text the text.
+     * @param color the color.
+     * @param size the size.
+     * @param bold the bold.
+     * @return the Label.
+     */
     private Label label(String text, String color, int size, boolean bold) {
         Label l = new Label(text);
         l.setTextFill(Color.web(color));
@@ -935,6 +1118,11 @@ public class CitizenDashboardView extends BorderPane {
         return l;
     }
 
+    /**
+     * Performs button.
+     * @param text the text.
+     * @return the Button.
+     */
     private Button blueButton(String text) {
         Button b = new Button(text);
         b.setStyle(
@@ -947,6 +1135,11 @@ public class CitizenDashboardView extends BorderPane {
         return b;
     }
 
+    /**
+     * Performs button.
+     * @param text the text.
+     * @return the Button.
+     */
     private Button darkButton(String text) {
         Button b = new Button(text);
         b.setStyle(
@@ -960,6 +1153,10 @@ public class CitizenDashboardView extends BorderPane {
         return b;
     }
 
+    /**
+     * Creates logo icon.
+     * @return the StackPane.
+     */
     private StackPane createLogoIcon() {
         SVGPath logo = new SVGPath();
         logo.setContent("M15 2 L28 12 H23 V22 H7 V12 H2 Z M2 25 Q8 23 15 25 T28 25 M2 28 Q8 26 15 28 T28 28");

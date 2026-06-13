@@ -43,6 +43,10 @@ public class Main extends Application {
     private static MapController sharedMapController;
 
     @Override
+    /**
+     * Starts.
+     * @param stage the stage.
+     */
     public void start(Stage stage) {
         mainStage = stage;
         Scene scene = new Scene(rootContainer, 1000, 650);
@@ -85,25 +89,59 @@ public class Main extends Application {
     }
 
     // ── Accesseurs statiques ──────────────────────────────────────────────
+    /**
+     * Returns the shared simulation.
+     * @return the FloodSimulation.
+     */
     public static FloodSimulation      getSharedSimulation()  { return sharedSimulation; }
+    /**
+     * Returns the shared data service.
+     * @return the SimulationDataService.
+     */
     public static SimulationDataService getSharedDataService() { return sharedDataService; }
+    /**
+     * Returns the shared sim ctrl.
+     * @return the SimulationController.
+     */
     public static SimulationController  getSharedSimCtrl()     { return sharedSimCtrl; }
+    /**
+     * Returns the shared admin ctrl.
+     * @return the AdminController.
+     */
     public static AdminController       getSharedAdminCtrl()   { return sharedAdminCtrl; }
 
+    /**
+     * Sets the shared map controller.
+     * @param mc the mc.
+     */
     public static void setSharedMapController(MapController mc) {
         sharedMapController = mc;
     }
+    /**
+     * Returns the shared map controller.
+     * @return the MapController.
+     */
     public static MapController getSharedMapController() { return sharedMapController; }
+    /**
+     * Returns the shared map view.
+     * @return the MapView.
+     */
     public static MapView       getSharedMapView()       { return sharedMapController.getMapView(); }
 
 
     // ── Navigation ────────────────────────────────────────────────────────
+    /**
+     * Displays welcome view.
+     */
     public static void showWelcomeView() {
         WelcomeView welcomeView = new WelcomeView();
         rootContainer.getChildren().setAll(welcomeView);
 
     }
 
+    /**
+     * Displays login view.
+     */
     public static void showLoginView() {
         LoginView loginView = new LoginView();
         new controller.AuthPage.LoginController(loginView, mainStage);
@@ -111,6 +149,9 @@ public class Main extends Application {
 
     }
 
+    /**
+     * Displays register view.
+     */
     public static void showRegisterView() {
         RegisterView registerView = new RegisterView();
         new controller.AuthPage.RegisterController(registerView, mainStage);
@@ -118,6 +159,10 @@ public class Main extends Application {
    
     }
 
+    /**
+     * Displays forgot password view.
+     * @param email the email.
+     */
     public static void showForgotPasswordView(String email) {
         ForgotPasswordView view = new ForgotPasswordView();
         new ForgotPasswordController(view, mainStage, email);
@@ -125,6 +170,9 @@ public class Main extends Application {
 
     }
 
+    /**
+     * Displays simulation view.
+     */
     public static void showSimulationView() {
         // IMPORTANT : on réutilise le contrôleur partagé.
         // Sinon la vue simulation a un nouveau SimulationController sans MapController,
@@ -138,6 +186,10 @@ public class Main extends Application {
         mainStage.setTitle("Flood Simulation - Administration");
     }
 
+    /**
+     * Displays dashboard view.
+     * @param role the role.
+     */
     public static void showDashboardView(String role) {
         if (role == null) role = "citizen";
         String cleanRole = role.trim().toLowerCase();
@@ -170,6 +222,10 @@ public class Main extends Application {
         mainStage.setTitle(title);
     }
 
+    /**
+     * Performs main.
+     * @param args the args.
+     */
     public static void main(String[] args) {
         launch(args);
     }

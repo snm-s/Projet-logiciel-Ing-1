@@ -35,6 +35,13 @@ public class CitizenRefugesView extends BorderPane {
     private static final String ORANGE = "#f59e0b";
     private static final String CARD_BG = "rgba(8,22,42,0.72)";
 
+    /**
+     * Create the refuges listing view for a citizen.
+     *
+     * @param controller  controller used to fetch zones and shelters
+     * @param user        the citizen agent
+     * @param routeAction callback invoked when the user requests a route to a shelter
+     */
     public CitizenRefugesView(CitizenController controller, Agent user, Consumer<Zone> routeAction) {
         setStyle("-fx-background-color: transparent;");
         setPadding(new Insets(0));
@@ -71,6 +78,14 @@ public class CitizenRefugesView extends BorderPane {
         setCenter(scroll);
     }
 
+    /**
+     * Performs refuge card.
+     * @param controller the controller.
+     * @param user the user.
+     * @param nearestShelter the nearestShelter.
+     * @param routeAction the routeAction.
+     * @return the VBox.
+     */
     private VBox nearestRefugeCard(CitizenController controller, Agent user, Zone nearestShelter, Consumer<Zone> routeAction) {
         VBox card = glassCard(22);
 
@@ -211,6 +226,12 @@ public class CitizenRefugesView extends BorderPane {
         return card;
     }
 
+    /**
+     * Performs line.
+     * @param key the key.
+     * @param value the value.
+     * @return the HBox.
+     */
     private HBox infoLine(String key, String value) {
         HBox row = new HBox(8);
         row.setAlignment(Pos.CENTER_LEFT);
@@ -225,6 +246,10 @@ public class CitizenRefugesView extends BorderPane {
         return row;
     }
 
+    /**
+     * Performs card.
+     * @return the VBox.
+     */
     private VBox emptyCard() {
         VBox card = glassCard(20);
         card.getChildren().addAll(
@@ -234,6 +259,12 @@ public class CitizenRefugesView extends BorderPane {
         return card;
     }
 
+    /**
+     * Performs box.
+     * @param title the title.
+     * @param value the value.
+     * @return the VBox.
+     */
     private VBox statBox(String title, String value) {
         VBox box = new VBox(4);
         box.setPadding(new Insets(13));
@@ -251,6 +282,12 @@ public class CitizenRefugesView extends BorderPane {
         return box;
     }
 
+    /**
+     * Performs icon.
+     * @param text the text.
+     * @param color the color.
+     * @return the StackPane.
+     */
     private StackPane bigIcon(String text, String color) {
         StackPane icon = new StackPane();
         icon.setPrefSize(72, 72);
@@ -268,6 +305,12 @@ public class CitizenRefugesView extends BorderPane {
         return icon;
     }
 
+    /**
+     * Performs icon.
+     * @param text the text.
+     * @param color the color.
+     * @return the StackPane.
+     */
     private StackPane smallIcon(String text, String color) {
         StackPane icon = new StackPane();
         icon.setPrefSize(42, 42);
@@ -286,6 +329,11 @@ public class CitizenRefugesView extends BorderPane {
         return icon;
     }
 
+    /**
+     * Performs card.
+     * @param padding the padding.
+     * @return the VBox.
+     */
     private VBox glassCard(double padding) {
         VBox card = new VBox(16);
         card.setPadding(new Insets(padding));
@@ -300,6 +348,11 @@ public class CitizenRefugesView extends BorderPane {
         return card;
     }
 
+    /**
+     * Performs button.
+     * @param text the text.
+     * @return the Button.
+     */
     private Button blueButton(String text) {
         Button button = new Button(text);
         button.setMaxWidth(Double.MAX_VALUE);
@@ -314,6 +367,11 @@ public class CitizenRefugesView extends BorderPane {
         return button;
     }
 
+    /**
+     * Performs button.
+     * @param text the text.
+     * @return the Button.
+     */
     private Button disabledButton(String text) {
         Button button = new Button(text);
         button.setMaxWidth(Double.MAX_VALUE);
@@ -326,6 +384,14 @@ public class CitizenRefugesView extends BorderPane {
         return button;
     }
 
+    /**
+     * Performs label.
+     * @param text the text.
+     * @param color the color.
+     * @param size the size.
+     * @param bold the bold.
+     * @return the Label.
+     */
     private Label label(String text, String color, int size, boolean bold) {
         Label label = new Label(text);
         label.setTextFill(Color.web(color));

@@ -23,6 +23,9 @@ public class RescueSettingsView extends BorderPane {
     private static final String BLUE = "#1683ff";
     private static final String RED = "#ef4444";
 
+    /**
+     * Constructs a new RescueSettingsView.
+     */
     public RescueSettingsView() {
         setStyle("-fx-background-color:transparent;");
         setPadding(new Insets(30));
@@ -77,6 +80,15 @@ public class RescueSettingsView extends BorderPane {
         setCenter(root);
     }
 
+    /**
+     * Performs row.
+     * @param title the title.
+     * @param desc the desc.
+     * @param icon the icon.
+     * @param color the color.
+     * @param selected the selected.
+     * @return the HBox.
+     */
     private HBox notificationRow(String title, String desc, String icon, String color, boolean selected) {
         HBox row = new HBox(16);
         row.setAlignment(Pos.CENTER_LEFT);
@@ -110,6 +122,14 @@ public class RescueSettingsView extends BorderPane {
         return row;
     }
 
+    /**
+     * Performs label.
+     * @param text the text.
+     * @param color the color.
+     * @param size the size.
+     * @param bold the bold.
+     * @return the Label.
+     */
     private Label label(String text, String color, int size, boolean bold) {
         Label l = new Label(text);
         l.setTextFill(Color.web(color));

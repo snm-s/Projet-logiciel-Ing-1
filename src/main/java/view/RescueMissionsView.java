@@ -11,6 +11,11 @@ import javafx.scene.text.FontWeight;
 import model.zone.Zone;
 
 public class RescueMissionsView extends BorderPane {
+    /**
+     * Constructs a new RescueMissionsView.
+     * @param mapView the mapView.
+     * @param controller the controller.
+     */
     public RescueMissionsView(MapView mapView, RescueController controller) {
         setStyle("-fx-background-color:transparent;");
         setPadding(new Insets(26));
@@ -33,6 +38,13 @@ public class RescueMissionsView extends BorderPane {
         setCenter(root);
     }
 
+    /**
+     * Performs card.
+     * @param mission the mission.
+     * @param zone the zone.
+     * @param mapView the mapView.
+     * @return the VBox.
+     */
     private VBox missionCard(String mission, Zone zone, MapView mapView) {
         VBox card = glass();
         card.setPrefWidth(275);
@@ -45,6 +57,10 @@ public class RescueMissionsView extends BorderPane {
         return card;
     }
 
+    /**
+     * Performs glass.
+     * @return the VBox.
+     */
     private VBox glass() {
         VBox box = new VBox(10);
         box.setPadding(new Insets(18));
@@ -52,12 +68,25 @@ public class RescueMissionsView extends BorderPane {
         return box;
     }
 
+    /**
+     * Performs button.
+     * @param text the text.
+     * @return the Button.
+     */
     private Button button(String text) {
         Button b = new Button(text);
         b.setStyle("-fx-background-color:linear-gradient(to right, #0b5cbf, #1683ff); -fx-text-fill:white; -fx-background-radius:8; -fx-font-weight:bold; -fx-cursor:hand;");
         return b;
     }
 
+    /**
+     * Performs label.
+     * @param text the text.
+     * @param color the color.
+     * @param size the size.
+     * @param bold the bold.
+     * @return the Label.
+     */
     private Label label(String text, String color, int size, boolean bold) {
         Label l = new Label(text);
         l.setTextFill(Color.web(color));

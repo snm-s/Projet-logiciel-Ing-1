@@ -36,6 +36,12 @@ public class CitizenProfileView extends BorderPane {
     private static final String GREEN = "#22c55e";
     private static final String RED = "#ef4444";
 
+    /**
+     * Create a profile view for the given citizen.
+     *
+     * @param controller controller providing simulation data
+     * @param user       agent representing the citizen shown in this view
+     */
     public CitizenProfileView(CitizenController controller, Agent user) {
         setStyle("-fx-background-color: transparent;");
 
@@ -80,6 +86,12 @@ public class CitizenProfileView extends BorderPane {
         setCenter(scroll);
     }
 
+    /**
+     * Builds identity card.
+     * @param controller the controller.
+     * @param user the user.
+     * @return the VBox.
+     */
     private VBox buildIdentityCard(CitizenController controller, Agent user) {
         VBox card = glassCard(22);
         card.setMinHeight(210);
@@ -121,6 +133,12 @@ public class CitizenProfileView extends BorderPane {
         return card;
     }
 
+    /**
+     * Builds safety card.
+     * @param controller the controller.
+     * @param user the user.
+     * @return the VBox.
+     */
     private VBox buildSafetyCard(CitizenController controller, Agent user) {
         VBox card = glassCard(22);
         card.setMinHeight(210);
@@ -173,6 +191,12 @@ public class CitizenProfileView extends BorderPane {
         return card;
     }
 
+    /**
+     * Builds personal info card.
+     * @param controller the controller.
+     * @param user the user.
+     * @return the VBox.
+     */
     private VBox buildPersonalInfoCard(CitizenController controller, Agent user) {
     VBox card = glassCard(20);
 
@@ -232,6 +256,12 @@ public class CitizenProfileView extends BorderPane {
     return card;
 }
 
+    /**
+     * Builds evacuation card.
+     * @param controller the controller.
+     * @param user the user.
+     * @return the VBox.
+     */
     private VBox buildEvacuationCard(CitizenController controller, Agent user) {
         VBox card = glassCard(20);
 
@@ -253,6 +283,10 @@ public class CitizenProfileView extends BorderPane {
         return card;
     }
 
+    /**
+     * Builds advice and emergency card.
+     * @return the VBox.
+     */
     private VBox buildAdviceAndEmergencyCard() {
         VBox bottomCard = glassCard(20);
 
@@ -313,6 +347,12 @@ smallAdvice("⚠", "Alertes", "Consultez les consignes officielles."),
         return bottomCard;
     }
 
+    /**
+     * Performs row.
+     * @param key the key.
+     * @param value the value.
+     * @return the HBox.
+     */
     private HBox detailRow(String key, String value) {
         HBox row = new HBox(12);
         row.setAlignment(Pos.CENTER_LEFT);
@@ -334,6 +374,12 @@ smallAdvice("⚠", "Alertes", "Consultez les consignes officielles."),
         return row;
     }
 
+    /**
+     * Performs row.
+     * @param key the key.
+     * @param checkBox the checkBox.
+     * @return the HBox.
+     */
     private HBox pmrRow(String key, CheckBox checkBox) {
         HBox row = new HBox(12);
         row.setAlignment(Pos.CENTER_LEFT);
@@ -355,6 +401,13 @@ smallAdvice("⚠", "Alertes", "Consultez les consignes officielles."),
         return row;
     }
 
+    /**
+     * Performs advice.
+     * @param iconText the iconText.
+     * @param title the title.
+     * @param text the text.
+     * @return the VBox.
+     */
     private VBox smallAdvice(String iconText, String title, String text) {
         VBox box = new VBox(10);
         box.setPadding(new Insets(18));
@@ -377,6 +430,13 @@ smallAdvice("⚠", "Alertes", "Consultez les consignes officielles."),
         return box;
     }
 
+    /**
+     * Performs link.
+     * @param number the number.
+     * @param description the description.
+     * @param uri the uri.
+     * @return the Hyperlink.
+     */
     private Hyperlink emergencyLink(String number, String description, String uri) {
         Hyperlink link = new Hyperlink(number + " · " + description);
         link.setFont(Font.font("Segoe UI", FontWeight.BOLD, 12));
@@ -395,6 +455,10 @@ smallAdvice("⚠", "Alertes", "Consultez les consignes officielles."),
         return link;
     }
 
+    /**
+     * Performs link.
+     * @param uri the uri.
+     */
     private void openLink(String uri) {
         try {
             if (Desktop.isDesktopSupported()) {
@@ -405,6 +469,11 @@ smallAdvice("⚠", "Alertes", "Consultez les consignes officielles."),
         }
     }
 
+    /**
+     * Performs icon.
+     * @param text the text.
+     * @return the StackPane.
+     */
     private StackPane lineIcon(String text) {
         StackPane icon = new StackPane();
         icon.setPrefSize(34, 34);
@@ -424,6 +493,12 @@ smallAdvice("⚠", "Alertes", "Consultez les consignes officielles."),
         return icon;
     }
 
+    /**
+     * Performs stat.
+     * @param key the key.
+     * @param value the value.
+     * @return the VBox.
+     */
     private VBox miniStat(String key, String value) {
         VBox box = new VBox(4);
         box.setPadding(new Insets(12));
@@ -440,6 +515,12 @@ smallAdvice("⚠", "Alertes", "Consultez les consignes officielles."),
         return box;
     }
 
+    /**
+     * Performs badge.
+     * @param text the text.
+     * @param color the color.
+     * @return the Label.
+     */
     private Label badge(String text, String color) {
         Label badge = label(text, WHITE, 11, true);
         badge.setPadding(new Insets(6, 10, 6, 10));
@@ -451,6 +532,11 @@ smallAdvice("⚠", "Alertes", "Consultez les consignes officielles."),
         return badge;
     }
 
+    /**
+     * Performs card.
+     * @param padding the padding.
+     * @return the VBox.
+     */
     private VBox glassCard(double padding) {
         VBox card = new VBox(16);
         card.setPadding(new Insets(padding));
@@ -465,6 +551,11 @@ smallAdvice("⚠", "Alertes", "Consultez les consignes officielles."),
         return card;
     }
 
+    /**
+     * Returns the initials.
+     * @param fullName the fullName.
+     * @return the String.
+     */
     private String getInitials(String fullName) {
         if (fullName == null || fullName.isBlank()) {
             return "C";
@@ -479,6 +570,14 @@ smallAdvice("⚠", "Alertes", "Consultez les consignes officielles."),
         return (parts[0].substring(0, 1) + parts[1].substring(0, 1)).toUpperCase();
     }
 
+    /**
+     * Performs label.
+     * @param text the text.
+     * @param color the color.
+     * @param size the size.
+     * @param bold the bold.
+     * @return the Label.
+     */
     private Label label(String text, String color, int size, boolean bold) {
         Label label = new Label(text);
         label.setTextFill(Color.web(color));

@@ -56,6 +56,9 @@ public class ForgotPasswordView extends StackPane {
 
     private ForgotPasswordController controller;
 
+    /**
+     * Create a view for users to request password recovery.
+     */
     public ForgotPasswordView() {
         this.setMinSize(0, 0);
         this.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
@@ -70,6 +73,9 @@ public class ForgotPasswordView extends StackPane {
         confirmButton.setDefaultButton(true);
     }
 
+    /**
+     * Builds ui.
+     */
     private void buildUI() {
         Region background = new Region();
         background.prefWidthProperty().bind(this.widthProperty());
@@ -110,6 +116,10 @@ public class ForgotPasswordView extends StackPane {
         getChildren().addAll(background, grid, shell);
     }
 
+    /**
+     * Builds grid.
+     * @return the Pane.
+     */
     private Pane buildGrid() {
         Pane pane = new Pane();
         pane.setMouseTransparent(true);
@@ -150,6 +160,9 @@ public class ForgotPasswordView extends StackPane {
         return pane;
     }
 
+    /**
+     * Starts background animation.
+     */
     private void startBackgroundAnimation() {
         if (glow1 == null || glow2 == null || glow3 == null || glow4 == null || glow5 == null || glow6 == null) {
             return;
@@ -246,6 +259,10 @@ public class ForgotPasswordView extends StackPane {
         timeline.play();
     }
 
+    /**
+     * Builds left panel.
+     * @return the VBox.
+     */
     private VBox buildLeftPanel() {
         VBox left = new VBox();
         left.setPrefWidth(345);
@@ -305,6 +322,10 @@ public class ForgotPasswordView extends StackPane {
         return left;
     }
 
+    /**
+     * Builds form panel.
+     * @return the VBox.
+     */
     private VBox buildFormPanel() {
         VBox form = new VBox(18);
         form.setPrefWidth(555);
@@ -392,6 +413,12 @@ public class ForgotPasswordView extends StackPane {
         return form;
     }
 
+    /**
+     * Creates styled input field.
+     * @param iconType the iconType.
+     * @param inputField the inputField.
+     * @return the HBox.
+     */
     private HBox createStyledInputField(String iconType, Node inputField) {
         HBox box = new HBox(12);
         box.setAlignment(Pos.CENTER_LEFT);
@@ -421,6 +448,11 @@ public class ForgotPasswordView extends StackPane {
         return box;
     }
 
+    /**
+     * Performs style.
+     * @param hover the hover.
+     * @return the String.
+     */
     private String fieldStyle(boolean hover) {
         return "-fx-background-color:" + (hover ? "rgba(255,255,255,0.065)" : FIELD) + ";" +
                 "-fx-border-color:" + (hover ? "rgba(59,108,255,0.55)" : FIELD_BORDER) + ";" +
@@ -429,6 +461,10 @@ public class ForgotPasswordView extends StackPane {
                 "-fx-background-radius:14;";
     }
 
+    /**
+     * Performs input.
+     * @param field the field.
+     */
     private void styleInput(TextField field) {
         field.setStyle(
                 "-fx-background-color:transparent;" +
@@ -439,6 +475,11 @@ public class ForgotPasswordView extends StackPane {
         field.setFont(Font.font("System", FontWeight.NORMAL, 14));
     }
 
+    /**
+     * Creates input icon.
+     * @param type the type.
+     * @return the Node.
+     */
     private Node createInputIcon(String type) {
         SVGPath icon = new SVGPath();
 
@@ -457,6 +498,10 @@ public class ForgotPasswordView extends StackPane {
         return iconBox;
     }
 
+    /**
+     * Creates eye button.
+     * @return the Button.
+     */
     private Button createEyeButton() {
         Button eyeButton = new Button();
         eyeButton.setPrefSize(34, 34);
@@ -467,6 +512,11 @@ public class ForgotPasswordView extends StackPane {
         return eyeButton;
     }
 
+    /**
+     * Updates eye icon.
+     * @param eyeButton the eyeButton.
+     * @param crossed the crossed.
+     */
     private void updateEyeIcon(Button eyeButton, boolean crossed) {
         SVGPath eyeIcon = new SVGPath();
         eyeIcon.setContent(
@@ -490,6 +540,11 @@ public class ForgotPasswordView extends StackPane {
         eyeButton.setGraphic(iconPane);
     }
 
+    /**
+     * Performs button style.
+     * @param hover the hover.
+     * @return the String.
+     */
     private String mainButtonStyle(boolean hover) {
         return "-fx-background-color:" +
                 (hover
@@ -500,6 +555,11 @@ public class ForgotPasswordView extends StackPane {
                 "-fx-effect:dropshadow(gaussian, rgba(59,108,255,0.30), 18, 0, 0, 7);";
     }
 
+    /**
+     * Performs style.
+     * @param hover the hover.
+     * @return the String.
+     */
     private String backStyle(boolean hover) {
         return "-fx-background-color:transparent;" +
                 "-fx-text-fill:" + (hover ? TEXT : "#50617d") + ";" +
@@ -508,6 +568,11 @@ public class ForgotPasswordView extends StackPane {
                 "-fx-padding:0 0 8 0;";
     }
 
+    /**
+     * Creates logo box.
+     * @param size the size.
+     * @return the StackPane.
+     */
     private StackPane createLogoBox(int size) {
         StackPane logo = new StackPane();
         logo.setPrefSize(size, size);
@@ -533,6 +598,14 @@ public class ForgotPasswordView extends StackPane {
         return logo;
     }
 
+    /**
+     * Performs label.
+     * @param text the text.
+     * @param color the color.
+     * @param size the size.
+     * @param bold the bold.
+     * @return the Label.
+     */
     private Label label(String text, String color, int size, boolean bold) {
         Label label = new Label(text);
         label.setTextFill(Color.web(color));
@@ -540,32 +613,60 @@ public class ForgotPasswordView extends StackPane {
         return label;
     }
 
+    /**
+     * Performs error message.
+     * @param message the message.
+     */
     public void displayErrorMessage(String message) {
         errorLabel.setText(message);
         errorLabel.setTextFill(Color.web("#ff6b6b"));
     }
 
+    /**
+     * Performs success message.
+     * @param message the message.
+     */
     public void displaySuccessMessage(String message) {
         errorLabel.setText(message);
         errorLabel.setTextFill(Color.web("#42d782"));
     }
 
+    /**
+     * Returns the back button.
+     * @return the Button.
+     */
     public Button getBackButton() {
         return backButton;
     }
 
+    /**
+     * Returns the confirm button.
+     * @return the Button.
+     */
     public Button getConfirmButton() {
         return confirmButton;
     }
 
+    /**
+     * Returns the code input.
+     * @return the String.
+     */
     public String getCodeInput() {
         return codeField.getText();
     }
 
+    /**
+     * Returns the new password input.
+     * @return the String.
+     */
     public String getNewPasswordInput() {
         return passwordField.isVisible() ? passwordField.getText() : visiblePasswordField.getText();
     }
 
+    /**
+     * Sets the controller.
+     * @param controller the controller.
+     */
     public void setController(ForgotPasswordController controller) {
         this.controller = controller;
     }

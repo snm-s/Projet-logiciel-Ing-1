@@ -72,12 +72,19 @@ public class RouteGraph {
     // CONSTRUCTION
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Constructs a new RouteGraph.
+     * @param zones the zones.
+     */
     public RouteGraph(List<Zone> zones) {
         for (Zone z : zones) zoneMap.put(z.getId(), z);
         load();
         this.router = new EvacuationRouter(this);
     }
 
+    /**
+     * Loads.
+     */
     private void load() {
         try (InputStream is = getClass().getResourceAsStream(JSON_PATH)) {
             if (is == null) { generateDefaultRoutes(); return; }
@@ -90,6 +97,9 @@ public class RouteGraph {
         LOG.info(edges.size() + " routes chargées");
     }
 
+    /**
+     * Performs default routes.
+     */
     private void generateDefaultRoutes() {
         // Réseau dense et lisible adapté aux zones réellement chargées depuis data/zones.json.
         // Les IDs 8 et 9 sont les refuges dans le jeu de données actuel.
@@ -114,6 +124,9 @@ public class RouteGraph {
         ensureShelterConnectivity();
     }
 
+    /**
+     * Ensures shelter connectivity.
+     */
     private void ensureShelterConnectivity() {
         List<Zone> allZones = new ArrayList<>(zoneMap.values());
         List<Zone> shelters = allZones.stream()
@@ -150,6 +163,12 @@ public class RouteGraph {
         }
     }
 
+    /**
+     * Returns whether edge between.
+     * @param a the a.
+     * @param b the b.
+     * @return the boolean result.
+     */
     public boolean hasEdgeBetween(Zone a, Zone b) {
         if (a == null || b == null) return true;
         return edges.stream().anyMatch(e ->
@@ -157,6 +176,14 @@ public class RouteGraph {
             (e.getFromZone().getId() == b.getId() && e.getToZone().getId() == a.getId())
         );
     }
+
+    /**
+     * Check whether an edge exists between two zones.
+     *
+     * @param a first zone
+     * @param b second zone
+     * @return true if an edge exists or if inputs are null
+     */
 
     public Edge addEdge(Zone from, Zone to) {
         if (from == null || to == null) return null;
@@ -183,6 +210,14 @@ public class RouteGraph {
         LOG.fine("Edge ajoutee : " + name);
         return edge;
     }
+
+    /**
+     * Add a new edge connecting two zones. Returns the created Edge or null on error.
+     *
+     * @param from source zone
+     * @param to destination zone
+     * @return the created Edge or null if invalid or duplicate
+     */
 
 
     private double geoDistanceSquared(Zone a, Zone b) {
@@ -241,6 +276,15 @@ public class RouteGraph {
     }
 
     /**
+     * Plan an evacuation movement for an agent from a starting zone to the nearest safe shelter.
+     *
+     * @param agent agent to evacuate
+     * @param from starting zone
+     * @param zones list of available zones to search shelters
+     * @return created AgentMovement or null if no path available
+     */
+
+    /**
      * Planifie le déplacement d'un RescueAgent vers une zone cible.
      */
     public AgentMovement planRescueMission(RescueAgent agent, Zone from, Zone to) {
@@ -252,6 +296,15 @@ public class RouteGraph {
         activeMovements.add(movement);
         return movement;
     }
+
+    /**
+     * Plan a rescue mission movement for a rescue agent from one zone to a target zone.
+     *
+     * @param agent rescue agent
+     * @param from starting zone
+     * @param to target zone
+     * @return created AgentMovement or null if no path available
+     */
 
     /**
      * Avance tous les déplacements d'un pas de simulation.
@@ -277,6 +330,13 @@ public class RouteGraph {
         activeMovements.removeAll(toRemove);
     }
 
+    /**
+     * Advance all active movements by one simulation tick.
+     * Should be invoked regularly by the simulation controller.
+     *
+     * @param deltaSeconds duration of the tick in seconds
+     */
+
     /** Replanifie un agent bloqué depuis sa position actuelle. */
     private void replanBlocked(AgentMovement blocked) {
         Agent agent = blocked.getAgent();
@@ -291,6 +351,11 @@ public class RouteGraph {
             LOG.fine("Agent " + agent.getId() + " replanifié depuis " + closestZone.getName());
     }
 
+    /**
+     * Finds closest zone.
+     * @param pos the pos.
+     * @return the Zone.
+     */
     private Zone findClosestZone(GeoPosition pos) {
         Zone closest = null;
         double minDist = Double.MAX_VALUE;
@@ -311,6 +376,10 @@ public class RouteGraph {
         for (Edge edge : edges) edge.refreshState();
     }
 
+    /**
+     * Recompute the state for all edges in the graph.
+     */
+
     /** Met à jour les flux selon les populations inondées. */
     public void simulateFlows() {
         // Les consignes parlent de capacité d'arête en nombre d'agents.
@@ -324,6 +393,10 @@ public class RouteGraph {
             }
         }
     }
+
+    /**
+     * Recalculate edge flows based on currently active movements.
+     */
 
     /**
      * Dijkstra spécial secouristes : les arêtes rouges restent traversables
@@ -389,6 +462,14 @@ public class RouteGraph {
         return new EvacuationPath(zoneSeq, edgeSeq, total);
     }
 
+    /**
+     * Find a path tailored for rescue agents using modified edge costs.
+     *
+     * @param from origin zone
+     * @param to destination zone
+     * @return EvacuationPath or null if unreachable
+     */
+
     private static class EdgeEntryForRescue {
         final Edge edge;
         final int toId;
@@ -399,12 +480,36 @@ public class RouteGraph {
     // LISTENERS
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Adds arrival listener.
+     * @param l the l.
+     */
     public void addArrivalListener(ArrivalListener l)    { arrivalListeners.add(l); }
+    /**
+     * Removes arrival listener.
+     * @param l the l.
+     */
     public void removeArrivalListener(ArrivalListener l) { arrivalListeners.remove(l); }
+
+    /**
+     * Register an arrival listener notified when movements arrive or are blocked.
+     *
+     * @param l listener to register
+     */
+
+    /**
+     * Remove a previously registered arrival listener.
+     *
+     * @param l listener to remove
+     */
 
     private void notifyArrived(AgentMovement mv) {
         for (ArrivalListener l : arrivalListeners) l.onAgentArrived(mv);
     }
+    /**
+     * Notifies blocked.
+     * @param mv the mv.
+     */
     private void notifyBlocked(AgentMovement mv) {
         for (ArrivalListener l : arrivalListeners) l.onAgentBlocked(mv);
     }
@@ -413,6 +518,12 @@ public class RouteGraph {
     // OSRM
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Performs osrm route.
+     * @param from the from.
+     * @param to the to.
+     * @return the List<GeoPosition>.
+     */
     private List<GeoPosition> fetchOsrmRoute(Zone from, Zone to) {
         String url = String.format(Locale.US,
             "%s%.6f,%.6f;%.6f,%.6f?overview=full&geometries=geojson",
@@ -433,6 +544,11 @@ public class RouteGraph {
         return fallbackLine(from, to);
     }
 
+    /**
+     * Performs osrm geo json.
+     * @param json the json.
+     * @return the List<GeoPosition>.
+     */
     private List<GeoPosition> parseOsrmGeoJson(String json) {
         List<GeoPosition> result = new ArrayList<>();
         try {
@@ -460,6 +576,11 @@ public class RouteGraph {
         return result.isEmpty() ? fallbackEmpty() : result;
     }
 
+    /**
+     * Performs arrays.
+     * @param json the json.
+     * @return the List<String>.
+     */
     private List<String> splitArrays(String json) {
         List<String> r = new ArrayList<>();
         int depth = 0, start = -1;
@@ -471,13 +592,27 @@ public class RouteGraph {
         return r;
     }
 
+    /**
+     * Performs line.
+     * @param f the f.
+     * @param t the t.
+     * @return the List<GeoPosition>.
+     */
     private List<GeoPosition> fallbackLine(Zone f, Zone t) {
         return Arrays.asList(
             new GeoPosition(f.getLatitude(), f.getLongitude()),
             new GeoPosition(t.getLatitude(), t.getLongitude()));
     }
+    /**
+     * Performs empty.
+     * @return the List<GeoPosition>.
+     */
     private List<GeoPosition> fallbackEmpty() { return new ArrayList<>(); }
 
+    /**
+     * Returns the waypoint provider.
+     * @return the WaypointProvider.
+     */
     public WaypointProvider getWaypointProvider() {
         return waypointProvider;
     }
@@ -486,6 +621,10 @@ public class RouteGraph {
     // PARSING JSON
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Performs json.
+     * @param json the json.
+     */
     private void parseJson(String json) {
         int rs = json.indexOf("\"routes\"");
         if (rs < 0) { generateDefaultRoutes(); return; }
@@ -506,6 +645,11 @@ public class RouteGraph {
         }
     }
 
+    /**
+     * Performs objects.
+     * @param json the json.
+     * @return the List<String>.
+     */
     private List<String> splitObjects(String json) {
         List<String> r = new ArrayList<>();
         int d = 0, s = -1;
@@ -517,12 +661,31 @@ public class RouteGraph {
         return r;
     }
 
+    /**
+     * Performs int.
+     * @param b the b.
+     * @param k the k.
+     * @return the int result.
+     */
     private int parseInt(String b, String k) {
         int i = b.indexOf(k), c = b.indexOf(':', i), e = b.indexOf(',', c);
         if (e < 0) e = b.indexOf('}', c);
         return Integer.parseInt(b.substring(c + 1, e).trim());
     }
+    /**
+     * Performs int or.
+     * @param b the b.
+     * @param k the k.
+     * @param def the def.
+     * @return the int result.
+     */
     private int parseIntOr(String b, String k, int def) { try { return parseInt(b, k); } catch (Exception e) { return def; } }
+    /**
+     * Performs str.
+     * @param b the b.
+     * @param k the k.
+     * @return the String.
+     */
     private String parseStr(String b, String k) {
         int i = b.indexOf(k), c = b.indexOf(':', i), q1 = b.indexOf('"', c + 1), q2 = b.indexOf('"', q1 + 1);
         return b.substring(q1 + 1, q2);
@@ -532,10 +695,26 @@ public class RouteGraph {
                                                                                                                                                                                        // API PUBLIQUE
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Returns the edges.
+     * @return the List<Edge>.
+     */
     public List<Edge>           getEdges()           { return Collections.unmodifiableList(edges); }
+    /**
+     * Returns the router.
+     * @return the EvacuationRouter.
+     */
     public EvacuationRouter     getRouter()          { return router; }
+    /**
+     * Returns the active movements.
+     * @return the List<AgentMovement>.
+     */
     public List<AgentMovement>  getActiveMovements() { return Collections.unmodifiableList(activeMovements); }
 
+    /**
+     * Removes movements of agent.
+     * @param agentId the agentId.
+     */
     public void removeMovementsOfAgent(int agentId) {
         activeMovements.removeIf(mv ->
             mv != null &&
@@ -557,6 +736,12 @@ public class RouteGraph {
         refreshAllEdges();
     }
 
+    /**
+     * Adds zone and connect to nearest.
+     * @param newZone the newZone.
+     * @param count the count.
+     * @return the List<Edge>.
+     */
     public List<Edge> addZoneAndConnectToNearest(Zone newZone, int count) {
         List<Edge> created = new ArrayList<>();
     
@@ -580,6 +765,11 @@ public class RouteGraph {
         return created;
     }
 
+    /**
+     * Returns the edges for zone.
+     * @param zone the zone.
+     * @return the List<Edge>.
+     */
     public List<Edge> getEdgesForZone(Zone zone) {
         return edges.stream()
             .filter(e -> e.getFromZone().getId() == zone.getId()

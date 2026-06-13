@@ -56,6 +56,14 @@ public class CitizenRoutesView extends BorderPane {
     private Label historyCountLabel;
     private VBox root;
 
+    /**
+     * Create the routes view allowing the user to inspect and show routes on the map.
+     *
+     * @param controller controller providing evacuation data
+     * @param user       current agent
+     * @param mapView    map view used to display selected routes
+     * @param onShowOnMap callback invoked when requesting to display a route on the map
+     */
     public CitizenRoutesView(CitizenController controller, Agent user, MapView mapView, java.util.function.Consumer<RouteRequest> onShowOnMap) {
         this.controller = controller;
         this.user = user;
@@ -86,10 +94,21 @@ public class CitizenRoutesView extends BorderPane {
     }
 
 
+    /**
+     * Create a simple routes view bound to a map component.
+     *
+     * @param controller controller providing route computation
+     * @param user       current agent
+     * @param mapView    map view used to display routes
+     */
     public CitizenRoutesView(CitizenController controller, Agent user, MapView mapView) {
         this(controller, user, mapView, null);
     }
 
+    /**
+     * Builds header.
+     * @return the VBox.
+     */
     private VBox buildHeader() {
         VBox header = new VBox(6);
 
@@ -106,6 +125,10 @@ public class CitizenRoutesView extends BorderPane {
         return header;
     }
 
+    /**
+     * Builds recommended route.
+     * @return the VBox.
+     */
     private VBox buildRecommendedRoute() {
         VBox card = glassCard(24);
 
@@ -169,6 +192,10 @@ public class CitizenRoutesView extends BorderPane {
         return card;
     }
 
+    /**
+     * Builds possible routes.
+     * @return the VBox.
+     */
     private VBox buildPossibleRoutes() {
         VBox card = glassCard(22);
 
@@ -206,6 +233,11 @@ public class CitizenRoutesView extends BorderPane {
         return card;
     }
 
+    /**
+     * Performs route card.
+     * @param refuge the refuge.
+     * @return the VBox.
+     */
     private VBox possibleRouteCard(Zone refuge) {
         VBox card = new VBox(12);
         card.setPadding(new Insets(16));
@@ -257,6 +289,10 @@ public class CitizenRoutesView extends BorderPane {
         return card;
     }
 
+    /**
+     * Builds recent routes.
+     * @return the VBox.
+     */
     private VBox buildRecentRoutes() {
         VBox card = glassCard(22);
 
@@ -295,6 +331,11 @@ public class CitizenRoutesView extends BorderPane {
 
 
 
+    /**
+     * Performs route.
+     * @param refuge the refuge.
+     * @param recommended the recommended.
+     */
     private void openRoute(Zone refuge, boolean recommended) {
         if (from == null || refuge == null) return;
 
@@ -320,6 +361,9 @@ public class CitizenRoutesView extends BorderPane {
         refreshRecentRoutes();
     }
 
+    /**
+     * Refreshes recent routes.
+     */
     private void refreshRecentRoutes() {
         if (recentRoutesBox == null) return;
 
@@ -342,6 +386,11 @@ public class CitizenRoutesView extends BorderPane {
         }
     }
 
+    /**
+     * Performs history card.
+     * @param item the item.
+     * @return the VBox.
+     */
     private VBox routeHistoryCard(RouteItem item) {
         VBox card = new VBox(12);
         card.setPadding(new Insets(16));
@@ -377,6 +426,10 @@ public class CitizenRoutesView extends BorderPane {
         return card;
     }
 
+    /**
+     * Returns the alternative refuges.
+     * @return the List<Zone>.
+     */
     private List<Zone> getAlternativeRefuges() {
         List<Zone> result = new ArrayList<>();
 
@@ -394,15 +447,30 @@ public class CitizenRoutesView extends BorderPane {
         return result;
     }
 
+    /**
+     * Performs zone.
+     * @param a the a.
+     * @param b the b.
+     * @return the boolean result.
+     */
     private boolean sameZone(Zone a, Zone b) {
         if (a == null || b == null) return false;
         return Objects.equals(a.getName(), b.getName());
     }
 
+    /**
+     * Performs name.
+     * @return the String.
+     */
     private String fromName() {
         return from != null ? from.getName() : "Position inconnue";
     }
 
+    /**
+     * Returns the capacity text.
+     * @param refuge the refuge.
+     * @return the String.
+     */
     private String getCapacityText(Zone refuge) {
         if (refuge instanceof Shelter shelter) {
             return " • Capacité : " + shelter.getCapacity() + " places";
@@ -411,6 +479,13 @@ public class CitizenRoutesView extends BorderPane {
         return "";
     }
 
+    /**
+     * Performs box.
+     * @param title the title.
+     * @param value the value.
+     * @param color the color.
+     * @return the VBox.
+     */
     private VBox detailBox(String title, String value, String color) {
         VBox box = new VBox(5);
         box.setPadding(new Insets(14));
@@ -429,6 +504,12 @@ public class CitizenRoutesView extends BorderPane {
         return box;
     }
 
+    /**
+     * Performs info.
+     * @param title the title.
+     * @param value the value.
+     * @return the VBox.
+     */
     private VBox miniInfo(String title, String value) {
         VBox box = new VBox(3);
         box.setAlignment(Pos.CENTER_LEFT);
@@ -440,6 +521,12 @@ public class CitizenRoutesView extends BorderPane {
         return box;
     }
 
+    /**
+     * Performs box.
+     * @param title the title.
+     * @param subtitle the subtitle.
+     * @return the VBox.
+     */
     private VBox emptyBox(String title, String subtitle) {
         VBox box = new VBox(8);
         box.setAlignment(Pos.CENTER);
@@ -459,6 +546,11 @@ public class CitizenRoutesView extends BorderPane {
         return box;
     }
 
+    /**
+     * Performs color.
+     * @param status the status.
+     * @return the String.
+     */
     private String statusColor(String status) {
         if (status == null) return BLUE;
 
@@ -469,6 +561,13 @@ public class CitizenRoutesView extends BorderPane {
         };
     }
 
+    /**
+     * Performs icon.
+     * @param text the text.
+     * @param color the color.
+     * @param size the size.
+     * @return the StackPane.
+     */
     private StackPane roundIcon(String text, String color, int size) {
         StackPane icon = new StackPane();
         icon.setPrefSize(size, size);
@@ -486,6 +585,12 @@ public class CitizenRoutesView extends BorderPane {
         return icon;
     }
 
+    /**
+     * Performs icon.
+     * @param text the text.
+     * @param color the color.
+     * @return the StackPane.
+     */
     private StackPane smallIcon(String text, String color) {
         StackPane icon = new StackPane();
         icon.setPrefSize(42, 42);
@@ -504,6 +609,12 @@ public class CitizenRoutesView extends BorderPane {
         return icon;
     }
 
+    /**
+     * Performs label.
+     * @param text the text.
+     * @param color the color.
+     * @return the Label.
+     */
     private Label statusLabel(String text, String color) {
         Label label = label(text == null ? "--" : text, color, 13, true);
         label.setPadding(new Insets(4, 0, 4, 0));
@@ -511,6 +622,12 @@ public class CitizenRoutesView extends BorderPane {
         return label;
     }
 
+    /**
+     * Performs badge.
+     * @param text the text.
+     * @param color the color.
+     * @return the Label.
+     */
     private Label badge(String text, String color) {
         Label badge = label(text == null ? "--" : text, WHITE, 11, true);
         badge.setPadding(new Insets(6, 11, 6, 11));
@@ -521,6 +638,11 @@ public class CitizenRoutesView extends BorderPane {
         return badge;
     }
 
+    /**
+     * Performs card.
+     * @param padding the padding.
+     * @return the VBox.
+     */
     private VBox glassCard(int padding) {
         VBox box = new VBox(12);
         box.setPadding(new Insets(padding));
@@ -534,6 +656,11 @@ public class CitizenRoutesView extends BorderPane {
         return box;
     }
 
+    /**
+     * Performs button.
+     * @param text the text.
+     * @return the Button.
+     */
     private Button blueButton(String text) {
         Button button = new Button(text);
         button.setPadding(new Insets(11, 18, 11, 18));
@@ -564,6 +691,11 @@ public class CitizenRoutesView extends BorderPane {
         return button;
     }
 
+    /**
+     * Performs button.
+     * @param text the text.
+     * @return the Button.
+     */
     private Button darkButton(String text) {
         Button button = new Button(text);
         button.setPadding(new Insets(9, 15, 9, 15));
@@ -578,6 +710,14 @@ public class CitizenRoutesView extends BorderPane {
         return button;
     }
 
+    /**
+     * Performs label.
+     * @param text the text.
+     * @param color the color.
+     * @param size the size.
+     * @param bold the bold.
+     * @return the Label.
+     */
     private Label label(String text, String color, int size, boolean bold) {
         Label label = new Label(text == null ? "" : text);
         label.setTextFill(Color.web(color));
@@ -594,6 +734,11 @@ public class CitizenRoutesView extends BorderPane {
             String status
     ) {
         @Override
+        /**
+         * Performs equals.
+         * @param obj the obj.
+         * @return the boolean result.
+         */
         public boolean equals(Object obj) {
             if (!(obj instanceof RouteItem other)) return false;
 
@@ -602,6 +747,10 @@ public class CitizenRoutesView extends BorderPane {
         }
 
         @Override
+        /**
+         * Performs code.
+         * @return the int result.
+         */
         public int hashCode() {
             return Objects.hash(start, end);
         }

@@ -25,6 +25,13 @@ public enum EdgeState {
         this.speedKmh = speedKmh;
     }
 
+    /**
+     * Computes.
+     * @param fromFlooded the fromFlooded.
+     * @param toFlooded the toFlooded.
+     * @param flowRatio the flowRatio.
+     * @return the EdgeState.
+     */
     public static EdgeState compute(boolean fromFlooded, boolean toFlooded, double flowRatio) {
         if (fromFlooded || toFlooded) return FLOODED;
         if (flowRatio > 1.0) return OVERLOADED;
@@ -33,6 +40,14 @@ public enum EdgeState {
         return SAFE;
     }
 
+    /**
+     * Computes.
+     * @param fromFlooded the fromFlooded.
+     * @param toFlooded the toFlooded.
+     * @param altFrom the altFrom.
+     * @param altTo the altTo.
+     * @return the EdgeState.
+     */
     public static EdgeState compute(boolean fromFlooded, boolean toFlooded, double altFrom, double altTo) {
         return compute(fromFlooded, toFlooded, 0.0);
     }

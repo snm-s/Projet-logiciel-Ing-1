@@ -127,6 +127,9 @@ public class RegisterView extends StackPane {
                     "-fx-prompt-text-fill:#607292;" +
                     "-fx-padding:0 14 0 14;";
 
+    /**
+     * Create the user registration view.
+     */
     public RegisterView() {
         this.setMinSize(0, 0);
         this.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
@@ -198,6 +201,10 @@ public class RegisterView extends StackPane {
         this.getChildren().addAll(background, grid, shell);
     }
 
+    /**
+     * Builds grid.
+     * @return the Pane.
+     */
     private Pane buildGrid() {
         Pane pane = new Pane();
         pane.setMouseTransparent(true);
@@ -238,6 +245,9 @@ public class RegisterView extends StackPane {
         return pane;
     }
 
+    /**
+     * Starts background animation.
+     */
     private void startBackgroundAnimation() {
         if (glow1 == null || glow2 == null || glow3 == null || glow4 == null || glow5 == null || glow6 == null) {
             return;
@@ -334,6 +344,10 @@ public class RegisterView extends StackPane {
         timeline.play();
     }
 
+    /**
+     * Builds left panel.
+     * @return the VBox.
+     */
     private VBox buildLeftPanel() {
         VBox left = new VBox();
         left.setPrefWidth(345);
@@ -393,6 +407,9 @@ public class RegisterView extends StackPane {
         return left;
     }
 
+    /**
+     * Builds.
+     */
     private void build() {
         Label small = label("ACCÈS SÉCURISÉ", BLUE, 12, true);
         small.setStyle("-fx-letter-spacing:3px;");
@@ -605,6 +622,11 @@ applyTextFieldStyle(country);
         root.getChildren().add(registerBtn);
     }
 
+    /**
+     * Creates section label.
+     * @param text the text.
+     * @return the Label.
+     */
     private Label createSectionLabel(String text) {
         Label l = new Label(text);
         l.setFont(Font.font("System", FontWeight.BOLD, 14));
@@ -613,6 +635,10 @@ applyTextFieldStyle(country);
         return l;
     }
 
+    /**
+     * Performs label.
+     * @return the Label.
+     */
     private Label errLabel() {
         Label l = new Label();
         l.setFont(Font.font("System", FontWeight.NORMAL, 11));
@@ -622,12 +648,22 @@ applyTextFieldStyle(country);
         return l;
     }
 
+    /**
+     * Performs row.
+     * @param field the field.
+     * @param err the err.
+     * @return the VBox.
+     */
     private VBox fieldRow(Control field, Label err) {
         VBox box = new VBox(4, field, err);
         box.setMaxWidth(Double.MAX_VALUE);
         return box;
     }
 
+    /**
+     * Performs text field style.
+     * @param tf the tf.
+     */
     private void applyTextFieldStyle(TextField tf) {
         tf.setPrefHeight(46);
         tf.setFont(Font.font("System", 13));
@@ -639,6 +675,10 @@ applyTextFieldStyle(country);
         });
     }
 
+    /**
+     * Performs text field style.
+     * @param pf the pf.
+     */
     private void applyTextFieldStyle(PasswordField pf) {
         pf.setPrefHeight(46);
         pf.setFont(Font.font("System", 13));
@@ -650,6 +690,10 @@ applyTextFieldStyle(country);
         });
     }
 
+    /**
+     * Performs combo box style.
+     * @param combo the combo.
+     */
     private void applyComboBoxStyle(ComboBox<String> combo) {
         combo.setMaxWidth(Double.MAX_VALUE);
         combo.setPrefHeight(46);
@@ -657,6 +701,11 @@ applyTextFieldStyle(country);
 
         combo.setButtonCell(new ListCell<>() {
             @Override
+            /**
+             * Updates item.
+             * @param item the item.
+             * @param empty the empty.
+             */
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty || item == null ? combo.getPromptText() : item);
@@ -666,6 +715,11 @@ applyTextFieldStyle(country);
 
         combo.setCellFactory(lv -> new ListCell<>() {
             @Override
+            /**
+             * Updates item.
+             * @param item the item.
+             * @param empty the empty.
+             */
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
 
@@ -680,6 +734,10 @@ applyTextFieldStyle(country);
         });
     }
 
+    /**
+     * Performs editable combo box style.
+     * @param combo the combo.
+     */
     private void applyEditableComboBoxStyle(ComboBox<String> combo) {
         applyComboBoxStyle(combo);
 
@@ -691,6 +749,11 @@ applyTextFieldStyle(country);
         );
     }
 
+    /**
+     * Performs style.
+     * @param error the error.
+     * @return the String.
+     */
     private String comboStyle(boolean error) {
         return "-fx-background-color:" + (error ? "rgba(255,107,107,0.10)" : FIELD) + ";" +
                 "-fx-border-color:" + (error ? ERROR : FIELD_BORDER) + ";" +
@@ -700,6 +763,12 @@ applyTextFieldStyle(country);
                 "-fx-text-fill:" + TEXT + ";";
     }
 
+    /**
+     * Performs password color style.
+     * @param field the field.
+     * @param text the text.
+     * @param isValid the isValid.
+     */
     private void applyPasswordColorStyle(PasswordField field, String text, boolean isValid) {
         if (text == null || text.isEmpty()) {
             field.setStyle(TF_NORMAL);
@@ -712,6 +781,13 @@ applyTextFieldStyle(country);
         );
     }
 
+    /**
+     * Creates password field with eye.
+     * @param pf the pf.
+     * @param tf the tf.
+     * @param prompt the prompt.
+     * @return the StackPane.
+     */
     private StackPane createPasswordFieldWithEye(PasswordField pf, TextField tf, String prompt) {
         pf.setPromptText(prompt);
         tf.setPromptText(prompt);
@@ -784,6 +860,12 @@ applyTextFieldStyle(country);
         boolean isValid(TextField f);
     }
 
+    /**
+     * Performs live validation.
+     * @param tf the tf.
+     * @param err the err.
+     * @param validator the validator.
+     */
     private void setupLiveValidation(TextField tf, Label err, FieldValidator validator) {
         tf.textProperty().addListener((obs, o, n) -> {
             if (tf.getText().trim().isEmpty()) {
@@ -794,6 +876,13 @@ applyTextFieldStyle(country);
         });
     }
 
+    /**
+     * Displays error.
+     * @param err the err.
+     * @param field the field.
+     * @param hasError the hasError.
+     * @param message the message.
+     */
     private void showError(Label err, Control field, boolean hasError, String message) {
         err.setText(message);
         err.setVisible(hasError);
@@ -806,6 +895,11 @@ applyTextFieldStyle(country);
         }
     }
 
+    /**
+     * Returns the field error.
+     * @param tf the tf.
+     * @return the String.
+     */
     private String getFieldError(TextField tf) {
         if (tf == email) return "E-mail valide requis (doit contenir @)";
         if (tf == phone) return "Le numéro de téléphone doit comporter exactement 10 chiffres";
@@ -818,6 +912,9 @@ applyTextFieldStyle(country);
         return "Ce champ est requis";
     }
 
+    /**
+     * Performs birth date combo boxes.
+     */
     private void setupBirthDateComboBoxes() {
         birthDay.setPromptText("Jour");
         birthMonth.setPromptText("Mois");
@@ -842,12 +939,21 @@ applyTextFieldStyle(country);
         birthYear.valueProperty().addListener((obs, o, n) -> validateBirthDate());
     }
 
+    /**
+     * Performs integer combo box style.
+     * @param combo the combo.
+     */
     private void applyIntegerComboBoxStyle(ComboBox<Integer> combo) {
         combo.setPrefHeight(46);
         combo.setStyle(comboStyle(false));
 
         combo.setButtonCell(new ListCell<>() {
             @Override
+            /**
+             * Updates item.
+             * @param item the item.
+             * @param empty the empty.
+             */
             protected void updateItem(Integer item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty || item == null ? combo.getPromptText() : String.valueOf(item));
@@ -857,6 +963,11 @@ applyTextFieldStyle(country);
 
         combo.setCellFactory(lv -> new ListCell<>() {
             @Override
+            /**
+             * Updates item.
+             * @param item the item.
+             * @param empty the empty.
+             */
             protected void updateItem(Integer item, boolean empty) {
                 super.updateItem(item, empty);
 
@@ -871,6 +982,10 @@ applyTextFieldStyle(country);
         });
     }
 
+    /**
+     * Returns the birth date value.
+     * @return the LocalDate.
+     */
     private LocalDate getBirthDateValue() {
         if (birthDay.getValue() == null || birthMonth.getValue() == null || birthYear.getValue() == null) {
             return null;
@@ -883,6 +998,9 @@ applyTextFieldStyle(country);
         }
     }
 
+    /**
+     * Validates birth date.
+     */
     private void validateBirthDate() {
         LocalDate date = getBirthDateValue();
         boolean hasError = date == null || date.isAfter(LocalDate.now());
@@ -898,6 +1016,10 @@ applyTextFieldStyle(country);
         birthYear.setStyle(style);
     }
 
+    /**
+     * Validates all.
+     * @return the boolean result.
+     */
     private boolean validateAll() {
         boolean valid = true;
 
@@ -980,11 +1102,18 @@ if (!cityValue.equalsIgnoreCase("Lyon")) {
         return valid;
     }
 
+    /**
+     * Sets the controller.
+     * @param controller the controller.
+     */
     public void setController(RegisterController controller) {
         this.controller = controller;
         setupPasswordLiveCheck();
     }
 
+    /**
+     * Performs password live check.
+     */
     private void setupPasswordLiveCheck() {
         if (controller == null) return;
 
@@ -1022,6 +1151,9 @@ if (!cityValue.equalsIgnoreCase("Lyon")) {
         visibleConfirmPassword.textProperty().addListener((o, ov, n) -> validate.run());
     }
 
+    /**
+     * Performs role visibility.
+     */
     private void setupRoleVisibility() {
         role.valueProperty().addListener((obs, o, n) -> {
             String technicalValue = (n != null && n.equals("Citoyen")) ? "citizen" : "rescue";
@@ -1041,6 +1173,10 @@ if (!cityValue.equalsIgnoreCase("Lyon")) {
         });
     }
 
+    /**
+     * Performs only letters.
+     * @param field the field.
+     */
     private void allowOnlyLetters(TextField field) {
         field.textProperty().addListener((obs, oldValue, newValue) -> {
             if (!newValue.matches("[a-zA-ZÀ-ÿ\\s'-]*")) {
@@ -1049,11 +1185,17 @@ if (!cityValue.equalsIgnoreCase("Lyon")) {
         });
     }
 
+    /**
+     * Performs only letters fields.
+     */
     private void setupOnlyLettersFields() {
         allowOnlyLetters(firstName);
         allowOnlyLetters(lastName);
     }
 
+    /**
+     * Performs enter navigation.
+     */
     private void setupEnterNavigation() {
         firstName.setOnAction(e -> lastName.requestFocus());
         lastName.setOnAction(e -> birthDay.requestFocus());
@@ -1077,6 +1219,9 @@ if (!cityValue.equalsIgnoreCase("Lyon")) {
         emergencyContact.setOnAction(e -> registerBtn.fire());
     }
 
+    /**
+     * Updates coordinates from city.
+     */
     private void updateCoordinatesFromCity() {
         String cityText = city.getText().trim().toLowerCase();
     
@@ -1095,6 +1240,9 @@ if (!cityValue.equalsIgnoreCase("Lyon")) {
         }
     }
 
+    /**
+     * Handles register.
+     */
     private void handleRegister() {
         if (controller == null) return;
 
@@ -1178,12 +1326,21 @@ if (coords != null) {
         }
     }
 
+    /**
+     * Performs check box.
+     * @param checkBox the checkBox.
+     */
     private void styleCheckBox(CheckBox checkBox) {
         checkBox.setFont(Font.font("System", 13));
         checkBox.setTextFill(Color.web(MUTED));
         checkBox.setStyle("-fx-cursor:hand;");
     }
 
+    /**
+     * Performs button style.
+     * @param hover the hover.
+     * @return the String.
+     */
     private String mainButtonStyle(boolean hover) {
         return "-fx-background-color:" +
                 (hover
@@ -1194,6 +1351,11 @@ if (coords != null) {
                 "-fx-effect:dropshadow(gaussian, rgba(59,108,255,0.30), 18, 0, 0, 7);";
     }
 
+    /**
+     * Performs button style.
+     * @param hover the hover.
+     * @return the String.
+     */
     private String secondaryButtonStyle(boolean hover) {
         return "-fx-background-color:" + (hover ? "rgba(59,108,255,0.12)" : "transparent") + ";" +
                 "-fx-border-color:" + (hover ? BLUE_HOVER : "rgba(59,108,255,0.50)") + ";" +
@@ -1203,6 +1365,11 @@ if (coords != null) {
                 "-fx-cursor:hand;";
     }
 
+    /**
+     * Performs style.
+     * @param hover the hover.
+     * @return the String.
+     */
     private String backStyle(boolean hover) {
         return "-fx-background-color:transparent;" +
                 "-fx-text-fill:" + (hover ? TEXT : "#50617d") + ";" +
@@ -1211,6 +1378,11 @@ if (coords != null) {
                 "-fx-padding:0 0 8 0;";
     }
 
+    /**
+     * Creates logo box.
+     * @param size the size.
+     * @return the StackPane.
+     */
     private StackPane createLogoBox(int size) {
         StackPane logo = new StackPane();
         logo.setPrefSize(size, size);
@@ -1236,6 +1408,14 @@ if (coords != null) {
         return logo;
     }
 
+    /**
+     * Performs label.
+     * @param text the text.
+     * @param color the color.
+     * @param size the size.
+     * @param bold the bold.
+     * @return the Label.
+     */
     private Label label(String text, String color, int size, boolean bold) {
         Label label = new Label(text);
         label.setTextFill(Color.web(color));
@@ -1243,6 +1423,10 @@ if (coords != null) {
         return label;
     }
 
+    /**
+     * Returns the back button.
+     * @return the Button.
+     */
     public Button getBackButton() {
         return backButton;
     }

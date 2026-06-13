@@ -61,6 +61,9 @@ public class SimulationDataService {
     private static final Random RNG = new Random();
 
     // ─────────────────────────────────────────────────────────────────────
+    /**
+     * Constructs a new SimulationDataService.
+     */
     public SimulationDataService() {
         this(
             Paths.get("data", "zones.json"),
@@ -68,6 +71,11 @@ public class SimulationDataService {
         );
     }
 
+    /**
+     * Constructs a new SimulationDataService.
+     * @param zonesPath the zonesPath.
+     * @param agentsPath the agentsPath.
+     */
     public SimulationDataService(Path zonesPath, Path agentsPath) {
         this.zonesPath  = zonesPath;
         this.agentsPath = agentsPath;
@@ -131,15 +139,23 @@ public class SimulationDataService {
     // SAUVEGARDE
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Saves zones.
+     * @param zones the zones.
+     */
     public void saveZones(List<Zone> zones) {
         writeSafely(zonesPath, zones);
     }
 
+    /**
+     * Saves agents.
+     * @param agents the agents.
+     */
     public void saveAgents(List<Agent> agents) {
         writeSafely(agentsPath, agents);
     }
 
-    /** Sauvegarde les deux fichiers d'un coup. */
+    /** Saves both zone and agent files in one operation. */
     public void saveAll(List<Zone> zones, List<Agent> agents) {
         saveZones(zones);
         saveAgents(agents);
@@ -150,10 +166,10 @@ public class SimulationDataService {
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Restaure l'état initial depuis les snapshots.
+     * Restores the initial simulation state from snapshots.
      *
-     * @return tableau de deux listes : [0] zones, [1] agents.
-     *         Retourne des listes vides si aucun snapshot n'est disponible.
+     * @return an array containing two lists: index [0] holds zones and index [1] holds agents.
+     *         Returns empty lists when no snapshot data is available.
      */
     @SuppressWarnings("unchecked")
     public Object[] reset() {
@@ -235,6 +251,9 @@ public class SimulationDataService {
         return LYON_COORDS[RNG.nextInt(LYON_COORDS.length)];
     }
 
+    /**
+     * Ensures data dir.
+     */
     private void ensureDataDir() {
         try {
             if (zonesPath.getParent() != null)
@@ -243,6 +262,11 @@ public class SimulationDataService {
     }
 
     // APRÈS — TypeReference selon le type de données :
+    /**
+     * Performs safely.
+     * @param path the path.
+     * @param data the data.
+     */
     private void writeSafely(Path path, Object data) {
         try {
             if (data instanceof List<?> list && !list.isEmpty()) {
@@ -267,10 +291,17 @@ public class SimulationDataService {
     }
 
 
+    /**
+     * Adds listener.
+     * @param r the r.
+     */
     public void addListener(Runnable r) {
         listeners.add(r);
     }
 
+    /**
+     * Notifies change.
+     */
     private void notifyChange() {
         listeners.forEach(Runnable::run);
     }
@@ -283,6 +314,14 @@ public class SimulationDataService {
         "Pompier","Secouriste","Infirmier","SAMU","Police","Militaire"
     };
 
+    /**
+     * Performs first name.
+     * @return the String.
+     */
     private String randomFirstName()  { return FIRST_NAMES [RNG.nextInt(FIRST_NAMES.length)];  }
+    /**
+     * Performs rescue name.
+     * @return the String.
+     */
     private String randomRescueName() { return RESCUE_NAMES[RNG.nextInt(RESCUE_NAMES.length)]; }
 }

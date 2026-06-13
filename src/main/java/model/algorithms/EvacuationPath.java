@@ -23,6 +23,12 @@ public class EvacuationPath {
 
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Constructs a new EvacuationPath.
+     * @param zones the zones.
+     * @param edges the edges.
+     * @param totalCost the totalCost.
+     */
     public EvacuationPath(List<Zone> zones, List<Edge> edges, double totalCost) {
         this.zones    = Collections.unmodifiableList(new ArrayList<>(zones));
         this.edges    = Collections.unmodifiableList(new ArrayList<>(edges));
@@ -30,7 +36,12 @@ public class EvacuationPath {
         this.gpsWaypoints = buildGpsWaypoints(zones, edges);
     }
 
-    /** Chemin trivial (départ == arrivée). */
+    /**
+     * Create a trivial path where origin and destination are the same zone.
+     *
+     * @param zone the zone used as both origin and destination
+     * @return an EvacuationPath representing a trivial path
+     */
     public static EvacuationPath trivial(Zone zone) {
         return new EvacuationPath(
             Collections.singletonList(zone),
@@ -43,11 +54,10 @@ public class EvacuationPath {
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Retourne la position GPS interpolée d'un agent en fonction de sa progression
-     * sur le chemin (0.0 = départ, 1.0 = arrivée).
+     * Return an interpolated GPS position for an agent given a progress value.
      *
-     * @param progress  avancement de l'agent, entre 0.0 et 1.0
-     * @return position GPS interpolée
+     * @param progress progress along the path from 0.0 (origin) to 1.0 (destination)
+     * @return interpolated GeoPosition for the given progress
      */
     public GeoPosition interpolatePosition(double progress) {
         if (gpsWaypoints.isEmpty()) {
@@ -82,6 +92,12 @@ public class EvacuationPath {
     // CONSTRUCTION DES GPS WAYPOINTS
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Builds gps waypoints.
+     * @param zoneSeq the zoneSeq.
+     * @param edgeSeq the edgeSeq.
+     * @return the List<GeoPosition>.
+     */
     private List<GeoPosition> buildGpsWaypoints(List<Zone> zoneSeq, List<Edge> edgeSeq) {
         List<GeoPosition> pts = new ArrayList<>();
         if (zoneSeq.isEmpty()) return pts;
@@ -114,20 +130,41 @@ public class EvacuationPath {
     // GETTERS
     // ─────────────────────────────────────────────────────────────────────
 
-    public List<Zone>         getZones()        { return zones; }
-    public List<Edge>         getEdges()        { return edges; }
-    public double             getTotalCost()    { return totalCost; }
-    public List<GeoPosition>  getGpsWaypoints() { return Collections.unmodifiableList(gpsWaypoints); }
-    public Zone               getDestination()  { return zones.isEmpty() ? null : zones.get(zones.size() - 1); }
-    public Zone               getOrigin()       { return zones.isEmpty() ? null : zones.get(0); }
-    public boolean            isEmpty()         { return edges.isEmpty(); }
+    /** @return an unmodifiable list of zones composing the path */
+    public List<Zone> getZones() { return zones; }
 
-    /** Distance totale approximative en km. */
+    /** @return an unmodifiable list of edges composing the path */
+    public List<Edge> getEdges() { return edges; }
+
+    /** @return the computed total cost for this path */
+    public double getTotalCost() { return totalCost; }
+
+    /** @return GPS waypoints representing the full path for rendering */
+    public List<GeoPosition> getGpsWaypoints() { return Collections.unmodifiableList(gpsWaypoints); }
+
+    /** @return the destination zone of this path, or null if empty */
+    public Zone getDestination() { return zones.isEmpty() ? null : zones.get(zones.size() - 1); }
+
+    /** @return the origin zone of this path, or null if empty */
+    public Zone getOrigin() { return zones.isEmpty() ? null : zones.get(0); }
+
+    /** @return true if the path contains no edges */
+    public boolean isEmpty() { return edges.isEmpty(); }
+
+    /**
+     * Get approximate total distance of the path in kilometers.
+     *
+     * @return total distance in kilometers
+     */
     public double getTotalDistanceKm() {
         return edges.stream().mapToDouble(Edge::geoDistance).sum();
     }
 
-    /** Nombre d'arêtes à risque sur le chemin. */
+    /**
+     * Count how many edges on the path are marked as AT_RISK.
+     *
+     * @return number of at-risk edges
+     */
     public long countAtRiskEdges() {
         return edges.stream().filter(e -> e.getState() == EdgeState.AT_RISK).count();
     }
@@ -150,6 +187,10 @@ public class EvacuationPath {
 
 
     @Override
+    /**
+     * Performs string.
+     * @return the String.
+     */
     public String toString() {
         if (zones.isEmpty()) return "EvacuationPath[empty]";
         return String.format("EvacuationPath[%s → %s, %d étapes, coût=%.1f]",

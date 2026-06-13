@@ -37,6 +37,11 @@ public class AdminController {
     private final SimulationDataService dataService;
     private final FloodSimulation simulation;
 
+    /**
+     * Constructs a new AdminController.
+     * @param dataService the dataService.
+     * @param simulation the simulation.
+     */
     public AdminController(SimulationDataService dataService, FloodSimulation simulation) {
         this.dataService = dataService;
         this.simulation = simulation;
@@ -75,16 +80,32 @@ public class AdminController {
 
     // ── Observable lists exposed to the UI ─────────────────────────────────────
 
+    /**
+     * Returns the all agents.
+     * @return the ObservableList<Agent>.
+     */
     public ObservableList<Agent> getAllAgents() { return allAgents; }
 
+    /**
+     * Returns the admins.
+     * @return the ObservableList<Agent>.
+     */
     public ObservableList<Agent> getAdmins() {
         return filter("admin");
     }
 
+    /**
+     * Returns the citizens.
+     * @return the ObservableList<Agent>.
+     */
     public ObservableList<Agent> getCitizens() {
         return filter("citizen");
     }
 
+    /**
+     * Returns the rescue agents.
+     * @return the ObservableList<Agent>.
+     */
     public ObservableList<Agent> getRescueAgents() {
         return filter("rescueAgent");
     }
@@ -103,8 +124,20 @@ public class AdminController {
 
     // ── Dashboard KPIs ─────────────────────────────────────────────────────────
 
+    /**
+     * Returns the total agents.
+     * @return the int result.
+     */
     public int getTotalAgents()        { return allAgents.size(); }
+    /**
+     * Returns the total citizens.
+     * @return the int result.
+     */
     public int getTotalCitizens()      { return getCitizens().size(); }
+    /**
+     * Returns the total rescue agents.
+     * @return the int result.
+     */
     public int getTotalRescueAgents()  { return getRescueAgents().size(); }
 
     /**
@@ -124,10 +157,18 @@ public class AdminController {
                 .count();
     }
 
+    /**
+     * Returns the saved count.
+     * @return the int result.
+     */
     public int getSavedCount() {
         return (int) allAgents.stream().filter(Agent::isSaved).count();
     }
 
+    /**
+     * Returns the active rescue count.
+     * @return the int result.
+     */
     public int getActiveRescueCount() {
         return (int) getRescueAgents().stream()
                 .filter(a -> a instanceof RescueAgent)
@@ -136,6 +177,10 @@ public class AdminController {
                 .count();
     }
 
+    /**
+     * Returns the available rescue count.
+     * @return the int result.
+     */
     public int getAvailableRescueCount() {
         return (int) getRescueAgents().stream()
                 .filter(a -> a instanceof RescueAgent)
@@ -228,8 +273,20 @@ public class AdminController {
         dataService.saveZones(allZones);
     }
 
+    /**
+     * Returns the total zones.
+     * @return the int result.
+     */
     public int getTotalZones()   { return allZones.size(); }
+    /**
+     * Returns the flooded zones.
+     * @return the int result.
+     */
     public int getFloodedZones() { return (int) allZones.stream().filter(Zone::isFlooded).count(); }
+    /**
+     * Returns the safe zones.
+     * @return the int result.
+     */
     public int getSafeZones()    { return (int) allZones.stream().filter(z -> !z.isFlooded()).count(); }
 
     // ── Search ─────────────────────────────────────────────────────────────────

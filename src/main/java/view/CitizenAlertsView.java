@@ -60,11 +60,18 @@ public class CitizenAlertsView extends BorderPane {
     private String currentTab = "Toutes";
     private controller.CitizenPage.CitizenAlertsController controller;
 
+    /**
+     * Create the citizen alerts view which displays alerts and suggestions.
+     */
     public CitizenAlertsView() {
         setStyle("-fx-background-color:linear-gradient(to bottom right, #06172b, #0b1a30, #08162a);");
         setCenter(buildContent());
     }
 
+    /**
+     * Builds content.
+     * @return the VBox.
+     */
     private VBox buildContent() {
         VBox root = new VBox(22);
         root.setPadding(new Insets(30));
@@ -136,6 +143,10 @@ public class CitizenAlertsView extends BorderPane {
         return root;
     }
 
+    /**
+     * Builds header.
+     * @return the HBox.
+     */
     private HBox buildHeader() {
         HBox header = new HBox(18);
         header.setAlignment(Pos.CENTER_LEFT);
@@ -153,12 +164,19 @@ public class CitizenAlertsView extends BorderPane {
         return header;
     }
 
+    /**
+     * Updates top alert card.
+     */
     private void updateTopAlertCard() {
         if (topAlertSlot == null) return;
 
         topAlertSlot.getChildren().setAll(buildTopAlertCard());
     }
 
+    /**
+     * Builds top alert card.
+     * @return the VBox.
+     */
     private VBox buildTopAlertCard() {
         VBox card = glassCard(22);
 
@@ -208,6 +226,14 @@ public class CitizenAlertsView extends BorderPane {
         return card;
     }
 
+    /**
+     * Performs card.
+     * @param title the title.
+     * @param value the value.
+     * @param color the color.
+     * @param subtitle the subtitle.
+     * @return the VBox.
+     */
     private VBox statCard(String title, Label value, String color, String subtitle) {
         VBox card = glassCard(18);
 
@@ -230,25 +256,43 @@ public class CitizenAlertsView extends BorderPane {
         return card;
     }
 
+    /**
+     * Performs value.
+     * @param text the text.
+     * @return the Label.
+     */
     private Label statValue(String text) {
         return label(text, WHITE, 28, true);
     }
 
+    /**
+     * Sets the alerts.
+     * @param alerts the alerts.
+     */
     public void setAlerts(List<Alert> alerts) {
         allAlerts.setAll(alerts);
         refreshView();
     }
 
+    /**
+     * Refreshes view.
+     */
     public void refreshView() {
         updateCounts();
         updateTopAlertCard();
         refreshCards();
     }
 
+    /**
+     * Refreshes table.
+     */
     public void refreshTable() {
         refreshView();
     }
 
+    /**
+     * Updates counts.
+     */
     private void updateCounts() {
         if (totalCount != null) {
             totalCount.setText(String.valueOf(allAlerts.size()));
@@ -267,12 +311,20 @@ public class CitizenAlertsView extends BorderPane {
         }
     }
 
+    /**
+     * Counts the by status.
+     * @param status the status.
+     * @return the long result.
+     */
     private long countByStatus(String status) {
         return allAlerts.stream()
                 .filter(a -> status.equalsIgnoreCase(a.getStatus()))
                 .count();
     }
 
+    /**
+     * Refreshes cards.
+     */
     private void refreshCards() {
         if (alertsContainer == null) return;
 
@@ -302,6 +354,11 @@ public class CitizenAlertsView extends BorderPane {
         }
     }
 
+    /**
+     * Performs card.
+     * @param alert the alert.
+     * @return the VBox.
+     */
     private VBox alertCard(Alert alert) {
         VBox card = new VBox(14);
         card.setPadding(new Insets(18));
@@ -347,6 +404,12 @@ public class CitizenAlertsView extends BorderPane {
         return card;
     }
 
+    /**
+     * Performs box.
+     * @param title the title.
+     * @param value the value.
+     * @return the VBox.
+     */
     private VBox detailBox(String title, String value) {
         VBox box = new VBox(4);
         box.setPadding(new Insets(12));
@@ -365,6 +428,10 @@ public class CitizenAlertsView extends BorderPane {
         return box;
     }
 
+    /**
+     * Performs state.
+     * @return the VBox.
+     */
     private VBox emptyState() {
         VBox box = new VBox(8);
         box.setAlignment(Pos.CENTER);
@@ -383,6 +450,12 @@ public class CitizenAlertsView extends BorderPane {
         return box;
     }
 
+    /**
+     * Performs tab.
+     * @param text the text.
+     * @param active the active.
+     * @return the Label.
+     */
     private Label makeTab(String text, boolean active) {
         Label tab = label(text, active ? WHITE : MUTED, 13, true);
         tab.setCursor(Cursor.HAND);
@@ -390,6 +463,10 @@ public class CitizenAlertsView extends BorderPane {
         return tab;
     }
 
+    /**
+     * Performs tab.
+     * @param tab the tab.
+     */
     private void switchTab(String tab) {
         currentTab = tab;
 
@@ -400,6 +477,11 @@ public class CitizenAlertsView extends BorderPane {
         refreshView();
     }
 
+    /**
+     * Performs tab.
+     * @param tab the tab.
+     * @param active the active.
+     */
     private void styleTab(Label tab, boolean active) {
         tab.setTextFill(Color.web(active ? WHITE : MUTED));
         tab.setPadding(new Insets(10, 14, 10, 14));
@@ -416,6 +498,10 @@ public class CitizenAlertsView extends BorderPane {
         );
     }
 
+    /**
+     * Returns the latest active alert.
+     * @return the Alert.
+     */
     private Alert getLatestActiveAlert() {
         for (int i = allAlerts.size() - 1; i >= 0; i--) {
             Alert alert = allAlerts.get(i);
@@ -428,6 +514,9 @@ public class CitizenAlertsView extends BorderPane {
         return null;
     }
 
+    /**
+     * Performs suggest dialog.
+     */
     private void openSuggestDialog() {
         Dialog<Alert> dialog = new Dialog<>();
         dialog.setTitle("Suggérer une alerte");
@@ -484,6 +573,9 @@ public class CitizenAlertsView extends BorderPane {
         });
     }
 
+    /**
+     * Displays confirmation.
+     */
     private void showConfirmation() {
         Dialog<Void> dialog = new Dialog<>();
         dialog.setTitle("Suggestion envoyée");
@@ -503,6 +595,11 @@ public class CitizenAlertsView extends BorderPane {
         dialog.showAndWait();
     }
 
+    /**
+     * Performs field.
+     * @param prompt the prompt.
+     * @return the TextField.
+     */
     private TextField field(String prompt) {
         TextField field = new TextField();
         field.setPromptText(prompt);
@@ -510,6 +607,11 @@ public class CitizenAlertsView extends BorderPane {
         return field;
     }
 
+    /**
+     * Performs label.
+     * @param text the text.
+     * @return the Label.
+     */
     private Label formLabel(String text) {
         Label label = new Label(text + " :");
         label.setMinWidth(100);
@@ -517,6 +619,11 @@ public class CitizenAlertsView extends BorderPane {
         return label;
     }
 
+    /**
+     * Returns the type code.
+     * @param type the type.
+     * @return the String.
+     */
     private String getTypeCode(AlertType type) {
         if (type == null) return "IF";
 
@@ -529,6 +636,11 @@ public class CitizenAlertsView extends BorderPane {
         };
     }
 
+    /**
+     * Performs type.
+     * @param type the type.
+     * @return the String.
+     */
     private String formatType(AlertType type) {
         if (type == null) return "Information";
 
@@ -541,6 +653,11 @@ public class CitizenAlertsView extends BorderPane {
         };
     }
 
+    /**
+     * Returns the severity color.
+     * @param severity the severity.
+     * @return the String.
+     */
     private String getSeverityColor(String severity) {
         if (severity == null) return BLUE;
 
@@ -551,6 +668,11 @@ public class CitizenAlertsView extends BorderPane {
         };
     }
 
+    /**
+     * Returns the status color.
+     * @param status the status.
+     * @return the String.
+     */
     private String getStatusColor(String status) {
         if (status == null) return MUTED;
 
@@ -562,6 +684,13 @@ public class CitizenAlertsView extends BorderPane {
         };
     }
 
+    /**
+     * Performs icon.
+     * @param text the text.
+     * @param color the color.
+     * @param size the size.
+     * @return the StackPane.
+     */
     private StackPane roundIcon(String text, String color, int size) {
         StackPane icon = new StackPane();
         icon.setPrefSize(size, size);
@@ -579,6 +708,12 @@ public class CitizenAlertsView extends BorderPane {
         return icon;
     }
 
+    /**
+     * Performs icon.
+     * @param text the text.
+     * @param color the color.
+     * @return the StackPane.
+     */
     private StackPane smallIcon(String text, String color) {
         StackPane icon = new StackPane();
         icon.setPrefSize(42, 42);
@@ -597,6 +732,12 @@ public class CitizenAlertsView extends BorderPane {
         return icon;
     }
 
+    /**
+     * Performs badge.
+     * @param text the text.
+     * @param color the color.
+     * @return the Label.
+     */
     private Label badge(String text, String color) {
         Label badge = label(cleanText(text, "--"), WHITE, 11, true);
         badge.setPadding(new Insets(6, 11, 6, 11));
@@ -607,12 +748,21 @@ public class CitizenAlertsView extends BorderPane {
         return badge;
     }
 
+    /**
+     * Performs separator.
+     * @return the Separator.
+     */
     private Separator separator() {
         Separator separator = new Separator();
         separator.setStyle("-fx-background-color:rgba(255,255,255,0.12);");
         return separator;
     }
 
+    /**
+     * Performs card.
+     * @param padding the padding.
+     * @return the VBox.
+     */
     private VBox glassCard(int padding) {
         VBox box = new VBox(12);
         box.setPadding(new Insets(padding));
@@ -626,6 +776,11 @@ public class CitizenAlertsView extends BorderPane {
         return box;
     }
 
+    /**
+     * Performs button.
+     * @param text the text.
+     * @return the Button.
+     */
     private Button blueButton(String text) {
         Button button = new Button(text);
         button.setPadding(new Insets(11, 18, 11, 18));
@@ -639,6 +794,14 @@ public class CitizenAlertsView extends BorderPane {
         return button;
     }
 
+    /**
+     * Performs label.
+     * @param text the text.
+     * @param color the color.
+     * @param size the size.
+     * @param bold the bold.
+     * @return the Label.
+     */
     private Label label(String text, String color, int size, boolean bold) {
         Label label = new Label(cleanText(text, ""));
         label.setTextFill(Color.web(color));
@@ -646,6 +809,12 @@ public class CitizenAlertsView extends BorderPane {
         return label;
     }
 
+    /**
+     * Performs text.
+     * @param value the value.
+     * @param fallback the fallback.
+     * @return the String.
+     */
     private String cleanText(String value, String fallback) {
         if (value == null || value.isBlank()) {
             return fallback;
@@ -654,14 +823,26 @@ public class CitizenAlertsView extends BorderPane {
         return value;
     }
 
+    /**
+     * Returns the all alerts.
+     * @return the ObservableList<Alert>.
+     */
     public ObservableList<Alert> getAllAlerts() {
         return allAlerts;
     }
 
+    /**
+     * Returns the table.
+     * @return the TableView<Alert>.
+     */
     public TableView<Alert> getTable() {
         return new TableView<>();
     }
 
+    /**
+     * Sets the controller.
+     * @param controller the controller.
+     */
     public void setController(controller.CitizenPage.CitizenAlertsController controller) {
         this.controller = controller;
         updateCounts();

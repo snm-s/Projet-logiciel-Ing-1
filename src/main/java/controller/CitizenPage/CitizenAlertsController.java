@@ -17,6 +17,11 @@ public class CitizenAlertsController {
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
 
+    /**
+     * Constructs a new CitizenAlertsController.
+     * @param view the view.
+     * @param model the model.
+     */
     public CitizenAlertsController(CitizenAlertsView view, AlertSystem model) {
         this.view = view;
         this.model = model;
@@ -29,6 +34,10 @@ public class CitizenAlertsController {
         reloadPublishedAlerts();
     }
 
+    /**
+     * Submits suggestion.
+     * @param suggestion the suggestion.
+     */
     public void submitSuggestion(Alert suggestion) {
         if (suggestion == null) return;
 
@@ -42,30 +51,57 @@ public class CitizenAlertsController {
         model.addSuggestion(suggestion);
     }
 
+    /**
+     * Performs published alerts.
+     */
     public void reloadPublishedAlerts() {
         view.setAlerts(model.getAlerts());
     }
 
+    /**
+     * Returns the published alerts.
+     * @return the List<Alert>.
+     */
     public List<Alert> getPublishedAlerts() {
         return model.getAlerts();
     }
 
+    /**
+     * Returns the active alerts.
+     * @return the List<Alert>.
+     */
     public List<Alert> getActiveAlerts() {
         return model.getActiveAlerts();
     }
 
+    /**
+     * Returns the latest alert.
+     * @return the Alert.
+     */
     public Alert getLatestAlert() {
         return model.getLatestAlert();
     }
 
+    /**
+     * Returns the pending suggestions count.
+     * @return the int result.
+     */
     public int getPendingSuggestionsCount() {
         return model.countPendingSuggestions();
     }
 
+    /**
+     * Performs dispose.
+     */
     public void dispose() {
         model.removeListener(alertListener);
     }
 
+    /**
+     * Returns whether blank time.
+     * @param time the time.
+     * @return the boolean result.
+     */
     private boolean isBlankTime(String time) {
         return time == null || time.isBlank() || "--:--".equals(time);
     }

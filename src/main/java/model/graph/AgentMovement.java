@@ -51,6 +51,11 @@ public class AgentMovement {
     // CONSTRUCTION
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Constructs a new AgentMovement.
+     * @param agent the agent.
+     * @param path the path.
+     */
     public AgentMovement(Agent agent, EvacuationPath path) {
         this.agent           = agent;
         this.path            = path;
@@ -62,6 +67,9 @@ public class AgentMovement {
     // CYCLE DE VIE
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Starts.
+     */
     public void start() {
         if (status != Status.PENDING) return;
 
@@ -76,12 +84,11 @@ public class AgentMovement {
         status = Status.MOVING;
         updateAgentPosition(currentPosition);
     }
-
     /**
-     * Avance d'un pas de simulation.
+     * Advance the agent movement by one simulation step.
      *
-     * @param deltaSeconds durée du pas (ex : 1.0)
-     * @return true si l'agent est arrivé à destination ce pas-ci
+     * @param deltaSeconds simulation time step duration (e.g. 1.0)
+     * @return true if the agent arrived at destination during this step
      */
     public boolean step(double deltaSeconds) {
         if (status == Status.ARRIVED || status == Status.BLOCKED) return false;
@@ -187,6 +194,9 @@ public class AgentMovement {
         }
     }
 
+    /**
+     * Performs occupied edge.
+     */
     private void releaseOccupiedEdge() {
         if (occupiedEdge != null) {
             occupiedEdge.removeFlow(1);
@@ -322,6 +332,12 @@ public class AgentMovement {
     }
 
     /**
+     * Get the remaining zones to traverse from the current position.
+     *
+     * @return list of remaining zones (may be empty)
+     */
+
+    /**
      * Arête dans laquelle l'agent progresse actuellement.
      * Remplace getOccupiedEdge() (supprimé) — même sémantique, nom cohérent
      * avec l'utilisation dans SimulationController.
@@ -331,6 +347,12 @@ public class AgentMovement {
                 || currentEdgeIndex >= path.getEdges().size()) return null;
         return path.getEdges().get(currentEdgeIndex);
     }
+
+    /**
+     * Get the edge the agent is currently progressing on, or null if none.
+     *
+     * @return the current Edge or null
+     */
 
     /**
      * Zone source de l'arête courante, ou dernier nœud atteint.
@@ -346,22 +368,78 @@ public class AgentMovement {
         return path.getZones().get(zi);
     }
 
+    /**
+     * Get the source zone of the current edge or the last reached zone.
+     *
+     * @return the current Zone or null
+     */
+
     /** Destination finale (dernier nœud du chemin). */
     public Zone getDestination() {
         if (path == null || path.getZones().isEmpty()) return null;
         return path.getZones().get(path.getZones().size() - 1);
     }
 
+    /**
+     * Get the final destination zone of this movement.
+     *
+     * @return the destination Zone or null
+     */
+
     // Accesseurs
+    /**
+     * Returns the agent.
+     * @return the Agent.
+     */
     public Agent          getAgent()           { return agent; }
+    /**
+     * Returns the path.
+     * @return the EvacuationPath.
+     */
     public EvacuationPath getPath()            { return path; }
+    /**
+     * Returns the progress.
+     * @return the double result.
+     */
     public double         getProgress()        { return progress; }
+    /**
+     * Returns the status.
+     * @return the Status.
+     */
     public Status         getStatus()          { return status; }
+    /**
+     * Returns the current position.
+     * @return the GeoPosition.
+     */
     public GeoPosition    getCurrentPosition() { return currentPosition; }
+    /**
+     * Returns whether arrived.
+     * @return the boolean result.
+     */
     public boolean        isArrived()          { return status == Status.ARRIVED; }
+    /**
+     * Returns whether blocked.
+     * @return the boolean result.
+     */
     public boolean        isBlocked()          { return status == Status.BLOCKED; }
+    /**
+     * Returns whether moving.
+     * @return the boolean result.
+     */
     public boolean        isMoving()           { return status == Status.MOVING; }
+    /**
+     * Returns whether waiting.
+     * @return the boolean result.
+     */
     public boolean        isWaiting()          { return status == Status.WAITING; }
+    /**
+     * Returns the destination zone.
+     * @return the Zone.
+     */
     public Zone           getDestinationZone() { return path == null ? null : path.getDestination(); }
+    /**
+     * Returns the origin zone.
+     * @return the Zone.
+     */
     public Zone           getOriginZone()      { return path == null ? null : path.getOrigin(); }
 }

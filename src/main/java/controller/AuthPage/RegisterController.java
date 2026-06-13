@@ -18,6 +18,11 @@ public class RegisterController {
     private final RegisterView view;
     private final Stage stage;
 
+    /**
+     * Constructs a new RegisterController.
+     * @param view the view.
+     * @param stage the stage.
+     */
     public RegisterController(RegisterView view, Stage stage) {
         this.view = view;
         this.stage = stage;
@@ -26,6 +31,9 @@ public class RegisterController {
         initActions();
     }
 
+    /**
+     * Initializes actions.
+     */
     private void initActions() {
         view.getBackButton().setOnAction(e -> {
             System.out.println("[MVC] Clic retour (Register)");
@@ -131,27 +139,59 @@ public class RegisterController {
     // LOGIQUE DE VALIDATION DES MOTS DE PASSE
     // ==========================================
 
+    /**
+     * Validates password length.
+     * @param password the password.
+     * @return the boolean result.
+     */
     public boolean validatePasswordLength(String password) {
         return password != null && password.length() >= 8;
     }
 
+    /**
+     * Validates password upper.
+     * @param password the password.
+     * @return the boolean result.
+     */
     public boolean validatePasswordUpper(String password) {
         return password != null && password.chars().anyMatch(Character::isUpperCase);
     }
 
+    /**
+     * Validates password lower.
+     * @param password the password.
+     * @return the boolean result.
+     */
     public boolean validatePasswordLower(String password) {
         return password != null && password.chars().anyMatch(Character::isLowerCase);
     }
 
+    /**
+     * Validates password digit.
+     * @param password the password.
+     * @return the boolean result.
+     */
     public boolean validatePasswordDigit(String password) {
         return password != null && password.chars().anyMatch(Character::isDigit);
     }
 
+    /**
+     * Performs match.
+     * @param password the password.
+     * @param confirmPassword the confirmPassword.
+     * @return the boolean result.
+     */
     public boolean passwordsMatch(String password, String confirmPassword) {
         if (password == null || password.isEmpty()) return false;
         return password.equals(confirmPassword);
     }
 
+    /**
+     * Performs register.
+     * @param password the password.
+     * @param confirmPassword the confirmPassword.
+     * @return the boolean result.
+     */
     public boolean canRegister(String password, String confirmPassword) {
         return validatePasswordLength(password)
                 && validatePasswordUpper(password)

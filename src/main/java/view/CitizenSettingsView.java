@@ -49,10 +49,19 @@ public class CitizenSettingsView extends BorderPane {
     private Label statusLabel;
     private Label mobilityBadge;
 
+    /**
+     * Create the default citizen settings view.
+     */
     public CitizenSettingsView() {
         this(Main.currentUser, null);
     }
 
+    /**
+     * Create the settings view prefilled for a specific agent and a display scale callback.
+     *
+     * @param user agent whose settings are shown
+     * @param displayScaleCallback callback to adjust display scaling
+     */
     public CitizenSettingsView(Agent user, Consumer<Double> displayScaleCallback) {
         this.user = user;
         this.citizen = user instanceof Citizen ? (Citizen) user : null;
@@ -91,6 +100,10 @@ public class CitizenSettingsView extends BorderPane {
         setCenter(scroll);
     }
 
+    /**
+     * Builds profile card.
+     * @return the VBox.
+     */
     private VBox buildProfileCard() {
         VBox card = glassCard(20);
 
@@ -127,6 +140,10 @@ public class CitizenSettingsView extends BorderPane {
         return card;
     }
 
+    /**
+     * Builds settings grid.
+     * @return the HBox.
+     */
     private HBox buildSettingsGrid() {
         HBox grid = new HBox(18);
         grid.setAlignment(Pos.TOP_LEFT);
@@ -145,6 +162,10 @@ public class CitizenSettingsView extends BorderPane {
         return grid;
     }
 
+    /**
+     * Builds notification section.
+     * @return the VBox.
+     */
     private VBox buildNotificationSection() {
         VBox wrapper = sectionWrapper("Notifications");
         VBox card = (VBox) wrapper.getChildren().get(1);
@@ -164,6 +185,10 @@ public class CitizenSettingsView extends BorderPane {
         return wrapper;
     }
 
+    /**
+     * Builds save bar.
+     * @return the HBox.
+     */
     private HBox buildSaveBar() {
         HBox bar = new HBox(12);
         bar.setAlignment(Pos.CENTER_LEFT);
@@ -190,6 +215,9 @@ public class CitizenSettingsView extends BorderPane {
         return bar;
     }
 
+    /**
+     * Saves settings.
+     */
     private void saveSettings() {
         if (citizen == null) {
             return;
@@ -218,6 +246,9 @@ public class CitizenSettingsView extends BorderPane {
         }
     }
 
+    /**
+     * Resets values.
+     */
     private void resetValues() {
         if (citizen == null) {
             return;
@@ -236,6 +267,9 @@ public class CitizenSettingsView extends BorderPane {
         statusLabel.setTextFill(Color.web(MUTED));
     }
 
+    /**
+     * Updates mobility badge.
+     */
     private void updateMobilityBadge() {
         if (mobilityBadge == null || citizen == null) {
             return;
@@ -250,6 +284,11 @@ public class CitizenSettingsView extends BorderPane {
         );
     }
 
+    /**
+     * Performs wrapper.
+     * @param titleText the titleText.
+     * @return the VBox.
+     */
     private VBox sectionWrapper(String titleText) {
         VBox wrapper = new VBox(10);
 
@@ -263,6 +302,14 @@ public class CitizenSettingsView extends BorderPane {
         return wrapper;
     }
 
+    /**
+     * Performs row.
+     * @param iconText the iconText.
+     * @param title the title.
+     * @param subtitle the subtitle.
+     * @param checkBox the checkBox.
+     * @return the HBox.
+     */
     private HBox settingRow(String iconText, String title, String subtitle, CheckBox checkBox) {
         HBox row = new HBox(14);
         row.setAlignment(Pos.CENTER_LEFT);
@@ -289,6 +336,12 @@ public class CitizenSettingsView extends BorderPane {
         return row;
     }
 
+    /**
+     * Performs row.
+     * @param title the title.
+     * @param value the value.
+     * @return the HBox.
+     */
     private HBox infoRow(String title, String value) {
         HBox row = new HBox(14);
         row.setAlignment(Pos.CENTER_LEFT);
@@ -310,6 +363,11 @@ public class CitizenSettingsView extends BorderPane {
         return row;
     }
 
+    /**
+     * Performs check box.
+     * @param selected the selected.
+     * @return the CheckBox.
+     */
     private CheckBox settingCheckBox(boolean selected) {
         CheckBox checkBox = new CheckBox();
         checkBox.setSelected(selected);
@@ -319,6 +377,11 @@ public class CitizenSettingsView extends BorderPane {
         return checkBox;
     }
 
+    /**
+     * Performs icon.
+     * @param text the text.
+     * @return the StackPane.
+     */
     private StackPane lineIcon(String text) {
         StackPane icon = new StackPane();
         icon.setPrefSize(38, 38);
@@ -337,6 +400,12 @@ public class CitizenSettingsView extends BorderPane {
         return icon;
     }
 
+    /**
+     * Performs badge.
+     * @param text the text.
+     * @param color the color.
+     * @return the Label.
+     */
     private Label badge(String text, String color) {
         Label badge = label(text, WHITE, 11, true);
         badge.setPadding(new Insets(6, 10, 6, 10));
@@ -347,6 +416,11 @@ public class CitizenSettingsView extends BorderPane {
         return badge;
     }
 
+    /**
+     * Performs card.
+     * @param padding the padding.
+     * @return the VBox.
+     */
     private VBox glassCard(double padding) {
         VBox card = new VBox(14);
         card.setPadding(new Insets(padding));
@@ -361,6 +435,11 @@ public class CitizenSettingsView extends BorderPane {
         return card;
     }
 
+    /**
+     * Performs button.
+     * @param text the text.
+     * @return the Button.
+     */
     private Button blueButton(String text) {
         Button button = new Button(text);
         button.setPadding(new Insets(10, 16, 10, 16));
@@ -374,6 +453,11 @@ public class CitizenSettingsView extends BorderPane {
         return button;
     }
 
+    /**
+     * Performs button.
+     * @param text the text.
+     * @return the Button.
+     */
     private Button darkButton(String text) {
         Button button = new Button(text);
         button.setPadding(new Insets(10, 16, 10, 16));
@@ -388,6 +472,10 @@ public class CitizenSettingsView extends BorderPane {
         return button;
     }
 
+    /**
+     * Returns the full name.
+     * @return the String.
+     */
     private String getFullName() {
         String firstName = nonEmpty(user.getFirstName(), "");
         String lastName = nonEmpty(user.getLastName(), "");
@@ -395,6 +483,11 @@ public class CitizenSettingsView extends BorderPane {
         return fullName.isBlank() ? "Citoyen" : fullName;
     }
 
+    /**
+     * Returns the initials.
+     * @param fullName the fullName.
+     * @return the String.
+     */
     private String getInitials(String fullName) {
         if (fullName == null || fullName.isBlank()) {
             return "C";
@@ -409,10 +502,24 @@ public class CitizenSettingsView extends BorderPane {
         return (parts[0].substring(0, 1) + parts[1].substring(0, 1)).toUpperCase();
     }
 
+    /**
+     * Performs empty.
+     * @param value the value.
+     * @param fallback the fallback.
+     * @return the String.
+     */
     private String nonEmpty(String value, String fallback) {
         return value == null || value.isBlank() ? fallback : value;
     }
 
+    /**
+     * Performs label.
+     * @param text the text.
+     * @param color the color.
+     * @param size the size.
+     * @param bold the bold.
+     * @return the Label.
+     */
     private Label label(String text, String color, int size, boolean bold) {
         Label label = new Label(text);
         label.setTextFill(Color.web(color));

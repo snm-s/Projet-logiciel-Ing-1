@@ -70,6 +70,12 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
     private final SimulationDataService dataService;
 
     // ── Constructeur (appelé par Main : new AdminDashboardView()) ─────────────
+    /**
+     * Create the admin dashboard view bound to an AdminController and data service.
+     *
+     * @param controller  controller handling admin actions
+     * @param dataService simulation data service used to build charts and stats
+     */
     public AdminDashboardView(AdminController controller, SimulationDataService dataService) {
         this.ctrl = controller;
         this.dataService = dataService;
@@ -86,6 +92,10 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
         showDashboard();
     }
 
+    /**
+     * Builds top bar.
+     * @return the HBox.
+     */
     private HBox buildTopBar() {
         HBox bar = new HBox(16);
         bar.setAlignment(Pos.CENTER_LEFT);
@@ -135,6 +145,10 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
         return bar;
     }
 
+    /**
+     * Builds sidebar.
+     * @return the VBox.
+     */
     private VBox buildSidebar() {
         sidebarBox = new VBox(4);
         sidebarBox.setPrefWidth(210);
@@ -158,6 +172,13 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
         return sidebarBox;
     }
 
+    /**
+     * Performs btn.
+     * @param iconType the iconType.
+     * @param label the label.
+     * @param section the section.
+     * @return the Button.
+     */
     private Button navBtn(String iconType, String label, String section) {
         Button b = new Button(label);
         b.setGraphic(createSidebarIcon(iconType));
@@ -185,6 +206,11 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
         return b;
     }
 
+    /**
+     * Creates sidebar icon.
+     * @param type the type.
+     * @return the Node.
+     */
     private Node createSidebarIcon(String type) {
         SVGPath icon = new SVGPath();
     
@@ -217,6 +243,11 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
         return box;
     }
 
+    /**
+     * Performs style.
+     * @param active the active.
+     * @return the String.
+     */
     private String navStyle(boolean active) {
         return active
                 ? "-fx-background-color:linear-gradient(to right, #0b5cbf, #1683ff);"
@@ -233,6 +264,9 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
                 + "-fx-cursor:hand;";
     }
 
+    /**
+     * Refreshes nav styles.
+     */
     private void refreshNavStyles() {
         for (Node n : sidebarBox.getChildren()) {
             if (n instanceof Button b) {
@@ -250,11 +284,18 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
         }
     }
 
+    /**
+     * Displays dashboard.
+     */
     private void showDashboard() {
         VBox root = new VBox(20);
         root.setPadding(new Insets(24));
         root.setStyle("-fx-background-color: transparent;");
 
+
+    /**
+     * Display the alerts management view inside the dashboard content area.
+     */
         HBox titleRow = new HBox(16);
         titleRow.setAlignment(Pos.CENTER_LEFT);
 
@@ -341,6 +382,9 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
         contentArea.getChildren().setAll(scrollWrap(root));
     }
 
+    /**
+     * Displays alerts.
+     */
     private void showAlerts() {
         AdminAlertsView alertsView = new AdminAlertsView();
         new AdminAlertsController(alertsView, app.Main.getSharedSimulation().getAlertSystem());
@@ -349,6 +393,14 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
         contentArea.getChildren().setAll(alertsView);
     }
 
+    /**
+     * Performs card.
+     * @param label the label.
+     * @param value the value.
+     * @param accent the accent.
+     * @param icon the icon.
+     * @return the VBox.
+     */
     private VBox kpiCard(String label, String value, String accent, String icon) {
         VBox card = new VBox(8);
         card.setPadding(new Insets(18));
@@ -391,6 +443,10 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
         return card;
     }
 
+    /**
+     * Builds state chart.
+     * @return the VBox.
+     */
     private VBox buildStateChart() {
         VBox box = new VBox(10);
         box.setPadding(new Insets(16));
@@ -430,6 +486,14 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
         return box;
     }
 
+    /**
+     * Performs panel.
+     * @param title the title.
+     * @param Map the Map.
+     * @param data the data.
+     * @param accent the accent.
+     * @return the VBox.
+     */
     private VBox statusPanel(String title, Map<String, Long> data, String accent) {
         VBox box = new VBox(10);
         box.setPadding(new Insets(16));
@@ -486,6 +550,11 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
         return box;
     }
 
+    /**
+     * Displays agent list.
+     * @param type the type.
+     * @param sectionTitle the sectionTitle.
+     */
     private void showAgentList(String type, String sectionTitle) {
         ObservableList<Agent> source = switch (type) {
             case "citizen" -> ctrl.getCitizens();
@@ -585,6 +654,12 @@ if (!"admin".equals(type)) {
         contentArea.getChildren().setAll(scrollWrap(root));
     }
 
+    /**
+     * Builds table.
+     * @param items the items.
+     * @param limitRows the limitRows.
+     * @return the TableView<Agent>.
+     */
     private TableView<Agent> buildTable(ObservableList<Agent> items, boolean limitRows) {
         TableView<Agent> table = new TableView<>();
         table.setStyle("-fx-background-color: " + BG_CARD + "; -fx-text-fill: " + TEXT_PRIMARY
@@ -607,6 +682,11 @@ if (!"admin".equals(type)) {
 
         colState.setCellFactory(tc -> new TableCell<>() {
             @Override
+            /**
+             * Updates item.
+             * @param state the state.
+             * @param empty the empty.
+             */
             protected void updateItem(String state, boolean empty) {
                 super.updateItem(state, empty);
 
@@ -679,6 +759,11 @@ if (!"admin".equals(type)) {
 
         col.setCellFactory(tc -> new TableCell<>() {
             @Override
+            /**
+             * Updates item.
+             * @param item the item.
+             * @param empty the empty.
+             */
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
 
@@ -702,6 +787,9 @@ if (!"admin".equals(type)) {
         return col;
     }
 
+    /**
+     * Displays stats.
+     */
     private void showStats() {
         VBox root = new VBox(28);
         root.setPadding(new Insets(32));
@@ -759,6 +847,14 @@ if (!"admin".equals(type)) {
         contentArea.getChildren().setAll(scrollWrap(root));
     }
 
+    /**
+     * Adds stat row.
+     * @param grid the grid.
+     * @param row the row.
+     * @param label the label.
+     * @param value the value.
+     * @param color the color.
+     */
     private void addStatRow(GridPane grid, int row, String label, String value, String color) {
         Label lbl = new Label(label);
         lbl.setFont(Font.font("Segoe UI", 13));
@@ -772,6 +868,9 @@ if (!"admin".equals(type)) {
         grid.add(val, 1, row);
     }
 
+    /**
+     * Refreshes all.
+     */
     private void refreshAll() {
         switch (currentSection) {
             case "dashboard" -> showDashboard();
@@ -783,6 +882,12 @@ if (!"admin".equals(type)) {
         }
     }
 
+    /**
+     * Performs btn.
+     * @param text the text.
+     * @param color the color.
+     * @return the Button.
+     */
     private Button btn(String text, String color) {
         Button b = new Button(text);
         b.setFont(Font.font("Segoe UI", FontWeight.BOLD, 12));
@@ -800,6 +905,11 @@ if (!"admin".equals(type)) {
         return b;
     }
 
+    /**
+     * Performs wrap.
+     * @param content the content.
+     * @return the ScrollPane.
+     */
     private ScrollPane scrollWrap(Node content) {
         ScrollPane sp = new ScrollPane(content);
         sp.setFitToWidth(true);
@@ -811,6 +921,10 @@ if (!"admin".equals(type)) {
         return sp;
     }
 
+    /**
+     * Performs in.
+     * @param node the node.
+     */
     private void fadeIn(Node node) {
         FadeTransition ft = new FadeTransition(Duration.millis(200), node);
         ft.setFromValue(0);
@@ -818,6 +932,11 @@ if (!"admin".equals(type)) {
         ft.play();
     }
 
+    /**
+     * Performs color.
+     * @param state the state.
+     * @return the String.
+     */
     private String stateColor(String state) {
         if (state == null) {
             return TEXT_MUTED;
@@ -837,6 +956,10 @@ if (!"admin".equals(type)) {
         };
     }
 
+    /**
+     * Creates logo icon.
+     * @return the StackPane.
+     */
     private StackPane createLogoIcon() {
     SVGPath logo = new SVGPath();
     logo.setContent("M15 2 L28 12 H23 V22 H7 V12 H2 Z M2 25 Q8 23 15 25 T28 25 M2 28 Q8 26 15 28 T28 28");

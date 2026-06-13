@@ -16,11 +16,18 @@ public class ZoneManager {
     private List<Zone> zones;
     private static final String DEFAULT_ZONES_FILE = "data/zones.json";
 
+    /**
+     * Constructs a new ZoneManager.
+     */
     public ZoneManager() {
         this.zones = new ArrayList<>();
         loadZonesFromFile(DEFAULT_ZONES_FILE);
     }
 
+    /**
+     * Loads zones from file.
+     * @param filePath the filePath.
+     */
     private void loadZonesFromFile(String filePath) {
         try {
             File file = new File(filePath);
@@ -60,6 +67,9 @@ public class ZoneManager {
         }
     }
 
+    /**
+     * Creates default zones.
+     */
     private void createDefaultZones() {
         zones.clear();
         zones.add(new Neighborhood(1, "Centre-ville", 45.7649, 4.8357, 1.2, 850, "Zone urbaine centrale"));
@@ -67,14 +77,26 @@ public class ZoneManager {
         zones.add(new Neighborhood(3, "Parc Tête d'Or", 45.7698, 4.8537, 1.5, 150, "Parc urbain"));
     }
 
+    /**
+     * Returns the zones.
+     * @return the List<Zone>.
+     */
     public List<Zone> getZones() {
         return new ArrayList<>(zones);
     }
 
+    /**
+     * Returns the zone by id.
+     * @param id the id.
+     * @return the Zone.
+     */
     public Zone getZoneById(int id) {
         return zones.stream().filter(z -> z.getId() == id).findFirst().orElse(null);
     }
 
+    /**
+     * Resets all zones.
+     */
     public void resetAllZones() {
         zones.forEach(Zone::reset);
     }

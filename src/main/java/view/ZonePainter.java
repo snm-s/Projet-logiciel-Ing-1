@@ -64,24 +64,50 @@ public class ZonePainter implements Painter<JXMapViewer> {
 
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Create a ZonePainter that renders given zones as colored polygons.
+     *
+     * @param zones initial list of zones
+     */
     public ZonePainter(List<Zone> zones) {
         setZones(zones);
     }
 
+    /**
+     * Replace the zones to render.
+     *
+     * @param zones new list of zones
+     */
     public synchronized void setZones(List<Zone> zones) {
         this.zones = new ArrayList<>(zones);
     }
 
+    /**
+     * Mark the provided zone as selected for highlighted drawing.
+     *
+     * @param zone zone to select
+     */
     public synchronized void setSelectedZone(Zone zone) {
         this.selected = zone;
     }
 
+    /**
+     * Notify the painter that a zone's state changed (flood/evacuation).
+     *
+     * @param zone zone that changed
+     */
     public synchronized void updateZone(Zone zone) {
         // L'état est lu directement depuis zone.isFlooded() etc.
         // On remet le niveau à 0 si pas d'info précise
         if (!zone.isFlooded()) waterLevels.remove(zone.getId());
     }
 
+    /**
+     * Update the cached water level used for rendering flood intensity for a zone.
+     *
+     * @param zone   zone to update
+     * @param niveau water level value
+     */
     public synchronized void updateZoneWaterLevel(Zone zone, double niveau) {
         waterLevels.put(zone.getId(), niveau);
     }
@@ -91,6 +117,13 @@ public class ZonePainter implements Painter<JXMapViewer> {
     // ─────────────────────────────────────────────────────────────────────
 
     @Override
+    /**
+     * Performs paint.
+     * @param g the g.
+     * @param map the map.
+     * @param w the w.
+     * @param h the h.
+     */
     public void paint(Graphics2D g, JXMapViewer map, int w, int h) {
         // 1. Création d'une copie propre
         Graphics2D g2 = (Graphics2D) g.create();
@@ -130,6 +163,13 @@ public class ZonePainter implements Painter<JXMapViewer> {
     // DESSIN D'UNE ZONE
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Performs zone.
+     * @param g2 the g2.
+     * @param map the map.
+     * @param zone the zone.
+     * @param isSelected the isSelected.
+     */
     private void drawZone(Graphics2D g2, JXMapViewer map, Zone zone, boolean isSelected) {
         try {
             Point2D center = map.convertGeoPositionToPoint(
@@ -205,6 +245,12 @@ public class ZonePainter implements Painter<JXMapViewer> {
     // COULEURS
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Returns the fill color.
+     * @param zone the zone.
+     * @param niveau the niveau.
+     * @return the Color.
+     */
     private Color getFillColor(Zone zone, double niveau) {
         
         if (zone instanceof Shelter) {
@@ -220,6 +266,12 @@ public class ZonePainter implements Painter<JXMapViewer> {
         return COLOR_FLOODED_L1;
     }
 
+    /**
+     * Returns the border color.
+     * @param zone the zone.
+     * @param niveau the niveau.
+     * @return the Color.
+     */
     private Color getBorderColor(Zone zone, double niveau) {
         if (zone.isEvacuated()) return COLOR_EVA_BORDER;
         if (!zone.isFlooded())  return COLOR_SAFE_BORDER;
@@ -232,6 +284,13 @@ public class ZonePainter implements Painter<JXMapViewer> {
     // LABEL
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Performs label.
+     * @param g2 the g2.
+     * @param map the map.
+     * @param zone the zone.
+     * @param isSelected the isSelected.
+     */
     private void drawLabel(Graphics2D g2, JXMapViewer map, Zone zone, boolean isSelected) {
         try {
             Point2D center = map.convertGeoPositionToPoint(
@@ -261,6 +320,14 @@ public class ZonePainter implements Painter<JXMapViewer> {
     // POPUP D'INFOS (JToolTip natif Swing)
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Show a Swing information popup for the given zone at the supplied screen location.
+     * Runs the dialog on the Swing thread.
+     *
+     * @param zone        the zone to display info for
+     * @param mapViewer   parent component for the dialog
+     * @param screenPoint screen location where the popup should appear
+     */
     public void showPopup(Zone zone, JXMapViewer mapViewer, Point screenPoint) {
         SwingUtilities.invokeLater(() -> {
             double niveau = waterLevels.getOrDefault(zone.getId(), zone.isFlooded() ? 1.0 : 0.0);
@@ -291,6 +358,12 @@ public class ZonePainter implements Painter<JXMapViewer> {
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    /**
+     * Performs truncate.
+     * @param s the s.
+     * @param max the max.
+     * @return the String.
+     */
     private String truncate(String s, int max) {
         if (s == null) return "";
         return s.length() > max ? s.substring(0, max - 1) + "…" : s;

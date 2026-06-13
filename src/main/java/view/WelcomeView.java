@@ -37,6 +37,9 @@ public class WelcomeView extends StackPane {
     private Circle glow5;
     private Circle glow6;
 
+    /**
+     * Create the application welcome view.
+     */
     public WelcomeView() {
         this.setMinSize(0, 0);
         this.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
@@ -46,6 +49,9 @@ public class WelcomeView extends StackPane {
         buildUI();
     }
 
+    /**
+     * Builds ui.
+     */
     private void buildUI() {
         Region background = new Region();
         background.prefWidthProperty().bind(this.widthProperty());
@@ -74,6 +80,10 @@ public class WelcomeView extends StackPane {
         getChildren().addAll(background, grid, content);
     }
 
+    /**
+     * Builds grid.
+     * @return the Pane.
+     */
     private Pane buildGrid() {
         Pane pane = new Pane();
         pane.setMouseTransparent(true);
@@ -114,6 +124,9 @@ public class WelcomeView extends StackPane {
         return pane;
     }
 
+    /**
+     * Starts background animation.
+     */
     private void startBackgroundAnimation() {
         if (glow1 == null || glow2 == null || glow3 == null || glow4 == null || glow5 == null || glow6 == null) {
             return;
@@ -210,6 +223,10 @@ public class WelcomeView extends StackPane {
         timeline.play();
     }
 
+    /**
+     * Builds hero content.
+     * @return the VBox.
+     */
     private VBox buildHeroContent() {
         VBox left = new VBox(0);
         left.setAlignment(Pos.CENTER_LEFT);
@@ -317,6 +334,11 @@ public class WelcomeView extends StackPane {
         return left;
     }
 
+    /**
+     * Creates primary button.
+     * @param text the text.
+     * @return the Button.
+     */
     private Button createPrimaryButton(String text) {
         Button button = new Button(text + "     →");
         button.setPrefWidth(230);
@@ -331,6 +353,11 @@ public class WelcomeView extends StackPane {
         return button;
     }
 
+    /**
+     * Creates secondary button.
+     * @param text the text.
+     * @return the Button.
+     */
     private Button createSecondaryButton(String text) {
         Button button = new Button(text + "     →");
         button.setPrefWidth(245);
@@ -345,6 +372,11 @@ public class WelcomeView extends StackPane {
         return button;
     }
 
+    /**
+     * Performs style.
+     * @param hover the hover.
+     * @return the String.
+     */
     private String primaryStyle(boolean hover) {
         return "-fx-background-color:" +
                 (hover
@@ -355,6 +387,11 @@ public class WelcomeView extends StackPane {
                 "-fx-effect:dropshadow(gaussian, rgba(59,108,255,0.35), 22, 0, 0, 8);";
     }
 
+    /**
+     * Performs style.
+     * @param hover the hover.
+     * @return the String.
+     */
     private String secondaryStyle(boolean hover) {
         return "-fx-background-color:" + (hover ? "rgba(59,108,255,0.12)" : "rgba(255,255,255,0.035)") + ";" +
                 "-fx-border-color:" + (hover ? "rgba(77,125,255,0.75)" : "rgba(255,255,255,0.12)") + ";" +
@@ -364,6 +401,11 @@ public class WelcomeView extends StackPane {
                 "-fx-cursor:hand;";
     }
 
+    /**
+     * Creates chip.
+     * @param text the text.
+     * @return the StackPane.
+     */
     private StackPane createChip(String text) {
         StackPane chip = new StackPane();
 
@@ -383,6 +425,11 @@ public class WelcomeView extends StackPane {
         return chip;
     }
 
+    /**
+     * Creates logo box.
+     * @param size the size.
+     * @return the StackPane.
+     */
     private StackPane createLogoBox(int size) {
         StackPane logo = new StackPane();
         logo.setPrefSize(size, size);
@@ -408,6 +455,11 @@ public class WelcomeView extends StackPane {
         return logo;
     }
 
+    /**
+     * Creates spacer.
+     * @param height the height.
+     * @return the Region.
+     */
     private Region createSpacer(double height) {
         Region r = new Region();
         r.setPrefHeight(height);

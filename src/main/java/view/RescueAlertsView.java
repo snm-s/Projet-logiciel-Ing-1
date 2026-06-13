@@ -15,6 +15,10 @@ import javafx.scene.text.FontWeight;
 import model.alert.Alert;
 
 public class RescueAlertsView extends BorderPane {
+    /**
+     * Constructs a new RescueAlertsView.
+     * @param controller the controller.
+     */
     public RescueAlertsView(RescueController controller) {
         setStyle("-fx-background-color:transparent;");
         setPadding(new Insets(26));
@@ -46,6 +50,14 @@ public class RescueAlertsView extends BorderPane {
         setCenter(root);
     }
 
+    /**
+     * Performs label.
+     * @param text the text.
+     * @param color the color.
+     * @param size the size.
+     * @param bold the bold.
+     * @return the Label.
+     */
     private Label label(String text, String color, int size, boolean bold) {
         Label l = new Label(text);
         l.setTextFill(Color.web(color));

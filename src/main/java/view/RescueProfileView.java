@@ -29,6 +29,9 @@ public class RescueProfileView extends BorderPane {
     private static final String BLUE = "#1683ff";
     private static final String CARD_ROW = "rgba(255,255,255,0.055)";
 
+    /**
+     * Constructs a new RescueProfileView.
+     */
     public RescueProfileView() {
         setStyle("-fx-background-color:transparent;");
         setPadding(new Insets(30));
@@ -104,6 +107,13 @@ editableRow("Téléphone", phone, user, "phone"),
         setCenter(root);
     }
 
+    /**
+     * Performs card.
+     * @param name the name.
+     * @param teamType the teamType.
+     * @param state the state.
+     * @return the VBox.
+     */
     private VBox identityCard(String name, String teamType, String state) {
         VBox card = glassCard();
         card.setPrefWidth(560);
@@ -130,6 +140,11 @@ editableRow("Téléphone", phone, user, "phone"),
         return card;
     }
 
+    /**
+     * Performs card.
+     * @param state the state.
+     * @return the VBox.
+     */
     private VBox statusCard(String state) {
         VBox card = glassCard();
         card.setPrefWidth(430);
@@ -149,6 +164,10 @@ editableRow("Téléphone", phone, user, "phone"),
         return card;
     }
 
+    /**
+     * Performs card.
+     * @return the VBox.
+     */
     private VBox glassCard() {
         VBox box = new VBox(16);
         box.setPadding(new Insets(24));
@@ -163,6 +182,12 @@ editableRow("Téléphone", phone, user, "phone"),
         return box;
     }
 
+    /**
+     * Performs row.
+     * @param left the left.
+     * @param right the right.
+     * @return the HBox.
+     */
     private HBox row(String left, String right) {
         HBox row = new HBox();
         row.setAlignment(Pos.CENTER_LEFT);
@@ -178,6 +203,14 @@ editableRow("Téléphone", phone, user, "phone"),
         return row;
     }
 
+    /**
+     * Performs row.
+     * @param left the left.
+     * @param value the value.
+     * @param user the user.
+     * @param fieldName the fieldName.
+     * @return the HBox.
+     */
     private HBox editableRow(String left, String value, Agent user, String fieldName) {
     HBox row = new HBox(10);
     row.setAlignment(Pos.CENTER_LEFT);
@@ -238,6 +271,12 @@ editableRow("Téléphone", phone, user, "phone"),
     return row;
 }
 
+    /**
+     * Performs badge.
+     * @param text the text.
+     * @param color the color.
+     * @return the Label.
+     */
     private Label badge(String text, String color) {
         Label b = label(text, WHITE, 12, true);
         b.setPadding(new Insets(5, 12, 5, 12));
@@ -245,6 +284,12 @@ editableRow("Téléphone", phone, user, "phone"),
         return b;
     }
 
+    /**
+     * Performs stat.
+     * @param title the title.
+     * @param value the value.
+     * @return the VBox.
+     */
     private VBox miniStat(String title, String value) {
         VBox box = new VBox(4);
         box.setPadding(new Insets(12));
@@ -259,6 +304,14 @@ editableRow("Téléphone", phone, user, "phone"),
         return box;
     }
 
+    /**
+     * Performs label.
+     * @param text the text.
+     * @param color the color.
+     * @param size the size.
+     * @param bold the bold.
+     * @return the Label.
+     */
     private Label label(String text, String color, int size, boolean bold) {
         Label l = new Label(text);
         l.setTextFill(Color.web(color));

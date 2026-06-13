@@ -5,6 +5,11 @@ import jakarta.mail.internet.*;
 import java.util.Properties;
 
 public class EmailResetService {
+    /**
+     * Performs reset code.
+     * @param recipientEmail the recipientEmail.
+     * @param code the code.
+     */
     public static void sendResetCode(String recipientEmail, String code) throws MessagingException {
         // Configuration SMTP (Gmail exemple)
         Properties props = new Properties();
@@ -14,6 +19,10 @@ public class EmailResetService {
         props.put("mail.smtp.port", "587");
 
         Session session = Session.getInstance(props, new Authenticator() {
+            /**
+             * Returns the password authentication.
+             * @return the PasswordAuthentication.
+             */
             protected PasswordAuthentication getPasswordAuthentication() {
                 // Remplacer par vos identifiants réels (ou variables d'environnement)
                 return new PasswordAuthentication("votre-email@gmail.com", "votre-mdp-app");

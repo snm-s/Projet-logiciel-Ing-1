@@ -39,6 +39,11 @@ public class CitizenHistoryView extends BorderPane {
 
     private final CitizenController controller;
 
+    /**
+     * Create the history view for a citizen showing personal evacuation and alert history.
+     *
+     * @param controller controller used to access simulation data for the citizen
+     */
     public CitizenHistoryView(CitizenController controller) {
         this.controller = controller;
 
@@ -61,6 +66,10 @@ public class CitizenHistoryView extends BorderPane {
         setCenter(scroll);
     }
 
+    /**
+     * Builds header.
+     * @return the VBox.
+     */
     private VBox buildHeader() {
         VBox header = new VBox(6);
 
@@ -77,6 +86,10 @@ public class CitizenHistoryView extends BorderPane {
         return header;
     }
 
+    /**
+     * Builds stats.
+     * @return the HBox.
+     */
     private HBox buildStats() {
         List<Alert> alerts = getRealAlerts();
         List<EvacuationEvent> events = getMyEvacuationEvents();
@@ -108,6 +121,10 @@ public class CitizenHistoryView extends BorderPane {
         return stats;
     }
 
+    /**
+     * Builds history list.
+     * @return the VBox.
+     */
     private VBox buildHistoryList() {
         VBox section = glassCard(22);
 
@@ -157,6 +174,11 @@ public class CitizenHistoryView extends BorderPane {
         return section;
     }
 
+    /**
+     * Performs history card.
+     * @param event the event.
+     * @return the VBox.
+     */
     private VBox evacuationHistoryCard(EvacuationEvent event) {
         VBox card = new VBox(12);
         card.setPadding(new Insets(18));
@@ -202,6 +224,11 @@ public class CitizenHistoryView extends BorderPane {
         return card;
     }
 
+    /**
+     * Performs history card.
+     * @param alert the alert.
+     * @return the VBox.
+     */
     private VBox alertHistoryCard(Alert alert) {
         VBox card = new VBox(12);
         card.setPadding(new Insets(18));
@@ -249,6 +276,10 @@ public class CitizenHistoryView extends BorderPane {
         return card;
     }
 
+    /**
+     * Performs box.
+     * @return the VBox.
+     */
     private VBox emptyBox() {
         VBox box = new VBox(8);
         box.setAlignment(Pos.CENTER);
@@ -273,6 +304,10 @@ public class CitizenHistoryView extends BorderPane {
         return box;
     }
 
+    /**
+     * Returns the real alerts.
+     * @return the List<Alert>.
+     */
     private List<Alert> getRealAlerts() {
         if (controller == null || controller.getAlertSystem() == null) {
             return new ArrayList<>();
@@ -281,6 +316,10 @@ public class CitizenHistoryView extends BorderPane {
         return new ArrayList<>(controller.getAlertSystem().getAlerts());
     }
 
+    /**
+     * Returns the my evacuation events.
+     * @return the List<EvacuationEvent>.
+     */
     private List<EvacuationEvent> getMyEvacuationEvents() {
         if (controller == null || Main.currentUser == null) {
             return new ArrayList<>();
@@ -290,6 +329,14 @@ public class CitizenHistoryView extends BorderPane {
     }
 
 
+    /**
+     * Performs card.
+     * @param title the title.
+     * @param value the value.
+     * @param color the color.
+     * @param subtitle the subtitle.
+     * @return the VBox.
+     */
     private VBox statCard(String title, String value, String color, String subtitle) {
         VBox card = glassCard(18);
 
@@ -314,6 +361,12 @@ public class CitizenHistoryView extends BorderPane {
         return card;
     }
 
+    /**
+     * Performs box.
+     * @param title the title.
+     * @param value the value.
+     * @return the VBox.
+     */
     private VBox detailBox(String title, String value) {
         VBox box = new VBox(4);
         box.setPadding(new Insets(12));
@@ -332,6 +385,12 @@ public class CitizenHistoryView extends BorderPane {
         return box;
     }
 
+    /**
+     * Performs icon.
+     * @param text the text.
+     * @param color the color.
+     * @return the StackPane.
+     */
     private StackPane smallIcon(String text, String color) {
         StackPane icon = new StackPane();
         icon.setPrefSize(42, 42);
@@ -350,6 +409,12 @@ public class CitizenHistoryView extends BorderPane {
         return icon;
     }
 
+    /**
+     * Performs badge.
+     * @param text the text.
+     * @param color the color.
+     * @return the Label.
+     */
     private Label badge(String text, String color) {
         Label badge = label(text == null ? "--" : text, WHITE, 11, true);
         badge.setPadding(new Insets(6, 11, 6, 11));
@@ -360,6 +425,11 @@ public class CitizenHistoryView extends BorderPane {
         return badge;
     }
 
+    /**
+     * Performs card.
+     * @param padding the padding.
+     * @return the VBox.
+     */
     private VBox glassCard(int padding) {
         VBox box = new VBox(12);
         box.setPadding(new Insets(padding));
@@ -373,6 +443,11 @@ public class CitizenHistoryView extends BorderPane {
         return box;
     }
 
+    /**
+     * Performs code.
+     * @param type the type.
+     * @return the String.
+     */
     private String typeCode(AlertType type) {
         if (type == null) return "IF";
 
@@ -385,6 +460,11 @@ public class CitizenHistoryView extends BorderPane {
         };
     }
 
+    /**
+     * Performs type.
+     * @param type the type.
+     * @return the String.
+     */
     private String formatType(AlertType type) {
         if (type == null) return "Information";
 
@@ -397,6 +477,11 @@ public class CitizenHistoryView extends BorderPane {
         };
     }
 
+    /**
+     * Performs color.
+     * @param severity the severity.
+     * @return the String.
+     */
     private String severityColor(String severity) {
         if (severity == null) return BLUE;
 
@@ -408,6 +493,11 @@ public class CitizenHistoryView extends BorderPane {
         };
     }
 
+    /**
+     * Performs color.
+     * @param status the status.
+     * @return the String.
+     */
     private String statusColor(String status) {
         if (status == null) return BLUE;
 
@@ -419,6 +509,12 @@ public class CitizenHistoryView extends BorderPane {
         };
     }
 
+    /**
+     * Performs clean.
+     * @param value the value.
+     * @param fallback the fallback.
+     * @return the String.
+     */
     private String clean(String value, String fallback) {
         if (value == null || value.isBlank()) {
             return fallback;
@@ -427,6 +523,14 @@ public class CitizenHistoryView extends BorderPane {
         return value;
     }
 
+    /**
+     * Performs label.
+     * @param text the text.
+     * @param color the color.
+     * @param size the size.
+     * @param bold the bold.
+     * @return the Label.
+     */
     private Label label(String text, String color, int size, boolean bold) {
         Label label = new Label(text == null ? "" : text);
         label.setTextFill(Color.web(color));

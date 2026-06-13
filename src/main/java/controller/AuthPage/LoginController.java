@@ -14,12 +14,20 @@ public class LoginController {
     private final LoginView view;
     private final Stage stage;
 
+    /**
+     * Constructs a new LoginController.
+     * @param view the view.
+     * @param stage the stage.
+     */
     public LoginController(LoginView view, Stage stage) {
         this.view = view;
         this.stage = stage;
         initActions();
     }
 
+    /**
+     * Initializes actions.
+     */
     private void initActions() {
         view.getBackButton().setOnAction(e -> Main.showWelcomeView());
         view.getRegisterLink().setOnAction(e -> Main.showRegisterView());
@@ -85,6 +93,12 @@ public class LoginController {
         });
     }
 
+    /**
+     * Performs login.
+     * @param email the email.
+     * @param password the password.
+     * @return the Agent.
+     */
     public Agent login(String email, String password) {
         
         return UserService.authenticate(email, password);
