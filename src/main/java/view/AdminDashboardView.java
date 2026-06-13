@@ -287,14 +287,11 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
         );
 
         HBox bottomRow = new HBox(16);
-        VBox chart = buildStateChart();
-        HBox.setHgrow(chart, Priority.ALWAYS);
 
         bottomRow.getChildren().addAll(
-                chart,
-                statusPanel("Statut Agents Secours", ctrl.getRescueStateBreakdown(), ACCENT_GREEN),
-                statusPanel("Statut Citoyens", ctrl.getCitizenStateBreakdown(), ACCENT_BLUE)
-        );
+        statusPanel("Statut Agents Secours", ctrl.getRescueStateBreakdown(), ACCENT_GREEN),
+        statusPanel("Statut Citoyens", ctrl.getCitizenStateBreakdown(), ACCENT_BLUE)
+);
 
         MapView mapView = new MapView(new ZoneManager().getZones());
         mapView.setAgents(ctrl.getAllAgents());
