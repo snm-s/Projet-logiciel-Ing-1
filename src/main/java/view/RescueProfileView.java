@@ -3,7 +3,9 @@ package view;
 import app.Main;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -14,6 +16,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import model.agent.Agent;
 import model.agent.RescueAgent;
+import model.auth.UserService;
 
 public class RescueProfileView extends BorderPane {
 
@@ -70,15 +73,15 @@ public class RescueProfileView extends BorderPane {
         Label infoSub = label("Données utiles pour identifier le secouriste dans l’application.", MUTED, 13, false);
 
         infoCard.getChildren().addAll(
-                infoTitle,
-                infoSub,
-                row("Nom complet", fullName),
-                row("Email", email),
-                row("Téléphone", phone),
-                row("Ville", city),
-                row("Rôle", "Secours"),
-                row("Type d’équipe", teamType)
-        );
+            infoTitle,
+            infoSub,
+            editableRow("Nom complet", fullName, user, "name"),
+editableRow("Email", email, user, "email"),
+editableRow("Téléphone", phone, user, "phone"),
+            row("Ville", city),
+            row("Rôle", "Secours"),
+            row("Type d’équipe", teamType)
+    );
 
         VBox missionCard = glassCard();
         Label missionTitle = label("État d’intervention", WHITE, 20, true);
@@ -174,6 +177,66 @@ public class RescueProfileView extends BorderPane {
         row.getChildren().addAll(l, r);
         return row;
     }
+
+    private HBox editableRow(String left, String value, Agent user, String fieldName) {
+    HBox row = new HBox(10);
+    row.setAlignment(Pos.CENTER_LEFT);
+    row.setPadding(new Insets(10, 14, 10, 14));
+    row.setStyle("-fx-background-color:" + CARD_ROW + "; -fx-background-radius:12;");
+
+    Label l = label(left, WHITE, 13, true);
+    l.setPrefWidth(150);
+
+    TextField field = new TextField(value);
+    field.setEditable(false);
+    field.setStyle(
+        "-fx-background-color:transparent;" +
+        "-fx-text-fill:white;" +
+        "-fx-border-color:transparent;" +
+        "-fx-font-size:13px;"
+    );
+
+    HBox.setHgrow(field, Priority.ALWAYS);
+
+    Button edit = new Button("✎");
+    edit.setStyle(
+        "-fx-background-color:rgba(22,131,255,0.18);" +
+        "-fx-text-fill:#1683ff;" +
+        "-fx-font-weight:bold;" +
+        "-fx-background-radius:10;" +
+        "-fx-cursor:hand;"
+    );
+
+    edit.setOnAction(e -> {
+        if (!field.isEditable()) {
+            field.setEditable(true);
+            field.requestFocus();
+            edit.setText("✓");
+        } else {
+            field.setEditable(false);
+            edit.setText("✎");
+
+            if (user != null) {
+                String newValue = field.getText().trim();
+
+                switch (fieldName) {
+                    case "name" -> {
+                        String[] parts = newValue.split(" ", 2);
+                        user.setFirstName(parts.length > 0 ? parts[0] : "");
+                        user.setLastName(parts.length > 1 ? parts[1] : "");
+                    }
+                    case "email" -> user.setEmail(newValue);
+                    case "phone" -> user.setPhone(newValue);
+                }
+
+                UserService.updateAgent(user);
+            }
+        }
+    });
+
+    row.getChildren().addAll(l, field, edit);
+    return row;
+}
 
     private Label badge(String text, String color) {
         Label b = label(text, WHITE, 12, true);
