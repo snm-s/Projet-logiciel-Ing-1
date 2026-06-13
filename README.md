@@ -376,26 +376,7 @@ java -jar target/FloodRoute-1.0.jar
 
 <br/>
 
-## 👨‍💻 Équipe projet
 
-<div align="center">
-
-| Membre | Rôle |
-|--------|------|
-| **Martial Mouttalapane** | Architecture logicielle, moteur de simulation, algorithmes |
-| **Sanem Sayed** | Modèle d'agents, logique métier, gestion des profils |
-| **Hajar Achour** | Interface graphique JavaFX, design des vues |
-| **Bouchra Zamoum** | Modélisation du graphe, structure des données, tests |
-| **Jenistar Makoudjou** | Système d'alertes, statistiques, intégration finale |
-
-<br/>
-
-| Rôle | Personne |
-|------|----------|
-| **Tutrice** | D. Zaouche |
-| **Jury** | S. Hawari |
-
-</div>
 
 ---
 
@@ -413,42 +394,10 @@ java -jar target/FloodRoute-1.0.jar
 
 <br/>
 
-## ✅ Solutions apportées
 
-- `Platform.runLater()` pour toutes les mises à jour visuelles depuis les threads de simulation
-- Pattern **Observer** sur le graphe pour déclencher le recalcul uniquement en cas de changement d'état
-- Synchronisation via **`ReentrantLock`** sur les structures partagées
-- **Routing centralisé** dans `Main.java` pour les transitions entre vues
-- Attribut de type d'agent dans l'algorithme pour filtrer les arêtes inaccessibles aux PMR
 
----
 
-<br/>
 
-## 📈 Résultats obtenus
-
-- ✔️ Simulation d'inondation fonctionnelle avec propagation progressive
-- ✔️ Calcul d'itinéraire sécurisé opérationnel pour tous les profils
-- ✔️ Interface graphique complète et cohérente sur toutes les vues
-- ✔️ Gestion des quatre profils avec droits différenciés
-- ✔️ Système d'alertes en temps réel intégré
-- ✔️ Architecture modulaire et extensible
-
----
-
-<br/>
-
-## 🔭 Perspectives d'amélioration
-
-- **Import de carte réelle** — intégrer OpenStreetMap pour simuler sur une vraie ville
-- **Persistance** — remplacer le JSON par une base SQLite embarquée
-- **Multi-scénarios** — sauvegarder et rejouer des scénarios d'inondation
-- **Mode réseau** — plusieurs utilisateurs connectés à une même simulation
-- **Export PDF** — générer un rapport complet de la simulation
-
----
-
-<br/>
 
 ## 📝 Conclusion
 
