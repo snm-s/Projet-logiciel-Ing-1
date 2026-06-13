@@ -186,19 +186,7 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
                     mapViewer.repaint();
                     return;
                 }
-                if (editMode == EditMode.ADD_EDGE && hit instanceof GraphNode node) {
-                    if (pendingEdgeStart == null) {
-                        pendingEdgeStart = node;
-                        selectedGraphElement = node;
-                        setInfo("Départ d'arête choisi : " + node.name + ". Clique un deuxième nœud.");
-                    } else if (pendingEdgeStart != node) {
-                        addVisualEdge(pendingEdgeStart, node);
-                        pendingEdgeStart = null;
-                        setInfo("Arête ajoutée en direct.");
-                    }
-                    mapViewer.repaint();
-                    return;
-                }
+    
 
                 if (hit instanceof Edge edge) {
                     selectedEdge = edge;
@@ -209,6 +197,20 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
                     return;
                 }
 
+                if (hit instanceof GraphNode node) {
+                    lastClickConsumedByEdge = false;
+                    selectedGraphElement = node;
+                    graphOverlayPainter.setSelected(node);
+                    setInfo(graphOverlayPainter.infoFor(node));
+                
+                    if (node.zone != null && onZoneSelected != null) {
+                        onZoneSelected.accept(node.zone);
+                    }
+                
+                    mapViewer.repaint();
+                    return;
+                }
+                
                 if (hit != null) {
                     lastClickConsumedByEdge = false;
                     selectedGraphElement = hit;
@@ -338,6 +340,12 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         graphOverlayPainter.setRouteGraph(routeGraph);
         agentPainter.setRouteGraph(routeGraph);
         SwingUtilities.invokeLater(mapViewer::repaint);
+    }
+    public void refreshMap() {
+        SwingUtilities.invokeLater(() -> {
+            mapViewer.revalidate();
+            mapViewer.repaint();
+        });
     }
     
     public void setLastClickConsumedByEdge(boolean v) { this.lastClickConsumedByEdge = v; }
