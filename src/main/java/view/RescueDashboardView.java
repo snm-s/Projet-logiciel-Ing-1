@@ -172,76 +172,88 @@ public class RescueDashboardView extends BorderPane {
     // ─────────────────────────────────────────────────────────────────────
 
     private VBox buildDashboardContent() {
-        VBox root = new VBox(22);
+        VBox root = new VBox(24);
         root.setPadding(new Insets(30));
 
-        Label overview = title("Vue d'ensemble", 26);
-        Label sub = muted("Suivi opérationnel des alertes, missions et ressources.", 14);
-        VBox header = new VBox(4, overview, sub);
+        long refugesOuverts = controller.getZones().stream()
+        .filter(z -> z instanceof model.zone.Shelter)
+        .count();
 
+        long zonesPrioritaires = controller.getZones().stream()
+        .filter(Zone::isFlooded)
+        .count();
+
+int citoyensAEvacuer = 0;
+int citoyensEnAttente = 0;
+int personnesEvacuees = controller.getRescuedVictims();
+
+int alertesActives = controller.getActiveAlertsCount();
+int missionsActives = controller.getActiveMissions();
+    
+        VBox header = new VBox(5,
+            title("Vue d'ensemble", 28),
+            muted("Priorités opérationnelles en temps réel.", 14)
+        );
+    
         HBox stats = new HBox(16);
         stats.getChildren().addAll(
-            miniCard("Agents déployés",   "👥 " + controller.getDeployedAgents(), BLUE_2),
-            miniCard("Victimes secourues","🧍 " + Math.max(controller.getRescuedVictims(), 15), GREEN),
-            miniCard("Missions actives",  "⚙ " + controller.getActiveMissions(), GREEN),
-            miniCard("Alertes actives",   "⚠ " + Math.max(controller.getActiveAlertsCount(), 4), RED)
+            miniCard("Alertes actives", String.valueOf(alertesActives), RED),
+            miniCard("Missions en cours", String.valueOf(missionsActives), ORANGE),
+            miniCard("Citoyens à évacuer", String.valueOf(citoyensAEvacuer), BLUE_2),
+            miniCard("Zones prioritaires", String.valueOf(zonesPrioritaires), GREEN)
         );
         for (Node n : stats.getChildren()) HBox.setHgrow(n, Priority.ALWAYS);
-
+    
         HBox middle = new HBox(18);
+    
+        VBox alertsBox = glassCard(20);
+        alertsBox.setPrefWidth(520);
+        VBox alertList = new VBox(12);
 
-        VBox alertsBox = glassCard(18);
-        alertsBox.setPrefWidth(430);
-        Label alertTitle = title("Alertes récentes", 16);
-        VBox alertList = new VBox(10);
-
-        if (controller.getRecentAlerts().isEmpty()) {
-            alertList.getChildren().addAll(
-                logItem("⚠ Route D12 inondée", "10:24"),
-                logItem("⚠ Pont des Lilas fermé", "09:58"),
-                logItem("🔸 Quartier Gare évacué", "09:12"),
-                logItem("🟢 Hôpital Central accessible", "08:45")
-            );
-        } else {
-            for (Alert a : controller.getRecentAlerts())
-                alertList.getChildren().add(logItem("⚠ " + a.getDescription(), a.getTime()));
-        }
-
+if (controller.getRecentAlerts().isEmpty()) {
+    alertList.getChildren().add(muted("Aucune alerte active pour le moment.", 13));
+} else {
+    for (Alert a : controller.getRecentAlerts()) {
+        alertList.getChildren().add(logItem(a.getDescription(), a.getTime()));
+    }
+}
         Hyperlink allAlerts = link("Voir toutes les alertes");
         allAlerts.setOnAction(e -> showPage(new RescueAlertsView(controller)));
-        alertsBox.getChildren().addAll(alertTitle, alertList, allAlerts);
+        alertsBox.getChildren().addAll(title("Alertes prioritaires", 18), alertList, allAlerts);
+    
+        VBox missionsBox = glassCard(20);
+        missionsBox.setPrefWidth(520);
+        VBox missionList = new VBox(12);
 
-        VBox missionsBox = glassCard(18);
-        missionsBox.setPrefWidth(430);
-        Label missionTitle = title("Missions en cours", 16);
-        VBox missionList = new VBox(10);
-        missionList.getChildren().addAll(
-            statusItem("Évacuation Quartier Nord",        "En cours",   GREEN),
-            statusItem("Secours PMR - Rue des Écoles",    "Prioritaire", RED),
-            statusItem("Transport vers Hôpital",          "En attente",  ORANGE)
-        );
+if (missionsActives == 0) {
+    missionList.getChildren().add(muted("Aucune mission active pour le moment.", 13));
+} else {
+    missionList.getChildren().add(
+        statusItem("Mission d’évacuation en cours", "En cours", GREEN)
+    );
+}
         Hyperlink allMissions = link("Voir toutes les missions");
         allMissions.setOnAction(e -> showPage(new RescueMissionsView(mapComponent, controller)));
-        missionsBox.getChildren().addAll(missionTitle, missionList, allMissions);
-
+        missionsBox.getChildren().addAll(title("Missions prioritaires", 18), missionList, allMissions);
+    
         middle.getChildren().addAll(alertsBox, missionsBox);
-
-        VBox resources = glassCard(18);
-        Label resTitle = title("Ressources disponibles", 16);
-        HBox resRow = new HBox(26);
-        resRow.getChildren().addAll(
-            resourceBadge("👤 Secouristes", "12"),
-            resourceBadge("🚘 Véhicules",   "5"),
-            resourceBadge("⛵ Bateaux",      "2"),
-            resourceBadge("🛸 Drones",       "3")
+    
+        VBox situation = glassCard(20);
+        HBox situationRow = new HBox(18);
+        situationRow.getChildren().addAll(
+            resourceBadge("Refuges ouverts", String.valueOf(refugesOuverts)),
+            resourceBadge("Citoyens en attente", String.valueOf(citoyensEnAttente)),
+            resourceBadge("Zones critiques", String.valueOf(zonesPrioritaires)),
+            resourceBadge("Personnes évacuées", String.valueOf(personnesEvacuees))
         );
-        resources.getChildren().addAll(resTitle, resRow);
-
-        root.getChildren().addAll(header, stats, middle, resources);
-
+        situation.getChildren().addAll(title("Situation générale", 18), situationRow);
+    
+        root.getChildren().addAll(header, stats, middle, situation);
+    
         ScrollPane sp = new ScrollPane(root);
         sp.setFitToWidth(true);
-        sp.setStyle("-fx-background:transparent; -fx-background-color:transparent;");
+        sp.setStyle("-fx-background:transparent; -fx-background-color:transparent; -fx-viewport-background-color:transparent;");
+    
         VBox wrapper = new VBox(sp);
         VBox.setVgrow(sp, Priority.ALWAYS);
         return wrapper;
@@ -284,7 +296,7 @@ public class RescueDashboardView extends BorderPane {
         Label bottomTitle = title("Zones prioritaires", 16);
         HBox chips = new HBox(12);
         for (Zone z : controller.getZones()) {
-            if (z.isFlooded() || z.getAltitude() < 1.2) chips.getChildren().add(zoneChip(z));
+            if (z.isFlooded()) chips.getChildren().add(zoneChip(z));
         }
         if (chips.getChildren().isEmpty())
             chips.getChildren().add(muted("Aucune zone critique détectée pour le moment.", 13));
@@ -312,7 +324,7 @@ public class RescueDashboardView extends BorderPane {
         chip.setPadding(new Insets(12));
         chip.setStyle("-fx-background-color:rgba(255,255,255,0.06); -fx-background-radius:12;"
             + " -fx-border-color:rgba(255,255,255,0.12); -fx-border-radius:12;");
-        Label name = label("📍 " + z.getName(), WHITE, 13, true);
+            Label name = label(z.getName(), WHITE, 13, true);
         Label info = muted("Alt. " + String.format("%.1f m", z.getAltitude()) + " • Pop. " + z.getPopulation(), 11);
         Button btn = blueButton("Centrer");
         btn.setOnAction(e -> mapComponent.focusZone(z));
