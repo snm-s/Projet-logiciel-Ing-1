@@ -1,38 +1,19 @@
-# Projet-logiciel-Ing-1
-
 <div align="center">
 
-<!-- LOGO / TITRE -->
-
-```
-███████╗██╗      ██████╗  ██████╗ ██████╗ ██████╗  ██████╗ ██╗   ██╗████████╗███████╗
-██╔════╝██║     ██╔═══██╗██╔═══██╗██╔══██╗██╔══██╗██╔═══██╗██║   ██║╚══██╔══╝██╔════╝
-█████╗  ██║     ██║   ██║██║   ██║██║  ██║██████╔╝██║   ██║██║   ██║   ██║   █████╗  
-██╔══╝  ██║     ██║   ██║██║   ██║██║  ██║██╔══██╗██║   ██║██║   ██║   ██║   ██╔══╝  
-██║     ███████╗╚██████╔╝╚██████╔╝██████╔╝██║  ██║╚██████╔╝╚██████╔╝   ██║   ███████╗
-╚═╝     ╚══════╝ ╚═════╝  ╚═════╝ ╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚═════╝   ╚═╝   ╚══════╝
-```
-
-# FloodRoute
-
-**Simulation d'inondation avec agents et graphes — Application JavaFX**
+<img src="src/main/resources/images/header.svg" alt="FloodRoute Banner" width="100%"/>
 
 <br/>
 
-[![Java](https://img.shields.io/badge/Java-21-007396?style=for-the-badge&logo=java&logoColor=white)](https://www.java.com)
+[![Java](https://img.shields.io/badge/Java-21-007396?style=for-the-badge&logo=openjdk&logoColor=white)](https://www.java.com)
 [![JavaFX](https://img.shields.io/badge/JavaFX-21-0078D7?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjfx.io)
 [![Maven](https://img.shields.io/badge/Maven-3.9-C71A36?style=for-the-badge&logo=apachemaven&logoColor=white)](https://maven.apache.org)
-[![License](https://img.shields.io/badge/Licence-Académique-4A90E2?style=for-the-badge)](.)
-[![Status](https://img.shields.io/badge/Statut-Soutenu-22c55e?style=for-the-badge)](.)
-
-<br/>
-
-> _Anticiper. Alerter. Protéger._
+[![Licence](https://img.shields.io/badge/Licence-Académique-4A90E2?style=for-the-badge)](.)
+[![Statut](https://img.shields.io/badge/Statut-Soutenu-22c55e?style=for-the-badge)](.)
 
 <br/>
 
 **Projet de fin d'année — ING1 GI4 · CY Tech · 2025–2026**  
-Matière : Agents et Graphes · Tutrice : D. Zaouche · Jury : S. Hawari
+Matière : Agents et Graphes &nbsp;·&nbsp; Tutrice : D. Zaouche &nbsp;·&nbsp; Jury : S. Hawari
 
 </div>
 
@@ -112,7 +93,7 @@ L'application distingue quatre profils, chacun disposant d'une interface et de d
 | 🧑‍💼 **Administrateur** | Gère la simulation, configure le graphe, déclenche les alertes | Complet |
 | 🚒 **Secours** | Consulte les zones, reçoit les missions, met à jour les statuts | Opérationnel |
 | 🧍 **Citoyen** | Consulte la carte, reçoit les alertes, calcule son itinéraire | Lecture + navigation |
-| ♿ **PMR** | Même droits que le citoyen, mais avec calcul d'itinéraire adapté | Lecture + navigation adaptée |
+| ♿ **PMR** | Même droits que le citoyen, itinéraire adapté aux contraintes de mobilité | Lecture + navigation adaptée |
 
 <br/>
 
@@ -125,7 +106,7 @@ L'application distingue quatre profils, chacun disposant d'une interface et de d
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Langage         Java 21                                │
-│  Interface       JavaFX 21 + FXML                       │
+│  Interface       JavaFX 21                              │
 │  Build           Apache Maven 3.9                       │
 │  Algorithmes     Dijkstra, BFS, gestion d'agents        │
 │  Données         JSON / fichiers texte structurés       │
@@ -154,7 +135,7 @@ FloodRoute/
 │       │   ├── simulation/             # Moteur de simulation d'inondation
 │       │   ├── algorithm/              # Algorithmes de pathfinding (Dijkstra, BFS)
 │       │   ├── controller/             # Contrôleurs JavaFX
-│       │   ├── view/                   # Vues construites en Java (WelcomeView, LoginView…)
+│       │   ├── view/                   # Vues construites en Java
 │       │   └── model/                  # Modèles de données (User, Alert, Refuge…)
 │       │
 │       └── resources/
@@ -162,7 +143,10 @@ FloodRoute/
 │           ├── images/                 # Assets graphiques
 │           └── css/                    # Feuilles de style JavaFX
 │
-├── pom.xml                             # Configuration Maven
+├── assets/                             # Images pour le README
+│   └── header.svg
+│
+├── pom.xml
 └── README.md
 ```
 
@@ -187,7 +171,7 @@ Le réseau urbain est modélisé comme un **graphe orienté pondéré** :
 Chaque agent est une entité autonome dotée d'un **état**, d'une **position** et d'un **comportement** :
 
 ```java
-// Exemple de hiérarchie d'agents
+// Hiérarchie d'agents
 Agent (abstraite)
 ├── Citoyen        → se déplace, reçoit des alertes, cherche un refuge
 ├── PMR            → contraintes de mobilité supplémentaires
@@ -245,8 +229,6 @@ mvn clean package
 java -jar target/FloodRoute-1.0.jar
 ```
 
-> **Note :** Si JavaFX n'est pas inclus dans votre JDK, ajoutez les options `--module-path` et `--add-modules` correspondantes à votre installation.
-
 <br/>
 
 ---
@@ -259,13 +241,13 @@ java -jar target/FloodRoute-1.0.jar
 |--------|----------------|
 | **Martial Mouttalapane** | Architecture logicielle, moteur de simulation, algorithmes |
 | **Sanem Sayed** | Modèle d'agents, logique métier, gestion des profils |
-| **Hajar Achour** | Interface graphique JavaFX, design des vues, CSS |
+| **Hajar Achour** | Interface graphique JavaFX, design des vues |
 | **Bouchra Zamoum** | Modélisation du graphe, structure des données, tests |
 | **Jenistar Makoudjou** | Système d'alertes, statistiques, intégration finale |
 
 <br/>
 
-> _Tutrice : **D. Zaouche** — Jury : **S. Hawari**_
+> Tutrice : **D. Zaouche** &nbsp;·&nbsp; Jury : **S. Hawari**
 
 <br/>
 
@@ -275,11 +257,11 @@ java -jar target/FloodRoute-1.0.jar
 
 ## ⚠️ Difficultés rencontrées
 
-- **Synchronisation de la simulation** — gérer la propagation de l'inondation en temps réel sans bloquer le thread JavaFX
-- **Mise à jour dynamique du graphe** — recalculer les itinéraires à chaque changement d'état des routes sans recréer le graphe entier
+- **Synchronisation de la simulation** — gérer la propagation de l'inondation sans bloquer le thread JavaFX
+- **Mise à jour dynamique du graphe** — recalculer les itinéraires à chaque changement d'état sans recréer le graphe entier
 - **Gestion des conflits d'accès concurrents** — plusieurs agents interagissant simultanément avec les mêmes nœuds
 - **Différenciation des interfaces par profil** — construire des vues flexibles sans dupliquer le code de navigation
-- **Modélisation réaliste des contraintes PMR** — pondérer correctement les arêtes selon le type d'agent
+- **Modélisation des contraintes PMR** — pondérer correctement les arêtes selon le type d'agent
 
 <br/>
 
@@ -289,11 +271,11 @@ java -jar target/FloodRoute-1.0.jar
 
 ## ✅ Solutions apportées
 
-- Utilisation du **JavaFX Application Thread** avec `Platform.runLater()` pour toutes les mises à jour visuelles depuis les threads de simulation
+- Utilisation de `Platform.runLater()` pour toutes les mises à jour visuelles depuis les threads de simulation
 - Implémentation d'un **observateur sur le graphe** (pattern Observer) pour déclencher le recalcul d'itinéraires uniquement en cas de changement d'état
 - Synchronisation des accès aux structures partagées via des **verrous explicites** (`ReentrantLock`)
-- Mise en place d'un **système de routing centralisé** dans `Main.java` pour gérer les transitions entre vues de manière unifiée
-- Ajout d'un **attribut de type d'agent** dans l'algorithme de Dijkstra pour filtrer les arêtes inaccessibles aux PMR
+- Mise en place d'un **routing centralisé** dans `Main.java` pour gérer les transitions entre vues
+- Ajout d'un **attribut de type d'agent** dans Dijkstra pour filtrer les arêtes inaccessibles aux PMR
 
 <br/>
 
@@ -305,7 +287,7 @@ java -jar target/FloodRoute-1.0.jar
 
 - ✔️ Simulation d'inondation fonctionnelle avec propagation progressive
 - ✔️ Calcul d'itinéraire sécurisé opérationnel pour tous les profils
-- ✔️ Interface graphique complète et cohérente (welcome, connexion, inscription, carte, alertes, statistiques)
+- ✔️ Interface graphique complète et cohérente (welcome, connexion, carte, alertes, statistiques)
 - ✔️ Gestion des quatre profils utilisateurs avec droits différenciés
 - ✔️ Système d'alertes en temps réel intégré
 - ✔️ Architecture modulaire facilitant l'extension future
@@ -320,10 +302,9 @@ java -jar target/FloodRoute-1.0.jar
 
 - **Import de carte réelle** — intégrer les données OpenStreetMap pour simuler sur une vraie ville
 - **Persistance des données** — remplacer les fichiers JSON par une base de données embarquée (SQLite)
-- **Simulation multi-scénarios** — permettre de sauvegarder et rejouer des scénarios d'inondation
-- **Mode réseau** — permettre à plusieurs utilisateurs de se connecter simultanément à une même simulation
-- **Apprentissage des agents** — introduire des comportements adaptatifs via des règles ou du renforcement simple
-- **Export de rapports** — générer un rapport PDF de la simulation (zones touchées, agents mobilisés, temps de réponse)
+- **Simulation multi-scénarios** — sauvegarder et rejouer des scénarios d'inondation
+- **Mode réseau** — permettre à plusieurs utilisateurs de se connecter à une même simulation
+- **Export de rapports** — générer un rapport PDF de la simulation
 
 <br/>
 
@@ -345,7 +326,7 @@ Le travail en équipe et les contraintes techniques rencontrées ont permis d'ap
 
 <div align="center">
 
-**FloodRoute** · ING1 GI4 · CY Tech · 2025–2026
+**FloodRoute** &nbsp;·&nbsp; ING1 GI4 &nbsp;·&nbsp; CY Tech &nbsp;·&nbsp; 2025–2026
 
 _Anticiper. Alerter. Protéger._
 
