@@ -157,6 +157,8 @@ public class SimulationView extends BorderPane {
     // ─── Sélection en cours pour liaison d'arête ─────────────────────────
     private Zone edgeZoneA = null;
 
+    private Zone selectedZoneForDelete = null;
+
     // ─────────────────────────────────────────────────────────────────────
 
     public SimulationView(SimulationController ctrl) {
@@ -364,31 +366,30 @@ public class SimulationView extends BorderPane {
         Button bAdd5    = toolBtn("＋ 5 nœuds",     false);
         Button bMoveZ   = toolBtn("↕ Déplacer",     false);
         Button bEditZ   = toolBtn("✏ Modifier",     false);
-        Button bResetZ  = toolBtn("↺ Reset zones",  false);
         Button bDelZ    = toolBtn("🗑 Supprimer",    false);
 
         bSel.setOnAction(e -> {
-            setTool(ToolMode.NONE, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bResetZ, bDelZ);
+            setTool(ToolMode.NONE, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bDelZ);
             if (mapView != null) mapView.setEditMode(MapView.EditMode.SELECT);
             showRightPanel(null);
             setGraphInfo("Mode sélection.");
         });
         bAddNh.setOnAction(e -> {
-            setTool(ToolMode.ADD_NEIGHBORHOOD, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bResetZ, bDelZ);
+            setTool(ToolMode.ADD_NEIGHBORHOOD, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bDelZ);
             if (mapView != null) mapView.setEditMode(MapView.EditMode.SELECT);
             showRightPanel(panelAddNeighborhood);
             resetNhForm();
             setGraphInfo("Remplissez le formulaire à droite, puis cliquez la carte pour la position.");
         });
         bAddSh.setOnAction(e -> {
-            setTool(ToolMode.ADD_SHELTER, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bResetZ, bDelZ);
+            setTool(ToolMode.ADD_SHELTER, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bDelZ);
             if (mapView != null) mapView.setEditMode(MapView.EditMode.SELECT);
             showRightPanel(panelAddShelter);
             resetShForm();
             setGraphInfo("Remplissez le formulaire à droite, puis cliquez la carte pour la position.");
         });
         bAdd5.setOnAction(e -> {
-            setTool(ToolMode.NONE, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bResetZ, bDelZ);
+            setTool(ToolMode.NONE, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bDelZ);
             if (ctrl != null) {
                 for (int i = 0; i < 3; i++) ctrl.addRandomNeighborhood();
                 for (int i = 0; i < 2; i++) ctrl.addRandomShelter();
@@ -397,7 +398,7 @@ public class SimulationView extends BorderPane {
             setGraphInfo("5 nœuds aléatoires ajoutés.");
         });
         bMoveZ.setOnAction(e -> {
-            setTool(ToolMode.MOVE_ZONE, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bResetZ, bDelZ);
+            setTool(ToolMode.MOVE_ZONE, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bDelZ);
             if (mapView != null) {
                 mapCtrl.setOnZoneSelected(null); // suspendre pendant le drag
                 mapView.setEditMode(MapView.EditMode.MOVE_NODE);
@@ -408,7 +409,7 @@ public class SimulationView extends BorderPane {
             setGraphInfo("Glissez un nœud pour le déplacer.");
         });
         bEditZ.setOnAction(e -> {
-            setTool(ToolMode.EDIT_ZONE, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bResetZ, bDelZ);
+            setTool(ToolMode.EDIT_ZONE, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bDelZ);
             if (mapView != null) mapView.setEditMode(MapView.EditMode.SELECT);
             Zone sel = mapCtrl != null ? mapCtrl.getSelectedZone() : null;
             if (sel != null) {
@@ -420,22 +421,33 @@ public class SimulationView extends BorderPane {
                 setGraphInfo("Sélectionnez d'abord un nœud sur la carte.");
             }
         });
-        bResetZ.setOnAction(e -> {
-            setTool(ToolMode.NONE, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bResetZ, bDelZ);
-            if (ctrl != null) { ctrl.resetAllZones(); refreshUI(); }
-        });
+
         bDelZ.setOnAction(e -> {
-            setTool(ToolMode.DELETE, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bResetZ, bDelZ);
-            if (mapCtrl != null && ctrl != null) {
-                Zone sel = mapCtrl.getSelectedZone();
-                if (sel != null) { ctrl.removeZone(sel.getId()); showRightPanel(null); refreshUI(); }
-                else setGraphInfo("⚠ Sélectionnez d'abord un nœud.");
+            setTool(ToolMode.DELETE, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bDelZ);
+        
+            if (ctrl != null && selectedZoneForDelete != null) {
+                ctrl.removeZone(selectedZoneForDelete.getId());
+        
+                selectedZoneForDelete = null;
+                showRightPanel(null);
+                panelSel.setVisible(false);
+        
+                if (mapView != null) {
+                    mapView.updateAllZones(modele.getZones());
+                    mapView.refreshMap();
+                }
+        
+                refreshUI();
+                setGraphInfo("Nœud supprimé.");
+            } else {
+                setGraphInfo("⚠ Sélectionnez d'abord un nœud.");
             }
         });
 
         nodesSec.getChildren().addAll(
             wrapFlow(5, bSel, bAddNh, bAddSh, bAdd5),
-            wrapFlow(5, bMoveZ, bEditZ, bResetZ, bDelZ));
+            wrapFlow(5, bMoveZ, bEditZ, bDelZ)
+        );
         content.getChildren().add(nodesSec);
 
         // ── Section : ROUTES / ARÊTES ─────────────────────────────────────
@@ -484,26 +496,22 @@ public class SimulationView extends BorderPane {
 
         Button bAddAg   = toolBtn("＋ Agent",       false);
         Button bAdd10   = toolBtn("＋ 10 agents",   false);
-        Button bEv      = toolBtn("⚡ Évacuer",      false);
         Button bEditAg  = toolBtn("✏ Modifier",     false);
         Button bDelAg   = toolBtn("🗑 Supprimer",    false);
 
         bAddAg.setOnAction(e -> {
-            setTool(ToolMode.ADD_AGENT, bAddAg, bAdd10, bEv, bEditAg, bDelAg);
+            setTool(ToolMode.ADD_AGENT, bAddAg, bAdd10, bEditAg, bDelAg);
             showRightPanel(panelAddAgent);
             resetAgentForm();
             setGraphInfo("Remplissez le formulaire et choisissez une zone de départ.");
         });
         bAdd10.setOnAction(e -> {
-            setTool(ToolMode.NONE, bAddAg, bAdd10, bEv, bEditAg, bDelAg);
+            setTool(ToolMode.NONE, bAddAg, bAdd10, bEditAg, bDelAg);
             if (ctrl != null) { ctrl.addRandomAgents(10); syncMapAgents(); }
         });
-        bEv.setOnAction(e -> {
-            setTool(ToolMode.NONE, bAddAg, bAdd10, bEv, bEditAg, bDelAg);
-            if (mapCtrl != null) { mapCtrl.evacuateAllCitizensToShelters(); refreshUI(); }
-        });
+
         bEditAg.setOnAction(e -> {
-            setTool(ToolMode.EDIT_AGENT, bAddAg, bAdd10, bEv, bEditAg, bDelAg);
+            setTool(ToolMode.EDIT_AGENT, bAddAg, bAdd10, bEditAg, bDelAg);
             if (mapView != null) mapView.setEditMode(MapView.EditMode.SELECT);
             Agent sel = mapView != null ? mapView.getSelectedAgent() : null;
             if (sel != null) {
@@ -516,7 +524,7 @@ public class SimulationView extends BorderPane {
             }
         });
         bDelAg.setOnAction(e -> {
-            setTool(ToolMode.DELETE, bAddAg, bAdd10, bEv, bEditAg, bDelAg);
+            setTool(ToolMode.DELETE, bAddAg, bAdd10, bEditAg, bDelAg);
             if (mapView != null && ctrl != null) {
                 Agent sel = mapView.getSelectedAgent();
                 if (sel != null) {
@@ -527,7 +535,7 @@ public class SimulationView extends BorderPane {
         });
 
         agentsSec.getChildren().addAll(
-            wrapFlow(5, bAddAg, bAdd10, bEv),
+            wrapFlow(5, bAddAg, bAdd10),
             wrapFlow(5, bEditAg, bDelAg));
         content.getChildren().add(agentsSec);
 
@@ -648,6 +656,7 @@ public class SimulationView extends BorderPane {
      * Gestion centralisée du clic sur une zone selon le mode courant.
      */
     private void handleZoneClick(Zone zone) {
+        selectedZoneForDelete = zone;
         if (currentTool == ToolMode.MOVE_ZONE) return;
         switch (currentTool) {
             case ADD_NEIGHBORHOOD -> {
