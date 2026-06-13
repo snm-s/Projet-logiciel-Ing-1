@@ -1,5 +1,14 @@
 <div align="center">
 
+```
+███████╗██╗      ██████╗  ██████╗ ██████╗ ██████╗  ██████╗ ██╗   ██╗████████╗███████╗
+██╔════╝██║     ██╔═══██╗██╔═══██╗██╔══██╗██╔══██╗██╔═══██╗██║   ██║╚══██╔══╝██╔════╝
+█████╗  ██║     ██║   ██║██║   ██║██║  ██║██████╔╝██║   ██║██║   ██║   ██║   █████╗  
+██╔══╝  ██║     ██║   ██║██║   ██║██║  ██║██╔══██╗██║   ██║██║   ██║   ██║   ██╔══╝  
+██║     ███████╗╚██████╔╝╚██████╔╝██████╔╝██║  ██║╚██████╔╝╚██████╔╝   ██║   ███████╗
+╚═╝     ╚══════╝ ╚═════╝  ╚═════╝ ╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚═════╝   ╚═╝   ╚══════╝
+```
+
 <img src="src/main/resources/images/header.svg" alt="FloodRoute Banner" width="100%"/>
 
 <br/>
@@ -86,8 +95,6 @@ L'objectif principal de FloodRoute est de fournir un outil de simulation réalis
 
 ## 👥 Utilisateurs de l'application
 
-L'application distingue quatre profils, chacun disposant d'une interface et de droits spécifiques :
-
 | Profil | Description | Accès |
 |--------|-------------|-------|
 | 🧑‍💼 **Administrateur** | Gère la simulation, configure le graphe, déclenche les alertes | Complet |
@@ -143,9 +150,6 @@ FloodRoute/
 │           ├── images/                 # Assets graphiques
 │           └── css/                    # Feuilles de style JavaFX
 │
-├── assets/                             # Images pour le README
-│   └── header.svg
-│
 ├── pom.xml
 └── README.md
 ```
@@ -168,8 +172,6 @@ Le réseau urbain est modélisé comme un **graphe orienté pondéré** :
 
 ### Modèle d'agents
 
-Chaque agent est une entité autonome dotée d'un **état**, d'une **position** et d'un **comportement** :
-
 ```java
 // Hiérarchie d'agents
 Agent (abstraite)
@@ -180,8 +182,6 @@ Agent (abstraite)
 ```
 
 ### Algorithme de calcul d'itinéraire
-
-L'itinéraire sécurisé est calculé via une adaptation de l'algorithme de **Dijkstra** qui exclut dynamiquement les arêtes inondées ou bloquées :
 
 ```java
 // Schéma simplifié
@@ -210,19 +210,14 @@ git clone https://github.com/<votre-organisation>/FloodRoute.git
 cd FloodRoute
 ```
 
-### Compiler le projet
+### Compiler et lancer
 
 ```bash
 mvn clean compile
-```
-
-### Lancer l'application
-
-```bash
 mvn javafx:run
 ```
 
-### Générer le JAR exécutable
+### Générer le JAR
 
 ```bash
 mvn clean package
@@ -257,11 +252,11 @@ java -jar target/FloodRoute-1.0.jar
 
 ## ⚠️ Difficultés rencontrées
 
-- **Synchronisation de la simulation** — gérer la propagation de l'inondation sans bloquer le thread JavaFX
-- **Mise à jour dynamique du graphe** — recalculer les itinéraires à chaque changement d'état sans recréer le graphe entier
-- **Gestion des conflits d'accès concurrents** — plusieurs agents interagissant simultanément avec les mêmes nœuds
-- **Différenciation des interfaces par profil** — construire des vues flexibles sans dupliquer le code de navigation
-- **Modélisation des contraintes PMR** — pondérer correctement les arêtes selon le type d'agent
+- **Synchronisation de la simulation** — gérer la propagation sans bloquer le thread JavaFX
+- **Mise à jour dynamique du graphe** — recalculer les itinéraires sans recréer le graphe entier
+- **Gestion des accès concurrents** — plusieurs agents interagissant simultanément sur les mêmes nœuds
+- **Différenciation des interfaces par profil** — vues flexibles sans duplication de code
+- **Modélisation des contraintes PMR** — pondération correcte des arêtes selon le type d'agent
 
 <br/>
 
@@ -272,10 +267,10 @@ java -jar target/FloodRoute-1.0.jar
 ## ✅ Solutions apportées
 
 - Utilisation de `Platform.runLater()` pour toutes les mises à jour visuelles depuis les threads de simulation
-- Implémentation d'un **observateur sur le graphe** (pattern Observer) pour déclencher le recalcul d'itinéraires uniquement en cas de changement d'état
-- Synchronisation des accès aux structures partagées via des **verrous explicites** (`ReentrantLock`)
-- Mise en place d'un **routing centralisé** dans `Main.java` pour gérer les transitions entre vues
-- Ajout d'un **attribut de type d'agent** dans Dijkstra pour filtrer les arêtes inaccessibles aux PMR
+- Pattern **Observer** sur le graphe pour déclencher le recalcul d'itinéraires uniquement en cas de changement d'état
+- Synchronisation via **`ReentrantLock`** sur les structures partagées
+- **Routing centralisé** dans `Main.java` pour les transitions entre vues
+- Attribut de type d'agent dans Dijkstra pour filtrer les arêtes inaccessibles aux PMR
 
 <br/>
 
@@ -287,7 +282,7 @@ java -jar target/FloodRoute-1.0.jar
 
 - ✔️ Simulation d'inondation fonctionnelle avec propagation progressive
 - ✔️ Calcul d'itinéraire sécurisé opérationnel pour tous les profils
-- ✔️ Interface graphique complète et cohérente (welcome, connexion, carte, alertes, statistiques)
+- ✔️ Interface graphique complète et cohérente
 - ✔️ Gestion des quatre profils utilisateurs avec droits différenciés
 - ✔️ Système d'alertes en temps réel intégré
 - ✔️ Architecture modulaire facilitant l'extension future
@@ -300,11 +295,11 @@ java -jar target/FloodRoute-1.0.jar
 
 ## 🔭 Perspectives d'amélioration
 
-- **Import de carte réelle** — intégrer les données OpenStreetMap pour simuler sur une vraie ville
-- **Persistance des données** — remplacer les fichiers JSON par une base de données embarquée (SQLite)
-- **Simulation multi-scénarios** — sauvegarder et rejouer des scénarios d'inondation
-- **Mode réseau** — permettre à plusieurs utilisateurs de se connecter à une même simulation
-- **Export de rapports** — générer un rapport PDF de la simulation
+- **Import de carte réelle** — intégrer les données OpenStreetMap
+- **Persistance des données** — base de données embarquée (SQLite)
+- **Simulation multi-scénarios** — sauvegarder et rejouer des scénarios
+- **Mode réseau** — plusieurs utilisateurs connectés à une même simulation
+- **Export de rapports** — générer un PDF de la simulation
 
 <br/>
 
@@ -315,8 +310,6 @@ java -jar target/FloodRoute-1.0.jar
 ## 📝 Conclusion
 
 FloodRoute illustre comment les concepts de **graphes** et de **systèmes multi-agents** peuvent être appliqués à une problématique concrète de gestion de crise. Au-delà de l'aspect académique, le projet démontre qu'une modélisation formelle rigoureuse peut servir de socle à une application interactive et utilisable.
-
-Le travail en équipe et les contraintes techniques rencontrées ont permis d'approfondir notre maîtrise de Java, de JavaFX et des algorithmes de graphes, tout en nous confrontant aux exigences d'un développement logiciel structuré.
 
 <br/>
 
