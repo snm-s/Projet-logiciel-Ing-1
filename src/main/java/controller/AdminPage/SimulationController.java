@@ -548,8 +548,17 @@ public class SimulationController {
 
     public void addZone(Zone zone) {
         modele.addZone(zone);
-        if (mapController != null) mapController.syncZones(modele.getZones());
-        Platform.runLater(() -> { if (onZonesUpdated != null) onZonesUpdated.accept(modele.getZones()); });
+    
+        if (mapController != null && mapController.getRouteGraph() != null) {
+            mapController.getRouteGraph().addZoneAndConnectToNearest(zone, 2);
+            mapController.syncZones(modele.getZones());
+        }
+    
+        Platform.runLater(() -> {
+            if (onZonesUpdated != null) {
+                onZonesUpdated.accept(modele.getZones());
+            }
+        });
     }
 
     public void updateZone(Zone zone) {
