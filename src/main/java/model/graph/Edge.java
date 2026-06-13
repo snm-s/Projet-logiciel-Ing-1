@@ -9,14 +9,14 @@ import org.jxmapviewer.viewer.GeoPosition;
 import model.zone.Zone;
 
 /**
- * Arête du graphe routier reliant deux zones.
+ * Edge of the road graph connecting two zones.
  *
- * <p>Chaque arête possède :
+ * <p>Each edge has:
  * <ul>
- *   <li>Un tracé GPS (waypoints OSRM ou ligne droite en fallback)</li>
- *   <li>Une capacité maximale (véhicules/heure)</li>
- *   <li>Un flux courant (mis à jour par la simulation)</li>
- *   <li>Un état dérivé (SAFE / AT_RISK / FLOODED) calculé automatiquement</li>
+ *   <li>A GPS path (OSRM waypoints or a straight line as a fallback)</li>
+ *   <li>A maximum capacity (vehicles per hour)</li>
+ *   <li>A current traffic flow (updated by the simulation)</li>
+ *   <li>A derived status (SAFE / AT_RISK / FLOODED) automatically computed</li>
  * </ul>
  */
 public class Edge {
@@ -34,17 +34,19 @@ public class Edge {
     private EdgeState        state;
     private double floodLevel = 0.0;
 
-    // Propriétés de circulation demandées dans le sujet
+    /**
+ * Traffic properties required by the project specification.
+ */
     private boolean bidirectional = true;
     private double speedFactor = 1.0;
     private int lanes = 2;
 
-    // Statistiques d'arête
+    // Edge statistics
     private int agentsPassed = 0;
     private double totalObservedSpeed = 0.0;
     
 
-    // Observateurs (notifiés quand l'état change)
+    
     private final List<EdgeObserver> observers = new ArrayList<>();
 
     // ─────────────────────────────────────────────────────────────────────
@@ -68,19 +70,19 @@ public class Edge {
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Recalcule l'état de l'arête selon :
-     *  - Les zones aux extrémités (inondées ou non)
-     *  - L'altitude moyenne (zone basse = risque)
-     *  - Le flux courant vs capacité
-     */
+ * Recomputes the edge status based on:
+ *  - The zones at both ends (flooded or not)
+ *  - The average elevation (low-lying areas = at risk)
+ *  - The current flow relative to the capacity
+ */
     public EdgeState computeState() {
 
-    // Rouge : arête totalement inondée
+    
     if (floodLevel >= 1.0) {
         return EdgeState.FLOODED;
     }
 
-    // Orange : l'eau commence à toucher l'arête
+  
     if (floodLevel > 0.0) {
         return EdgeState.FLOODING;
     }
