@@ -29,7 +29,26 @@ Matière : Agents et Graphes &nbsp;·&nbsp; Tutrice : D. Zaouche &nbsp;·&nbsp; 
 <div align="center">
 
 <img width="100%" src="https://capsule-render.vercel.app/api?type=waving&height=200&color=0:001B44,35:003B8F,70:006DFF,100:00B7FF&text=FloodRoute&fontColor=FFFFFF&fontSize=80&fontAlignY=42&desc=Simulation%20d'inondation%20avec%20agents%20et%20graphes&descAlignY=62&descSize=20"/>
+## Équipe projet
 
+<div align="center">
+
+| Membres |
+|---|
+| Martial |
+| Sanem |
+| Hajar |
+| Bouchra |
+| Jenistar |
+
+<br>
+
+| Encadrement | Nom |
+|---|---|
+| Tutrice | D. Zaouche |
+| Jury | S. Hawari |
+
+</div>
 
 | Formation | Groupe | Matière | Année |
 |:---------:|:------:|:-------:|:-----:|
