@@ -389,13 +389,15 @@ FloodRoute illustre comment les concepts de **graphes** et de **systèmes multi-
 
 
 <div align="center">
+<img src="src/main/resources/images/header.svg" alt="FloodRoute Banner" width="100%"/>
+
 
 <img width="100%" src="https://capsule-render.vercel.app/api?type=waving&height=140&section=footer&color=0:00B7FF,50:006DFF,100:001B44"/>
+
 
 **FloodRoute &nbsp;·&nbsp; ING1 GI4 &nbsp;·&nbsp; CY Tech &nbsp;·&nbsp; 2025–2026**
 
 _Anticiper. Alerter. Protéger._
-<img src="src/main/resources/images/header.svg" alt="FloodRoute Banner" width="100%"/>
 
 
 </div>
