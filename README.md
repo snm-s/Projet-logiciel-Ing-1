@@ -30,8 +30,8 @@ Matière : Agents et Graphes &nbsp;·&nbsp; Tutrice : D. Zaouche &nbsp;·&nbsp; 
 
 <div align="center">
 
-| Bouchra Zamoum | Sanem Sayed | Hajar Achour | Martial Mouttalapane | Jenistar Makoudjou |
-|:--------------:|:-----------:|:------------:|:--------------------:|:------------------:|
+| Martial Mouttalapane | Sanem Sayed | Hajar Achour | Bouchra Zamoum | Jenistar Makoudjou |
+|:--------------------:|:-----------:|:------------:|:--------------:|:------------------:|
 
 | Tutrice | Jury |
 |:-------:|:----:|
