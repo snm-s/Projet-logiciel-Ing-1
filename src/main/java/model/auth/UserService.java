@@ -31,8 +31,18 @@ public class UserService {
 
     public static void addAgent(Agent agent) {
         List<Agent> agents = loadAgents();
+    
+        int nextId = agents.stream()
+                .mapToInt(Agent::getId)
+                .max()
+                .orElse(0) + 1;
+    
+        agent.setId(nextId);
+    
         agents.add(agent);
         saveAgents(agents);
+    
+        app.Main.getSharedSimulation().addAgent(agent);
     }
 
     public static boolean updateAgent(Agent updatedAgent) {
