@@ -77,11 +77,15 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     private GraphNode pendingEdgeStart;
     private Object selectedGraphElement;
     private boolean manualFloodMode = false;
-private GeoPosition floodCenter = null;
-private double floodRadius = 0;
-private javax.swing.Timer floodTimer;
-private int floodTimerDelayMs = 300;
-private double floodRadiusStep = 2.0;
+    private GeoPosition floodCenter = null;
+    private double floodRadius = 0;
+    private javax.swing.Timer floodTimer;
+    private int floodTimerDelayMs = 300;
+    private double floodRadiusStep = 2.0;
+
+    private java.util.function.Consumer<model.graph.Edge> onEdgeSelected;
+    private model.graph.Edge selectedEdge;
+    private boolean densityOverlayEnabled = false;
 
     private static final GeoPosition LYON_CENTER = new GeoPosition(45.7640, 4.8357);
     private static final int DEFAULT_ZOOM = 6;
@@ -183,6 +187,14 @@ private double floodRadiusStep = 2.0;
                         pendingEdgeStart = null;
                         setInfo("Arête ajoutée en direct.");
                     }
+                    mapViewer.repaint();
+                    return;
+                }
+
+                if (hit instanceof Edge edge) {
+                    selectedEdge = edge;
+                    if (onEdgeSelected != null) onEdgeSelected.accept(edge);
+                    setInfo(graphOverlayPainter.infoFor(edge));
                     mapViewer.repaint();
                     return;
                 }
@@ -629,6 +641,26 @@ private double floodRadiusStep = 2.0;
         }
     
         mapViewer.repaint();
+    }
+
+    public void setOnEdgeSelected(java.util.function.Consumer<model.graph.Edge> listener) {
+    this.onEdgeSelected = listener; // stocker et appeler lors du clic sur une arête
+    }
+ 
+    /** Retourne l'arête actuellement sélectionnée dans la vue, ou null. */
+    public model.graph.Edge getSelectedEdge() {
+        return this.selectedEdge; // champ à maintenir lors de la sélection
+    }
+    
+    /**
+     * Active ou désactive la superposition de densité (gradient de couleurs
+     * sur les arêtes et nœuds selon leur taux d'occupation).
+     * Quand activé, MapView doit recalculer les couleurs à chaque repaint
+     * en interrogeant SimulationController.getEdgeDensity() / getZoneDensity().
+     */
+    public void setDensityOverlayEnabled(boolean enabled) {
+        this.densityOverlayEnabled = enabled;
+        SwingUtilities.invokeLater(mapViewer::repaint);
     }
 
     private void handleMapClick(Point screenPoint) {

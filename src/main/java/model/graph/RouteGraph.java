@@ -504,6 +504,16 @@ public class RouteGraph {
         refreshAllEdges();
     }
 
+    /**
+     * Supprime une arête du graphe par son identifiant.
+     * Les mouvements actifs utilisant cette arête doivent être gérés
+     * en amont par SimulationController.removeEdgeWithAgentRelocation().
+     */
+    public void removeEdge(int edgeId) {
+        edges.removeIf(e -> e.getId() == edgeId);
+        refreshAllEdges();
+    }
+
     public List<Edge> getEdgesForZone(Zone zone) {
         return edges.stream()
             .filter(e -> e.getFromZone().getId() == zone.getId()

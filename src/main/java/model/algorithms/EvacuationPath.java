@@ -132,6 +132,23 @@ public class EvacuationPath {
         return edges.stream().filter(e -> e.getState() == EdgeState.AT_RISK).count();
     }
 
+
+    /**
+     * Retourne les zones restantes à parcourir à partir de la position courante
+     * de l'AgentMovement. Appelé depuis SimulationController.getSelectedAgentRemainingPath().
+     *
+     * NOTE : comme EvacuationPath est immutable, c'est AgentMovement qui doit
+     * exposer cette méthode en filtrant selon son état courant.
+     * Si vous préférez la garder ici, passez l'index courant en paramètre.
+     */
+    public List<Zone> getRemainingZones() {
+        // Retourne toutes les zones (le filtrage selon la progression
+        // se fait dans AgentMovement.getRemainingZones() ci-dessous).
+        return new ArrayList<>(zones);
+    }
+    
+
+
     @Override
     public String toString() {
         if (zones.isEmpty()) return "EvacuationPath[empty]";

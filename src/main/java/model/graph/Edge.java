@@ -29,7 +29,7 @@ public class Edge {
     private final Zone   toZone;
     private final List<GeoPosition> waypoints;
     private final int    capacityMax;   // véhicules/heure
-    private int          currentFlow;   // flux courant (agents en transit)
+    private int          currentFlow=0;   // flux courant (agents en transit)
     private int          floodedCount;  // nombre de fois inondée (statistiques)
     private EdgeState        state;
     private double floodLevel = 0.0;

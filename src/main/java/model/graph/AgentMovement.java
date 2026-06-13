@@ -1,5 +1,8 @@
 package model.graph;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.jxmapviewer.viewer.GeoPosition;
 
 import model.agent.Agent;
@@ -27,7 +30,9 @@ public class AgentMovement {
     private double progress;
     private Status status;
     private GeoPosition currentPosition;
+    private int currentZoneIndex = 0;
     private double speed;
+
 
     private int currentEdgeIndex = -1;
     private Edge occupiedEdge = null;
@@ -140,10 +145,21 @@ public class AgentMovement {
         int wantedIndex = edgeIndexForProgress();
         if (wantedIndex != currentEdgeIndex) {
             Edge old = occupiedEdge;
+            currentZoneIndex = wantedIndex;
             if (tryEnterCurrentEdge() && old != null) {
                 old.recordPassage(agent != null ? agent.getMaxSpeed() : 1.0);
             }
         }
+    }
+
+
+    /** Retourne les zones restantes (depuis la position courante). */
+    public List<Zone> getRemainingZones() {
+        if (path == null) return new ArrayList<>();
+        List<Zone> all = path.getZones();
+        int from = Math.max(0, currentZoneIndex);
+        if (from >= all.size()) return new ArrayList<>();
+        return new ArrayList<>(all.subList(from, all.size()));
     }
 
     private int edgeIndexForProgress() {
@@ -186,6 +202,39 @@ public class AgentMovement {
         if (a instanceof RescueAgent) return base * 1.8;
         return base;
     }
+
+
+
+
+    /** Retourne l'arête dans laquelle l'agent progresse actuellement, ou null. */
+    public Edge getCurrentEdge() {
+        // À adapter selon l'implémentation interne de AgentMovement.
+        // Exemple si l'état interne maintient currentEdgeIndex et path.getEdges() :
+        if (path == null || currentEdgeIndex < 0 || currentEdgeIndex >= path.getEdges().size())
+            return null;
+        return path.getEdges().get(currentEdgeIndex);
+    }
+    
+    /** Retourne la zone où se trouve l'agent (nœud courant ou source de l'arête). */
+    public Zone getCurrentZone() {
+        if (path == null || path.getZones().isEmpty()) return null;
+        // Si l'agent est dans une arête, on retourne la zone source de cette arête.
+        if (currentEdgeIndex >= 0 && currentEdgeIndex < path.getEdges().size()) {
+            return path.getEdges().get(currentEdgeIndex).getFromZone();
+        }
+        // Sinon on retourne le dernier nœud atteint.
+        int zi = Math.min(currentZoneIndex, path.getZones().size() - 1);
+        return path.getZones().get(zi);
+    }
+    
+    /** Retourne la destination finale du chemin. */
+    public Zone getDestination() {
+        if (path == null || path.getZones().isEmpty()) return null;
+        return path.getZones().get(path.getZones().size() - 1);
+    }
+
+
+
 
     public Agent getAgent() { return agent; }
     public EvacuationPath getPath() { return path; }

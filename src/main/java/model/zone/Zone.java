@@ -71,6 +71,10 @@ public abstract class Zone {
         return description;
     }
 
+    public int getMaxCapacity() {
+        return 50; // valeur par défaut dans Zone.java
+    }
+
     @JsonIgnore
     public boolean isFlooded() {
         return flooded;

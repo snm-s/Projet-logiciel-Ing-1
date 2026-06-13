@@ -289,6 +289,7 @@ public class FloodSimulation {
     public void setGravite(double gravite) {
         this.gravite = Math.max(MIN_GRAVITE, gravite);
     }
+    public double getGravite() {return this.gravite;}
 
     public void resetSimulation() {
         this.niveauEau = DEFAULT_NIVEAU_EAU;
