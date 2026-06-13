@@ -177,6 +177,23 @@ public class Edge {
         return (dist / Math.max(0.1, speedFactor)) + statePenalty + dist * congestionRatio * 2.0;
     }
 
+    public void refreshWaypoints(Zone changedZone, WaypointProvider provider) {
+        if (changedZone == null || provider == null) return;
+
+        boolean isRelated =
+                fromZone.getId() == changedZone.getId()
+            || toZone.getId() == changedZone.getId();
+
+        if (!isRelated) return;
+
+        List<GeoPosition> newWaypoints = provider.compute(fromZone, toZone);
+
+        if (newWaypoints == null || newWaypoints.isEmpty()) return;
+
+        this.waypoints.clear();
+        this.waypoints.addAll(newWaypoints);
+    }
+
     /**
      * Coût réservé aux secouristes : ils peuvent traverser une arête rouge,
      * mais très lentement et avec une forte pénalité. Cela évite de bloquer
@@ -297,5 +314,10 @@ public class Edge {
     public String toString() {
         return String.format("Edge[%d: %s → %s, state=%s, flow=%d/%d]",
             id, fromZone.getName(), toZone.getName(), state, currentFlow, capacityMax);
+    }
+
+    @FunctionalInterface
+    public interface WaypointProvider {
+        List<GeoPosition> compute(Zone from, Zone to);
     }
 }

@@ -26,6 +26,7 @@ import model.agent.Agent;
 import model.agent.RescueAgent;
 import model.algorithms.EvacuationPath;
 import model.algorithms.EvacuationRouter;
+import model.graph.Edge.WaypointProvider;
 import model.zone.Shelter;
 import model.zone.Zone;
 
@@ -45,6 +46,8 @@ public class RouteGraph {
     private static final Logger LOG       = Logger.getLogger(RouteGraph.class.getName());
     private static final String JSON_PATH = "/lyon_routes.json";
     private static final String OSRM_BASE = "https://router.project-osrm.org/route/v1/driving/";
+    private static final int DEFAULT_CAPACITY_EDGE  = 20;
+    private final WaypointProvider waypointProvider = this::fetchOsrmRoute;
 
     // ─── Topologie ────────────────────────────────────────────────────────
     private final List<Edge>         edges   = new ArrayList<>();
@@ -147,13 +150,40 @@ public class RouteGraph {
         }
     }
 
-    private boolean hasEdgeBetween(Zone a, Zone b) {
+    public boolean hasEdgeBetween(Zone a, Zone b) {
         if (a == null || b == null) return true;
         return edges.stream().anyMatch(e ->
             (e.getFromZone().getId() == a.getId() && e.getToZone().getId() == b.getId()) ||
             (e.getFromZone().getId() == b.getId() && e.getToZone().getId() == a.getId())
         );
     }
+
+    public Edge addEdge(Zone from, Zone to) {
+        if (from == null || to == null) return null;
+        if (from.getId() == to.getId()) return null;
+
+        // éviter doublons
+        if (hasEdgeBetween(from, to)) return null;
+
+        int id = edges.stream()
+            .mapToInt(Edge::getId)
+            .max()
+            .orElse(0) + 1;
+
+        String name = from.getName() + " → " + to.getName();
+
+        List<GeoPosition> wp = fetchOsrmRoute(from, to);
+
+        Edge edge = new Edge(id,name,from,to,wp, DEFAULT_CAPACITY_EDGE, 0,0);
+
+        edges.add(edge);
+
+        // important : recalcul état si UI dynamique
+        refreshAllEdges();
+        LOG.fine("Edge ajoutee : " + name);
+        return edge;
+    }
+
 
     private double geoDistanceSquared(Zone a, Zone b) {
         double dLat = a.getLatitude() - b.getLatitude();
@@ -438,6 +468,10 @@ public class RouteGraph {
             new GeoPosition(t.getLatitude(), t.getLongitude()));
     }
     private List<GeoPosition> fallbackEmpty() { return new ArrayList<>(); }
+
+    public WaypointProvider getWaypointProvider() {
+        return waypointProvider;
+    }
 
     // ─────────────────────────────────────────────────────────────────────
     // PARSING JSON

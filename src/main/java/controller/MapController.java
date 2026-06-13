@@ -90,6 +90,37 @@ public class MapController {
     // SYNCHRONISATION (appelée par SimulationController)
     // ─────────────────────────────────────────────────────────────────────
 
+    public void rebuildRouteGraph(List<Zone> newZones) {
+        if (newZones == null) return;
+
+        // 1. MAJ zones internes
+        this.zones = new ArrayList<>(newZones);
+
+        // 2. Rebuild complet du graphe
+        this.routeGraph = new RouteGraph(this.zones);
+
+        // 3. Rebrancher la view
+        mapView.setRouteGraph(routeGraph);
+
+        // 4. Réattacher listeners (OBLIGATOIRE)
+        routeGraph.addArrivalListener(new RouteGraph.ArrivalListener() {
+            @Override
+            public void onAgentArrived(AgentMovement mv) {
+                handleAgentArrived(mv);
+            }
+
+            @Override
+            public void onAgentBlocked(AgentMovement mv) {
+                handleAgentBlocked(mv);
+            }
+        });
+
+        // 5. refresh visuel global
+        mapView.updateAllZones(this.zones);
+        mapView.refreshRouteColors();
+    }
+
+
     /**
      * Remplace la liste d'agents par la liste fournie (reset ou ajout en masse).
      * Met à jour MapView et réancre les agents sur le graphe.
@@ -106,20 +137,12 @@ public class MapController {
      * Utilisé lors d'un reset ou d'un ajout/suppression de zone.
      */
     public void syncZones(List<Zone> newZones) {
-        zones.clear();
-        if (newZones != null) zones.addAll(newZones);
+        if (newZones == null) return;
 
-        // Reconstruire le graphe avec les nouvelles zones
-        routeGraph = new RouteGraph(zones);
-        mapView.setRouteGraph(routeGraph);
+        this.zones.clear();
+        this.zones.addAll(newZones);
 
-        // Réenregistrer l'ArrivalListener sur le nouveau graphe
-        routeGraph.addArrivalListener(new RouteGraph.ArrivalListener() {
-            @Override public void onAgentArrived(AgentMovement mv) { handleAgentArrived(mv); }
-            @Override public void onAgentBlocked(AgentMovement mv) { handleAgentBlocked(mv); }
-        });
-
-        mapView.updateAllZones(zones);
+        mapView.updateAllZones(this.zones);
         mapView.refreshRouteColors();
     }
 

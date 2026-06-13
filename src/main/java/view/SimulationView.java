@@ -28,13 +28,13 @@ import model.simulation.FloodSimulation;
 import model.zone.Zone;
 
 /**
- * Vue principale de simulation — layout corrigé.
+ * Vue principale de simulation.
  *
  * Structure :
  *   TOP    → barre fixe 52px (retour + modes + chrono + vitesse)
  *   LEFT   → panneau outils 240px (graphe, agents, sélection, trajet)
- *   CENTER → carte (prend tout l'espace restant)
- *   RIGHT  → panneau 210px (params agents + légende)
+ *   CENTER → carte
+ *   RIGHT  → panneau 230px (ajout agent intégré + plages de génération + légende)
  *   BOTTOM → barre stats 80px
  */
 public class SimulationView extends BorderPane {
@@ -79,17 +79,33 @@ public class SimulationView extends BorderPane {
     // ─── Info graphe ─────────────────────────────────────────────────────
     private Label lblGraphInfo;
 
-    // ─── Overlay ajout agent ─────────────────────────────────────────────
+    // ─── Formulaire ajout agent (panneau droit) ──────────────────────────
+    private ComboBox<String> cbRoleRight;
+    private TextField        tfFirstNameRight, tfLastNameRight, tfAgeRight;
+    private ToggleGroup      stressGroup;
+    private RadioButton      rbCalme, rbStresse;
+    private Slider           slSpeedRight;
+    private Label            lblSpeedRight;
+    private Label            lblZoneRight;
+    private Zone             pendingZoneRight   = null;
+    private boolean          waitingZoneRight   = false;
+
+    // ─── Overlay ajout agent (modal, gardé pour compatibilité) ───────────
     private StackPane overlayAddAgent;
     private TextField tfFirstName, tfLastName, tfAge;
     private ComboBox<String> cbRole;
     private Label lblAddAgentZone;
-    private Zone  pendingZone = null;
+    private Zone  pendingZone       = null;
     private boolean waitingForZoneClick = false;
 
-    // ─── Params agents ───────────────────────────────────────────────────
+    // ─── Plages de génération ─────────────────────────────────────────────
     private Slider slAgeMin, slAgeMax, slSpeedMin, slSpeedMax;
     private Label  lblAgeMin, lblAgeMax, lblSpeedMin, lblSpeedMax;
+
+    // ─── Récap preview (panneau droit) ───────────────────────────────────
+    private Label lblPrevNom, lblPrevRole, lblPrevAge, lblPrevSpeed, lblPrevZone, lblPrevEtat;
+    private Circle circleAvatar;
+    private Label  lblAvatarInitials;
 
     // ─── Timelines ───────────────────────────────────────────────────────
     private Timeline refreshLoop;
@@ -147,20 +163,17 @@ public class SimulationView extends BorderPane {
             + ";-fx-border-color:transparent transparent " + BORDER
             + " transparent;-fx-border-width:0 0 1 0;");
 
-        // ← Retour
         Button btnBack = actionBtn("← Retour", RED);
         btnBack.setOnAction(e -> { stopAll(); Main.showDashboardView("admin"); });
         HBox backBox = padBox(btnBack, 0, 12, 0, 12);
         backBox.setStyle("-fx-border-color:transparent " + BORDER + " transparent transparent;-fx-border-width:0 1 0 0;");
 
-        // Logo
         VBox logoBox = new VBox(1,
             lbl("Simulation Inondation", FontWeight.BOLD, 13, TEXT),
             lbl("Graphe • Agents • Réseau", FontWeight.NORMAL, 10, MUTED));
         HBox logo = padBox(logoBox, 0, 16, 0, 12);
         logo.setStyle("-fx-border-color:transparent " + BORDER + " transparent transparent;-fx-border-width:0 1 0 0;");
 
-        // Modes
         Button btnAlea   = modeBtn("⟳ Aléatoire", true);
         Button btnManual = modeBtn("↺ Manuel",     false);
         Button btnStep   = modeBtn("⏭ Pas-à-pas",  false);
@@ -193,7 +206,6 @@ public class SimulationView extends BorderPane {
         modes.setPadding(new Insets(0, 16, 0, 16));
         modes.setStyle("-fx-border-color:transparent " + BORDER + " transparent transparent;-fx-border-width:0 1 0 0;");
 
-        // Chrono + statut
         lblTimer  = lbl("⏱ 00:00:00", FontWeight.BOLD, 13, TEXT);
         lblStatus = lbl("En pause",    FontWeight.NORMAL, 11, ORANGE);
         VBox chronoBox = new VBox(2, lblTimer, lblStatus);
@@ -201,7 +213,6 @@ public class SimulationView extends BorderPane {
         HBox chrono = padBox(chronoBox, 0, 16, 0, 16);
         chrono.setStyle("-fx-border-color:transparent " + BORDER + " transparent transparent;-fx-border-width:0 1 0 0;");
 
-        // Vitesse + play/pause
         Slider slVitesse = new Slider(200, 5000, 1500);
         slVitesse.setPrefWidth(120);
         slVitesse.setStyle("-fx-control-inner-background:#1e293b;-fx-accent:" + BLUE + ";");
@@ -223,7 +234,6 @@ public class SimulationView extends BorderPane {
         speedBox.setPadding(new Insets(0, 16, 0, 16));
         speedBox.setStyle("-fx-border-color:transparent " + BORDER + " transparent transparent;-fx-border-width:0 1 0 0;");
 
-        // Import/Export
         Button btnExport = smallBtn("↑ Exporter");
         Button btnImport = smallBtn("↓ Importer");
         btnExport.setOnAction(e -> handleExport());
@@ -269,7 +279,6 @@ public class SimulationView extends BorderPane {
         lblGraphInfo = lbl("Clic sur nœud, arête ou agent.", FontWeight.NORMAL, 9, MUTED);
         lblGraphInfo.setWrapText(true);
 
-        // Modes édition
         Button bSel  = smallBtn("⊙ Sélection");
         Button bAddN = smallBtn("＋ Nœud");
         Button bAddE = smallBtn("＋ Arête");
@@ -283,7 +292,6 @@ public class SimulationView extends BorderPane {
 
         WrapFlow editFlow = new WrapFlow(4, bSel, bAddN, bAddE, bMove, bDel);
 
-        // Zones
         Button bNeigh  = smallBtn("＋ Quartier");
         Button bShelt  = smallBtn("＋ Refuge");
         Button b5Nodes = smallBtn("＋ 5 nœuds");
@@ -299,7 +307,6 @@ public class SimulationView extends BorderPane {
         });
         bResetZ.setOnAction(e -> { if (ctrl != null) { ctrl.resetAllZones(); refreshUI(); }});
 
-        // Suppr avec reloc
         Button bDelZone = smallBtn("🗑 Nœud+reloc");
         Button bDelEdge = smallBtn("🗑 Arête+reloc");
         bDelZone.setOnAction(e -> {
@@ -317,7 +324,7 @@ public class SimulationView extends BorderPane {
             }
         });
 
-        WrapFlow zoneFlow  = new WrapFlow(4, bNeigh, bShelt, b5Nodes, bResetZ, bDelZone, bDelEdge);
+        WrapFlow zoneFlow = new WrapFlow(4, bNeigh, bShelt, b5Nodes, bResetZ, bDelZone, bDelEdge);
 
         editSec.getChildren().addAll(
             lbl("Modes édition", FontWeight.BOLD, 9, MUTED), editFlow,
@@ -325,14 +332,12 @@ public class SimulationView extends BorderPane {
             lblGraphInfo);
         content.getChildren().add(editSec);
 
-        // ── Section : Agents ──
+        // ── Section : Agents (actions rapides) ──
         content.getChildren().add(sectionHeader("AGENTS"));
         VBox agentSec = section();
-        Button bAddAgent = smallBtn("＋ Agent…");
-        Button b10       = smallBtn("＋ 10 agents");
-        Button bEv       = smallBtn("⚡ Évacuer tous");
-        Button bRmA      = smallBtn("🗑 Sél. agent");
-        bAddAgent.setOnAction(e -> showAddAgentOverlay());
+        Button b10   = smallBtn("＋ 10 agents");
+        Button bEv   = smallBtn("⚡ Évacuer tous");
+        Button bRmA  = smallBtn("🗑 Sél. agent");
         b10.setOnAction(e -> { if (ctrl != null) { ctrl.addRandomAgents(10); syncMapAgents(); }});
         bEv.setOnAction(e -> { if (mapCtrl != null) { mapCtrl.evacuateAllCitizensToShelters(); refreshUI(); }});
         bRmA.setOnAction(e -> {
@@ -342,30 +347,7 @@ public class SimulationView extends BorderPane {
                 else lblGraphInfo.setText("⚠ Sélectionne un agent.");
             }
         });
-
-        // Densité
-        Button bDensOn  = smallBtn("◉ Densité ON");
-        Button bDensOff = smallBtn("○ Densité OFF");
-        bDensOn.setOnAction(e  -> { if (mapView != null) mapView.setDensityOverlayEnabled(true); });
-        bDensOff.setOnAction(e -> { if (mapView != null) mapView.setDensityOverlayEnabled(false); });
-
-        // Fin de trajet
-        ComboBox<String> cbEnd = new ComboBox<>();
-        cbEnd.getItems().addAll("Destination aléatoire", "Supprimer l'agent");
-        cbEnd.setValue("Destination aléatoire");
-        cbEnd.setMaxWidth(Double.MAX_VALUE);
-        styleCombo(cbEnd);
-        cbEnd.valueProperty().addListener((o, ov, nv) -> {
-            if (ctrl == null) return;
-            ctrl.setAgentEndBehavior("Supprimer l'agent".equals(nv)
-                ? SimulationController.AgentEndBehavior.REMOVE_AGENT
-                : SimulationController.AgentEndBehavior.RANDOM_DESTINATION);
-        });
-
-        agentSec.getChildren().addAll(
-            new WrapFlow(4, bAddAgent, b10, bEv, bRmA),
-            new WrapFlow(4, bDensOn, bDensOff),
-            lbl("Fin de trajet", FontWeight.BOLD, 9, MUTED), cbEnd);
+        agentSec.getChildren().add(new WrapFlow(4, b10, bEv, bRmA));
         content.getChildren().add(agentSec);
 
         // ── Section : Élément sélectionné ──
@@ -405,7 +387,7 @@ public class SimulationView extends BorderPane {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // CARTE CENTRALE — StackPane pour overlay ajout agent
+    // CARTE CENTRALE — StackPane pour overlay ajout agent (modal)
     // ─────────────────────────────────────────────────────────────────────
 
     private StackPane buildMapContainer() {
@@ -420,15 +402,27 @@ public class SimulationView extends BorderPane {
             mapView.setOnAgentSelected(agent -> {
                 if (ctrl != null) ctrl.selectAgent(agent);
                 updateSelPanelForAgent(agent);
+                // Annule l'attente de zone si un agent est cliqué
                 if (waitingForZoneClick) cancelZoneWait();
+                if (waitingZoneRight)    cancelZoneWaitRight();
             });
 
             mapCtrl.setOnZoneSelected(zone -> {
+                // Attente depuis l'overlay modal
                 if (waitingForZoneClick) {
                     pendingZone = zone;
                     waitingForZoneClick = false;
                     lblAddAgentZone.setText("Zone : " + zone.getName());
                     lblAddAgentZone.setTextFill(Color.web(GREEN));
+                    return;
+                }
+                // Attente depuis le panneau droit
+                if (waitingZoneRight) {
+                    pendingZoneRight = zone;
+                    waitingZoneRight = false;
+                    lblZoneRight.setText(zone.getName());
+                    lblZoneRight.setTextFill(Color.web(GREEN));
+                    refreshRightPreview();
                     return;
                 }
                 if (ctrl != null) updateSelPanel(ctrl.getZoneStats(zone.getId()));
@@ -451,14 +445,14 @@ public class SimulationView extends BorderPane {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // PANNEAU DROIT — params agents + légende (210px)
+    // PANNEAU DROIT — Ajout agent intégré + plages génération + légende
     // ─────────────────────────────────────────────────────────────────────
 
     private VBox buildRightPanel() {
         VBox panel = new VBox(0);
-        panel.setMinWidth(210);
-        panel.setMaxWidth(210);
-        panel.setPrefWidth(210);
+        panel.setMinWidth(230);
+        panel.setMaxWidth(230);
+        panel.setPrefWidth(230);
         panel.setStyle("-fx-background-color:" + CARD
             + ";-fx-border-color:transparent transparent transparent " + BORDER + ";"
             + "-fx-border-width:0 0 0 1;");
@@ -472,12 +466,126 @@ public class SimulationView extends BorderPane {
         VBox content = new VBox(0);
         content.setStyle("-fx-background-color:" + CARD + ";");
 
-        // ── Params agents ──
-        content.getChildren().add(sectionHeader("PARAMÈTRES AGENTS"));
-        VBox paramSec = section();
+        // ══════════════════════════════════════════
+        // ── Section : AJOUTER UN AGENT ───────────
+        // ══════════════════════════════════════════
+        content.getChildren().add(sectionHeader("AJOUTER UN AGENT"));
+        VBox addSec = section();
 
-        slAgeMin  = paramSlider(1, 100, ctrl != null ? ctrl.getAgentAgeMin() : 18);
-        slAgeMax  = paramSlider(1, 100, ctrl != null ? ctrl.getAgentAgeMax() : 75);
+        // Avatar preview
+        circleAvatar   = new Circle(18);
+        circleAvatar.setFill(Color.web(BLUE + "33"));
+        circleAvatar.setStroke(Color.web(BLUE));
+        circleAvatar.setStrokeWidth(1.5);
+        lblAvatarInitials = lbl("?", FontWeight.BOLD, 13, BLUE);
+        StackPane avatarStack = new StackPane(circleAvatar, lblAvatarInitials);
+        avatarStack.setAlignment(Pos.CENTER);
+
+        lblPrevNom   = lbl("Nouvel agent", FontWeight.BOLD,   11, TEXT);
+        lblPrevRole  = lbl("Citoyen",      FontWeight.NORMAL, 10, MUTED);
+        VBox avatarInfo = new VBox(2, lblPrevNom, lblPrevRole);
+        avatarInfo.setAlignment(Pos.CENTER_LEFT);
+
+        HBox avatarRow = new HBox(10, avatarStack, avatarInfo);
+        avatarRow.setAlignment(Pos.CENTER_LEFT);
+        avatarRow.setPadding(new Insets(4, 0, 6, 0));
+
+        // ── Rôle ──
+        cbRoleRight = new ComboBox<>();
+        cbRoleRight.getItems().addAll("Citoyen", "PMR", "Secours");
+        cbRoleRight.setValue("Citoyen");
+        cbRoleRight.setMaxWidth(Double.MAX_VALUE);
+        styleCombo(cbRoleRight);
+        cbRoleRight.valueProperty().addListener((o, ov, nv) -> {
+            refreshRightAvatarColor();
+            refreshRightPreview();
+            // Masquer l'état calme/stressé pour PMR et Secours
+            boolean showStress = "Citoyen".equals(nv);
+            rbCalme.setVisible(showStress);   rbCalme.setManaged(showStress);
+            rbStresse.setVisible(showStress); rbStresse.setManaged(showStress);
+        });
+
+        // ── Identité ──
+        tfFirstNameRight = styledField("Prénom (vide = aléatoire)");
+        tfLastNameRight  = styledField("Nom (vide = aléatoire)");
+        tfAgeRight       = styledField("Âge (vide = aléatoire)");
+        tfFirstNameRight.textProperty().addListener((o, ov, nv) -> refreshRightPreview());
+        tfLastNameRight.textProperty().addListener((o, ov, nv)  -> refreshRightPreview());
+        tfAgeRight.textProperty().addListener((o, ov, nv)       -> refreshRightPreview());
+
+        // ── Vitesse ──
+        slSpeedRight  = paramSlider(0.1, 5.0, 1.0);
+        lblSpeedRight = lbl("1.0 m/s", FontWeight.BOLD, 10, TEAL);
+        slSpeedRight.valueProperty().addListener((o, ov, nv) -> {
+            lblSpeedRight.setText(String.format("%.1f m/s", nv.doubleValue()));
+            refreshRightPreview();
+        });
+
+        // ── État calme / stressé ──
+        stressGroup = new ToggleGroup();
+        rbCalme    = styledRadio("Calme",   stressGroup, GREEN);
+        rbStresse  = styledRadio("Stressé", stressGroup, ORANGE);
+        rbCalme.setSelected(true);
+        rbCalme.selectedProperty().addListener((o, ov, nv) -> refreshRightPreview());
+        HBox stressRow = new HBox(8, rbCalme, rbStresse);
+        stressRow.setAlignment(Pos.CENTER_LEFT);
+
+        // ── Zone de départ ──
+        lblZoneRight = lbl("Aléatoire", FontWeight.BOLD, 10, MUTED);
+        Button btnPickRight   = smallBtn("🗺 Sur carte");
+        Button btnClearZRight = smallBtn("↺ Aléatoire");
+        btnPickRight.setOnAction(e -> {
+            waitingZoneRight = true;
+            lblZoneRight.setText("Cliquez une zone…");
+            lblZoneRight.setTextFill(Color.web(YELLOW));
+        });
+        btnClearZRight.setOnAction(e -> cancelZoneWaitRight());
+        HBox zonePick = new HBox(4, btnPickRight, btnClearZRight);
+        zonePick.setAlignment(Pos.CENTER_LEFT);
+
+        // ── Bouton Ajouter ──
+        Button btnAddRight = actionBtn("＋ Ajouter l'agent", BLUE);
+        btnAddRight.setMaxWidth(Double.MAX_VALUE);
+        btnAddRight.setOnAction(e -> confirmAddAgentRight());
+
+        // ── Séparateur + récap ──
+        Separator sep1 = new Separator();
+        sep1.setStyle("-fx-background-color:" + BORDER + ";");
+
+        lblPrevAge   = lbl("Auto (18–75 ans)", FontWeight.NORMAL, 9, MUTED);
+        lblPrevSpeed = lbl("1.0 m/s",          FontWeight.NORMAL, 9, MUTED);
+        lblPrevZone  = lbl("Aléatoire",         FontWeight.NORMAL, 9, MUTED);
+        lblPrevEtat  = lbl("Calme",             FontWeight.NORMAL, 9, MUTED);
+
+        VBox recap = new VBox(3,
+            hrowSmall("Âge",   lblPrevAge),
+            hrowSmall("Vit.",  lblPrevSpeed),
+            hrowSmall("Zone",  lblPrevZone),
+            hrowSmall("État",  lblPrevEtat));
+        recap.setStyle("-fx-background-color:#0d111799;-fx-background-radius:5;-fx-padding:6 8 6 8;");
+
+        addSec.getChildren().addAll(
+            avatarRow,
+            lbl("Rôle", FontWeight.BOLD, 9, MUTED), cbRoleRight,
+            lbl("Prénom", FontWeight.BOLD, 9, MUTED), tfFirstNameRight,
+            lbl("Nom",    FontWeight.BOLD, 9, MUTED), tfLastNameRight,
+            lbl("Âge",    FontWeight.BOLD, 9, MUTED), tfAgeRight,
+            lbl("Vitesse", FontWeight.BOLD, 9, MUTED), paramRow(slSpeedRight, lblSpeedRight),
+            lbl("État",    FontWeight.BOLD, 9, MUTED), stressRow,
+            lbl("Zone de départ", FontWeight.BOLD, 9, MUTED),
+            lblZoneRight, zonePick,
+            sep1, recap,
+            btnAddRight);
+        content.getChildren().add(addSec);
+
+        // ══════════════════════════════════════════
+        // ── Section : PLAGES DE GÉNÉRATION ───────
+        // ══════════════════════════════════════════
+        content.getChildren().add(sectionHeader("PLAGES DE GÉNÉRATION"));
+        VBox rangeSec = section();
+
+        slAgeMin  = paramSlider(1, 100, ctrl != null ? ctrl.getAgentAgeMin()  : 18);
+        slAgeMax  = paramSlider(1, 100, ctrl != null ? ctrl.getAgentAgeMax()  : 75);
         lblAgeMin = lbl(String.valueOf((int) slAgeMin.getValue()), FontWeight.BOLD, 10, BLUE);
         lblAgeMax = lbl(String.valueOf((int) slAgeMax.getValue()), FontWeight.BOLD, 10, BLUE);
         slAgeMin.valueProperty().addListener((o, ov, nv) -> {
@@ -506,15 +614,17 @@ public class SimulationView extends BorderPane {
         bSave.setMaxWidth(Double.MAX_VALUE);
         bSave.setOnAction(e -> { if (ctrl != null) ctrl.saveCurrentStateAsInitial(); });
 
-        paramSec.getChildren().addAll(
+        rangeSec.getChildren().addAll(
             lbl("Âge min / max", FontWeight.BOLD, 9, MUTED),
             paramRow(slAgeMin, lblAgeMin), paramRow(slAgeMax, lblAgeMax),
             lbl("Vitesse min / max", FontWeight.BOLD, 9, MUTED),
             paramRow(slSpeedMin, lblSpeedMin), paramRow(slSpeedMax, lblSpeedMax),
             bSave);
-        content.getChildren().add(paramSec);
+        content.getChildren().add(rangeSec);
 
-        // ── Légende ──
+        // ══════════════════════════════════════════
+        // ── Section : LÉGENDE ────────────────────
+        // ══════════════════════════════════════════
         content.getChildren().add(sectionHeader("LÉGENDE"));
         VBox legSec = section();
         legSec.getChildren().addAll(
@@ -537,7 +647,118 @@ public class SimulationView extends BorderPane {
 
         scroll.setContent(content);
         panel.getChildren().add(scroll);
+
+        // Init preview
+        refreshRightPreview();
+        refreshRightAvatarColor();
         return panel;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // LOGIQUE PANNEAU DROIT — preview + ajout
+    // ─────────────────────────────────────────────────────────────────────
+
+    /** Met à jour le récap live dans le panneau droit. */
+    private void refreshRightPreview() {
+        if (lblPrevNom == null) return;
+
+        String fn   = tfFirstNameRight.getText().trim();
+        String ln   = tfLastNameRight.getText().trim();
+        String role = cbRoleRight.getValue();
+
+        // Initiales avatar
+        String initials = "";
+        if (!fn.isEmpty()) initials += fn.substring(0, 1).toUpperCase();
+        if (!ln.isEmpty()) initials += ln.substring(0, 1).toUpperCase();
+        if (initials.isEmpty()) initials = role.substring(0, 2).toUpperCase();
+        lblAvatarInitials.setText(initials);
+
+        // Nom affiché
+        String nom = (!fn.isEmpty() || !ln.isEmpty())
+            ? (fn + " " + ln).trim()
+            : role + " #—";
+        lblPrevNom.setText(nom);
+        lblPrevRole.setText(role);
+
+        // Âge
+        String ageText = tfAgeRight.getText().trim();
+        lblPrevAge.setText(ageText.isEmpty() ? "Auto (18–75 ans)" : ageText + " ans");
+
+        // Vitesse
+        lblPrevSpeed.setText(String.format("%.1f m/s", slSpeedRight.getValue()));
+
+        // Zone
+        lblPrevZone.setText(pendingZoneRight != null ? pendingZoneRight.getName() : "Aléatoire");
+
+        // État
+        if ("Citoyen".equals(role)) {
+            lblPrevEtat.setText(rbCalme != null && rbCalme.isSelected() ? "Calme" : "Stressé");
+            lblPrevEtat.setTextFill(Color.web(
+                rbCalme != null && rbCalme.isSelected() ? GREEN : ORANGE));
+        } else {
+            lblPrevEtat.setText("—");
+            lblPrevEtat.setTextFill(Color.web(MUTED));
+        }
+    }
+
+    /** Change la couleur de l'avatar selon le rôle. */
+    private void refreshRightAvatarColor() {
+        if (circleAvatar == null || cbRoleRight == null) return;
+        String role = cbRoleRight.getValue();
+        String col = switch (role) {
+            case "PMR"    -> PURPLE;
+            case "Secours"-> ORANGE;
+            default       -> BLUE;
+        };
+        circleAvatar.setFill(Color.web(col + "33"));
+        circleAvatar.setStroke(Color.web(col));
+        lblAvatarInitials.setTextFill(Color.web(col));
+        lblPrevRole.setTextFill(Color.web(col));
+    }
+
+    /** Annule l'attente de zone (panneau droit). */
+    private void cancelZoneWaitRight() {
+        waitingZoneRight = false;
+        pendingZoneRight = null;
+        lblZoneRight.setText("Aléatoire");
+        lblZoneRight.setTextFill(Color.web(MUTED));
+        refreshRightPreview();
+    }
+
+    /** Valide l'ajout d'agent depuis le panneau droit. */
+    private void confirmAddAgentRight() {
+        if (ctrl == null) return;
+
+        AgentRole role = switch (cbRoleRight.getValue()) {
+            case "PMR"    -> AgentRole.PMR;
+            case "Secours"-> AgentRole.RESCUE;
+            default       -> AgentRole.CITIZEN;
+        };
+
+        String fn = tfFirstNameRight.getText().trim().isEmpty() ? null : tfFirstNameRight.getText().trim();
+        String ln = tfLastNameRight.getText().trim().isEmpty()  ? null : tfLastNameRight.getText().trim();
+
+        int age = -1;
+        try { age = Integer.parseInt(tfAgeRight.getText().trim()); } catch (NumberFormatException ignored) {}
+
+        double speed = slSpeedRight.getValue();
+
+        int stress = -1;
+        if (role == AgentRole.CITIZEN) {
+            stress = (rbCalme != null && rbCalme.isSelected()) ? 0 : 1;
+        }
+
+        ctrl.addAgent(role, fn, ln, age, speed, stress, pendingZoneRight);
+        syncMapAgents();
+
+        // Feedback visuel : reset formulaire
+        tfFirstNameRight.clear();
+        tfLastNameRight.clear();
+        tfAgeRight.clear();
+        slSpeedRight.setValue(1.0);
+        if (rbCalme != null) rbCalme.setSelected(true);
+        cancelZoneWaitRight();
+        refreshRightPreview();
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -567,11 +788,11 @@ public class SimulationView extends BorderPane {
         lblSures = val("0%", TEXT); lblRisque = val("0%", TEXT);
         lblCong  = val("0%", TEXT); lblOver   = val("0%", TEXT); lblInond = val("0%", TEXT);
         b2.getChildren().addAll(
-            barRow("Sûres",     GREEN,  lblSures),
-            barRow("Risque",    ORANGE, lblRisque),
-            barRow("Congestion",YELLOW, lblCong),
-            barRow("Surcharge", RED,    lblOver),
-            barRow("Inondées",  PURPLE, lblInond));
+            barRow("Sûres",      GREEN,  lblSures),
+            barRow("Risque",     ORANGE, lblRisque),
+            barRow("Congestion", YELLOW, lblCong),
+            barRow("Surcharge",  RED,    lblOver),
+            barRow("Inondées",   PURPLE, lblInond));
 
         VBox b3 = bottomBloc("REFUGES");
         lblRefTotal  = val("0", TEXT);
@@ -608,7 +829,6 @@ public class SimulationView extends BorderPane {
         refreshLoop.setCycleCount(Timeline.INDEFINITE);
         refreshLoop.play();
 
-        // Espaceurs égaux entre les blocs
         for (VBox b : new VBox[]{b1, b2, b3, b4, b5}) {
             HBox.setHgrow(b, Priority.ALWAYS);
             b.setMaxWidth(Double.MAX_VALUE);
@@ -619,7 +839,7 @@ public class SimulationView extends BorderPane {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // OVERLAY AJOUT AGENT
+    // OVERLAY AJOUT AGENT (modal — gardé pour accès via bouton externe)
     // ─────────────────────────────────────────────────────────────────────
 
     private StackPane buildAddAgentOverlay() {
@@ -675,7 +895,8 @@ public class SimulationView extends BorderPane {
         return overlay;
     }
 
-    private void showAddAgentOverlay() {
+    /** Affiche l'overlay modal (peut encore être appelé programmatiquement). */
+    public void showAddAgentOverlay() {
         tfFirstName.clear(); tfLastName.clear(); tfAge.clear();
         cbRole.setValue("Citoyen");
         pendingZone = null; waitingForZoneClick = false;
@@ -869,25 +1090,21 @@ public class SimulationView extends BorderPane {
     // HELPERS VISUELS
     // ─────────────────────────────────────────────────────────────────────
 
-    /** En-tête de section pour les panneaux latéraux. */
     private HBox sectionHeader(String title) {
         HBox h = new HBox();
         h.setAlignment(Pos.CENTER_LEFT);
         h.setPadding(new Insets(6, 12, 6, 12));
         h.setStyle("-fx-background-color:" + BORDER + ";");
-        Label l = lbl(title, FontWeight.BOLD, 9, MUTED);
-        h.getChildren().add(l);
+        h.getChildren().add(lbl(title, FontWeight.BOLD, 9, MUTED));
         return h;
     }
 
-    /** Section body avec padding standard. */
     private VBox section() {
         VBox v = new VBox(6);
         v.setPadding(new Insets(8, 10, 8, 10));
         return v;
     }
 
-    /** Bloc pour la barre basse. */
     private VBox bottomBloc(String title) {
         VBox b = new VBox(4);
         b.setPadding(new Insets(6, 14, 6, 14));
@@ -910,6 +1127,17 @@ public class SimulationView extends BorderPane {
         r.setAlignment(Pos.CENTER_LEFT);
         Label l = lbl(label + ":", FontWeight.NORMAL, 10, MUTED);
         l.setMinWidth(60);
+        Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
+        r.getChildren().addAll(l, sp, val);
+        return r;
+    }
+
+    /** Ligne de récap compacte (9px) pour le panneau droit. */
+    private HBox hrowSmall(String label, Label val) {
+        HBox r = new HBox(4);
+        r.setAlignment(Pos.CENTER_LEFT);
+        Label l = lbl(label + " :", FontWeight.NORMAL, 9, MUTED);
+        l.setMinWidth(36);
         Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
         r.getChildren().addAll(l, sp, val);
         return r;
@@ -990,6 +1218,20 @@ public class SimulationView extends BorderPane {
             + ";-fx-font-size:10px;-fx-background-radius:5;");
     }
 
+    /**
+     * Crée un RadioButton stylisé avec la couleur donnée pour l'état sélectionné.
+     */
+    private RadioButton styledRadio(String text, ToggleGroup group, String activeColor) {
+        RadioButton rb = new RadioButton(text);
+        rb.setToggleGroup(group);
+        rb.setFont(Font.font("System", FontWeight.NORMAL, 10));
+        rb.setTextFill(Color.web(MUTED));
+        rb.setStyle("-fx-cursor:hand;");
+        rb.selectedProperty().addListener((o, ov, nv) ->
+            rb.setTextFill(Color.web(nv ? activeColor : MUTED)));
+        return rb;
+    }
+
     private Button smallBtn(String t) {
         Button b = new Button(t);
         String base  = "-fx-background-color:#1e293b;-fx-text-fill:" + TEXT
@@ -1048,7 +1290,7 @@ public class SimulationView extends BorderPane {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // WrapFlow — HBox qui wrap les boutons sur plusieurs lignes
+    // WrapFlow — FlowPane pour boutons sur plusieurs lignes
     // ─────────────────────────────────────────────────────────────────────
 
     private static class WrapFlow extends FlowPane {
