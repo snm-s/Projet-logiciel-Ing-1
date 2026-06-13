@@ -75,35 +75,38 @@ public class Edge {
      */
     public EdgeState computeState() {
 
-        if (floodLevel >= 1.0) {
-            return EdgeState.FLOODED;
-        }
-        
-        if (floodLevel > 0.0) {
-            return EdgeState.FLOODING;
-        }
-        // 1. Gestion des inondations (Priorité maximale)
-        boolean fromFlooded = fromZone.isFlooded();
-        boolean toFlooded   = toZone.isFlooded();
-
-        if (fromFlooded && toFlooded) return EdgeState.FLOODED;
-        if (fromFlooded || toFlooded) return EdgeState.AT_RISK;
-
-        // 2. Gestion de l'altitude (Risque géographique)
-        double avgAlt = (fromZone.getAltitude() + toZone.getAltitude()) / 2.0;
-        if (avgAlt < 1.0) return EdgeState.AT_RISK;
-
-        // 3. Gestion du flux (Congestion)
-        // On calcule le ratio une seule fois pour tout le reste
-        double flowRatio = (capacityMax > 0) ? (double) currentFlow / capacityMax : 0.0;
-
-        if (flowRatio > 1.0) return EdgeState.OVERLOADED; // Flux dépasse la capacité
-        if (flowRatio > 0.8) return EdgeState.CONGESTED;  // Congestion critique
-        if (flowRatio > 0.5) return EdgeState.AT_RISK;    // Risque modéré
-
-        // 4. État sain (SAFE et NORMAL fusionnés)
-        return EdgeState.SAFE;
+    // Rouge : arête totalement inondée
+    if (floodLevel >= 1.0) {
+        return EdgeState.FLOODED;
     }
+
+    // Orange : l'eau commence à toucher l'arête
+    if (floodLevel > 0.0) {
+        return EdgeState.FLOODING;
+    }
+
+    // Orange/rouge si une zone reliée est touchée par l'eau
+    boolean fromFlooded = fromZone.isFlooded();
+    boolean toFlooded = toZone.isFlooded();
+
+    if (fromFlooded && toFlooded) {
+        return EdgeState.FLOODED;
+    }
+
+    if (fromFlooded || toFlooded) {
+        return EdgeState.FLOODING;
+    }
+
+    // Congestion seulement si des agents sont vraiment dessus
+    double flowRatio = capacityMax > 0 ? (double) currentFlow / capacityMax : 0.0;
+
+    if (flowRatio > 1.0) return EdgeState.OVERLOADED;
+    if (flowRatio > 0.8) return EdgeState.CONGESTED;
+    if (flowRatio > 0.5) return EdgeState.AT_RISK;
+
+    // Au démarrage : arête normale
+    return EdgeState.SAFE;
+}
 
     /** Met à jour l'état et notifie les observateurs si changement. */
     public void refreshState() {
