@@ -100,7 +100,12 @@ public class AdminController {
         return (int) getCitizens().stream()
                 .filter(a -> a instanceof Citizen)
                 .map(a -> (Citizen) a)
-                .filter(c -> c.getState() != null && !"CALME".equalsIgnoreCase(c.getState().name()))
+                .filter(c -> c.getState() != null)
+                .filter(c -> {
+                    String state = c.getState().name();
+                    return !state.equalsIgnoreCase("CALM")
+                            && !state.equalsIgnoreCase("CALME");
+                })
                 .count();
     }
 
