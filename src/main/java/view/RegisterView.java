@@ -69,8 +69,6 @@ public class RegisterView extends StackPane {
     private TextField city = new TextField();
     private ComboBox<String> houseType = new ComboBox<>();
     private TextField floor = new TextField();
-    private Label gpsLabel = new Label("GPS non configuré");
-    private Button gpsButton = new Button("Détecter ma localisation GPS");
     private ComboBox<String> role = new ComboBox<>();
     private VBox citizenBox = new VBox(15);
     private TextField householdSize = new TextField();
@@ -530,24 +528,6 @@ applyTextFieldStyle(country);
                 fieldRow(city, errCity),
                 fieldRow(country, errCountry)
         );
-
-        gpsButton.setMaxWidth(Double.MAX_VALUE);
-        gpsButton.setPrefHeight(46);
-        gpsButton.setFont(Font.font("System", FontWeight.BOLD, 13));
-        gpsButton.setTextFill(Color.web(BLUE_HOVER));
-        gpsButton.setStyle(secondaryButtonStyle(false));
-        gpsButton.setOnMouseEntered(e -> gpsButton.setStyle(secondaryButtonStyle(true)));
-        gpsButton.setOnMouseExited(e -> gpsButton.setStyle(secondaryButtonStyle(false)));
-
-        gpsLabel.setFont(Font.font("System", 12));
-        gpsLabel.setTextFill(Color.web(MUTED));
-
-        gpsButton.setOnAction(e -> {
-            gpsLabel.setText("Détection...");
-            controller.handleDetectGps();
-        });
-
-        root.getChildren().addAll(createSectionLabel("Localisation"), gpsButton, gpsLabel);
 
         role.getItems().addAll("Citoyen", "Sauveteur");
         role.setPromptText("Selectionnez votre rôle");
@@ -1090,7 +1070,7 @@ if (!cityValue.equalsIgnoreCase("Lyon")) {
         address.setOnAction(e -> city.requestFocus());
         city.setOnAction(e -> country.requestFocus());
 
-        country.setOnAction(e -> gpsButton.requestFocus());
+        country.setOnAction(e -> role.requestFocus());
 
         floor.setOnAction(e -> householdSize.requestFocus());
         householdSize.setOnAction(e -> emergencyContact.requestFocus());
@@ -1267,15 +1247,4 @@ if (coords != null) {
         return backButton;
     }
 
-    public void fillLocationFields(double lat, double lng, String cityValue, String countryValue) {
-        this.detectedLat = lat;
-        this.detectedLng = lng;
-
-        city.setText("Lyon");
-        country.setText(countryValue);
-
-        gpsLabel.setText(cityValue.isEmpty()
-                ? "Détection échouée — veuillez entrer votre adresse manuellement"
-                : "Localisation approximative détectée — veuillez entrer votre rue");
-    }
 }
