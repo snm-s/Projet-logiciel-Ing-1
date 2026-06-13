@@ -1,14 +1,13 @@
 <div align="center">
 
 ```
-                   ███████╗██╗      ██████╗  ██████╗ ██████╗ ██████╗  ██████╗ ██╗   ██╗████████╗███████╗
-                   ██╔════╝██║     ██╔═══██╗██╔═══██╗██╔══██╗██╔══██╗██╔═══██╗██║   ██║╚══██╔══╝██╔════╝
-                   █████╗  ██║     ██║   ██║██║   ██║██║  ██║██████╔╝██║   ██║██║   ██║   ██║   █████╗  
-                   ██╔══╝  ██║     ██║   ██║██║   ██║██║  ██║██╔══██╗██║   ██║██║   ██║   ██║   ██╔══╝  
-                   ██║     ███████╗╚██████╔╝╚██████╔╝██████╔╝██║  ██║╚██████╔╝╚██████╔╝   ██║   ███████╗
-                   ╚═╝     ╚══════╝ ╚═════╝  ╚═════╝ ╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚═════╝   ╚═╝   ╚══════╝
+███████╗██╗      ██████╗  ██████╗ ██████╗ ██████╗  ██████╗ ██╗   ██╗████████╗███████╗
+██╔════╝██║     ██╔═══██╗██╔═══██╗██╔══██╗██╔══██╗██╔═══██╗██║   ██║╚══██╔══╝██╔════╝
+█████╗  ██║     ██║   ██║██║   ██║██║  ██║██████╔╝██║   ██║██║   ██║   ██║   █████╗  
+██╔══╝  ██║     ██║   ██║██║   ██║██║  ██║██╔══██╗██║   ██║██║   ██║   ██║   ██╔══╝  
+██║     ███████╗╚██████╔╝╚██████╔╝██████╔╝██║  ██║╚██████╔╝╚██████╔╝   ██║   ███████╗
+╚═╝     ╚══════╝ ╚═════╝  ╚═════╝ ╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚═════╝   ╚═╝   ╚══════╝
 ```
-
 
 **Projet de fin d'année — ING1 GI4 · CY Tech · 2025–2026**  
 Matière : Agents et Graphes &nbsp;·&nbsp; Tutrice : D. Zaouche &nbsp;·&nbsp; Jury : S. Hawari
@@ -21,64 +20,36 @@ Matière : Agents et Graphes &nbsp;·&nbsp; Tutrice : D. Zaouche &nbsp;·&nbsp; 
 [![Licence](https://img.shields.io/badge/Licence-Académique-4A90E2?style=for-the-badge)](.)
 [![Statut](https://img.shields.io/badge/Statut-Soutenu-22c55e?style=for-the-badge)](.)
 
-<br/>
-
 </div>
 
-
-<div align="center">
-
 <img width="100%" src="https://capsule-render.vercel.app/api?type=waving&height=200&color=0:001B44,35:003B8F,70:006DFF,100:00B7FF&text=FloodRoute&fontColor=FFFFFF&fontSize=80&fontAlignY=42&desc=Simulation%20d'inondation%20avec%20agents%20et%20graphes&descAlignY=62&descSize=20"/>
+
+---
+
+## 👥 Équipe projet
+
 <div align="center">
 
-### Équipe projet
+| Martial Mouttalapane | Sanem Sayed | Hajar Achour | Bouchra Zamoum | Jenistar Makoudjou |
+|:--------------------:|:-----------:|:------------:|:--------------:|:------------------:|
 
-<table>
-  <tr>
-    <td align="center"><b>Martial Mouttalapane</b></td>
-    <td align="center"><b>Sanem Sayed</b></td>
-    <td align="center"><b>Hajar Achour</b></td>
-    <td align="center"><b>Bouchra Zamoum</b></td>
-    <td align="center"><b>Jenistar Makoudjou</b></td>
-  </tr>
-</table>
-
-<br>
-
-<table>
-  <tr>
-    <td align="center"><b>Tutrice</b></td>
-    <td align="center"><b>Jury</b></td>
-  </tr>
-  <tr>
-    <td align="center">D. Zaouche</td>
-    <td align="center">S. Hawari</td>
-  </tr>
-</table>
-
-
-
-| Formation | Groupe | Matière | Année |
-|:---------:|:------:|:-------:|:-----:|
-| ING1 | GI4 | Agents et Graphes | 2025–2026 |
-
-**CY Tech &nbsp;·&nbsp; Tutrice : D. Zaouche &nbsp;·&nbsp; Jury : S. Hawari**
+| Tutrice | Jury |
+|:-------:|:----:|
+| D. Zaouche | S. Hawari |
 
 </div>
 
 ---
 
-<br/>
+## 📌 Présentation
 
-## 📌 Présentation du projet
+FloodRoute est une application de simulation d'inondation représentant une situation de crise dans une ville modélisée sous forme de **graphe**.
 
-> FloodRoute est une application de simulation d'inondation pensée pour représenter une situation de crise dans une ville.
+- Les **sommets** représentent des lieux importants (quartiers, refuges, hôpitaux).
+- Les **arêtes** représentent les routes reliant ces lieux.
+- Selon l'évolution de l'inondation, une route peut rester praticable, devenir inondée ou être bloquée.
 
-La ville est modélisée sous forme de **graphe**. Les sommets représentent des lieux importants (quartiers, refuges, hôpitaux). Les arêtes représentent les routes reliant ces lieux. Selon l'évolution de l'inondation, une route peut rester praticable, devenir inondée ou être bloquée.
-
-L'application propose plusieurs interfaces selon le profil de l'utilisateur : citoyen, secours ou administrateur. Elle prend également en compte les personnes à mobilité réduite afin de proposer une évacuation adaptée.
-
-<br/>
+L'application propose plusieurs interfaces selon le profil de l'utilisateur (citoyen, secours, administrateur) et prend en compte les personnes à mobilité réduite (PMR) pour proposer une évacuation adaptée.
 
 <div align="center">
 
@@ -95,11 +66,7 @@ L'application propose plusieurs interfaces selon le profil de l'utilisateur : ci
 
 ---
 
-<br/>
-
-## 🎯 Objectif du projet
-
-L'objectif de FloodRoute est de fournir une application claire et interactive permettant de :
+## 🎯 Objectifs
 
 - **Visualiser** une ville sous forme de graphe et suivre l'état des routes
 - **Simuler** l'évolution d'une inondation en temps réel
@@ -107,21 +74,9 @@ L'objectif de FloodRoute est de fournir une application claire et interactive pe
 - **Orienter** les citoyens vers des refuges via des itinéraires sécurisés
 - **Coordonner** les secours et permettre à l'administrateur de superviser le système
 
-<br/>
-
-<div align="center">
-
-| 🗺️ Visualiser | 🔔 Alerter | 🤝 Coordonner |
-|:-------------:|:---------:|:-------------:|
-| Carte, graphe, zones et routes | Notifications, dangers et suivi | Citoyens, secours et administrateurs |
-
-</div>
-
 ---
 
-<br/>
-
-## 👥 Profils utilisateurs
+## 👤 Profils utilisateurs
 
 <div align="center">
 
@@ -130,15 +85,13 @@ L'objectif de FloodRoute est de fournir une application claire et interactive pe
 | 🧑‍💼 **Administrateur** | Lance la simulation, gère le graphe, supervise le système | Complet |
 | 🚒 **Secours** | Visualise les zones critiques, suit les agents, coordonne les missions | Opérationnel |
 | 🧍 **Citoyen** | Consulte la carte, reçoit les alertes, calcule son itinéraire | Lecture + navigation |
-| ♿ **PMR** | Mêmes droits que le citoyen avec un itinéraire adapté aux contraintes de mobilité | Navigation adaptée |
+| ♿ **PMR** | Mêmes droits que le citoyen avec un itinéraire adapté | Navigation adaptée |
 
 </div>
 
 ---
 
-<br/>
-
-## ⚙️ Fonctionnalités principales
+## ⚙️ Fonctionnalités
 
 <table>
 <tr>
@@ -205,9 +158,7 @@ L'objectif de FloodRoute est de fournir une application claire et interactive pe
 
 ---
 
-<br/>
-
-## 🔬 Modélisation avec agents et graphes
+## 🔬 Modélisation agents & graphes
 
 ### Structure du graphe
 
@@ -221,9 +172,9 @@ Ville
 │   └── Points de passage
 │
 ├── Arêtes
-│   ├── Routes praticables
-│   ├── Routes inondées
-│   └── Routes bloquées
+│   ├── Routes praticables  ✅
+│   ├── Routes inondées     🌊
+│   └── Routes bloquées     🚫
 │
 └── Agents
     ├── Citoyens
@@ -232,77 +183,63 @@ Ville
     └── Administrateurs
 ```
 
-### Modèle d'agents
+### Hiérarchie d'agents
 
 ```java
-// Hiérarchie d'agents
 Agent (abstraite)
-├── Citoyen        → se déplace, reçoit des alertes, cherche un refuge
-├── PMRAgent       → contraintes de mobilité supplémentaires
-├── RescueAgent    → intervient sur les zones critiques, prioritaire
-└── AdminAgent     → contrôle la simulation, gère le graphe
+├── Citoyen      → se déplace, reçoit des alertes, cherche un refuge
+├── PMRAgent     → contraintes de mobilité supplémentaires
+├── RescueAgent  → intervient sur les zones critiques, prioritaire
+└── AdminAgent   → contrôle la simulation, gère le graphe
 ```
 
 ### Algorithme d'évacuation
 
 ```java
-// Calcul d'itinéraire sécurisé — extrait simplifié
+// Calcul d'itinéraire sécurisé
 EvacuationRouter.compute(graph, source, refuge, currentState);
 // → retourne le chemin optimal parmi les routes praticables
 ```
 
-<div align="center">
-
-<br/>
-
-| État | Description |
-|:----:|-------------|
-| ✅ **Praticable** | La route peut être empruntée normalement |
-| 🌊 **Inondée** | La route devient dangereuse |
-| 🚫 **Bloquée** | La route n'est plus utilisable |
-
-</div>
-
 ---
 
-<br/>
+## 🗂️ Structure du projet
 
-Projet-logiciel-Ing-1
+```
+Projet-logiciel-Ing-1/
 │
-├── data
+├── data/
 │   ├── users.json
 │   └── zones.json
 │
-├── src/main
-│   ├── java
-│   │   ├── app
-│   │   ├── cli
-│   │   ├── controller
-│   │   │   ├── AdminPage
-│   │   │   ├── AuthPage
-│   │   │   ├── CitizenPage
-│   │   │   ├── RescuePage
+├── src/main/
+│   ├── java/
+│   │   ├── app/
+│   │   ├── cli/
+│   │   ├── controller/
+│   │   │   ├── AdminPage/
+│   │   │   ├── AuthPage/
+│   │   │   ├── CitizenPage/
+│   │   │   ├── RescuePage/
 │   │   │   └── MapController.java
-│   │   │
-│   │   ├── model
-│   │   │   ├── agent
-│   │   │   ├── alert
-│   │   │   ├── algorithms
-│   │   │   ├── auth
-│   │   │   ├── enums
-│   │   │   ├── graph
-│   │   │   ├── observer
-│   │   │   ├── persistence
-│   │   │   ├── sensor
-│   │   │   ├── simulation
-│   │   │   ├── statistics
-│   │   │   ├── strategy
-│   │   │   ├── validation
-│   │   │   └── zone
-│   │   │
-│   │   ├── service
-│   │   └── view
-│   │       ├── components
+│   │   ├── model/
+│   │   │   ├── agent/
+│   │   │   ├── alert/
+│   │   │   ├── algorithms/
+│   │   │   ├── auth/
+│   │   │   ├── enums/
+│   │   │   ├── graph/
+│   │   │   ├── observer/
+│   │   │   ├── persistence/
+│   │   │   ├── sensor/
+│   │   │   ├── simulation/
+│   │   │   ├── statistics/
+│   │   │   ├── strategy/
+│   │   │   ├── validation/
+│   │   │   └── zone/
+│   │   ├── service/
+│   │   └── view/
+│   │       ├── components/
 │   │       ├── AdminAlertsView.java
 │   │       ├── AdminDashboardView.java
 │   │       ├── CitizenDashboardView.java
@@ -311,15 +248,17 @@ Projet-logiciel-Ing-1
 │   │       ├── RescueDashboardView.java
 │   │       ├── SimulationView.java
 │   │       └── WelcomeView.java
-│   │
-│   └── resources
-│       ├── css
-│       ├── images
-│       ├── map
+│   └── resources/
+│       ├── css/
+│       ├── images/
+│       ├── map/
 │       └── lyon_routes.json
 │
 ├── pom.xml
 └── README.md
+```
+
+<div align="center">
 
 | Package | Rôle |
 |---------|------|
@@ -339,9 +278,7 @@ Projet-logiciel-Ing-1
 
 ---
 
-<br/>
-
-## 🛠️ Technologies utilisées
+## 🛠️ Technologies
 
 <div align="center">
 
@@ -359,9 +296,7 @@ Projet-logiciel-Ing-1
 
 ---
 
-<br/>
-
-## 🚀 Installation et lancement
+## 🚀 Installation
 
 ### Prérequis
 
@@ -376,17 +311,15 @@ git clone https://github.com/<votre-organisation>/FloodRoute.git
 cd FloodRoute
 ```
 
-### Lancer sur macOS
+### Lancer l'application
 
 ```bash
+# macOS
 export JAVA_HOME=$(/usr/libexec/java_home -v 21)
 export PATH=$JAVA_HOME/bin:$PATH
 mvn javafx:run
-```
 
-### Lancer sur Windows / Linux
-
-```bash
+# Windows / Linux
 mvn javafx:run
 ```
 
@@ -399,30 +332,18 @@ java -jar target/FloodRoute-1.0.jar
 
 ---
 
-<br/>
-
-
-
-
-
-
 ## 📝 Conclusion
 
 FloodRoute illustre comment les concepts de **graphes** et de **systèmes multi-agents** peuvent être appliqués à une problématique concrète de gestion de crise. Le projet démontre qu'une modélisation formelle rigoureuse peut servir de socle à une application interactive et utilisable, tout en confrontant l'équipe aux exigences réelles d'un développement logiciel structuré.
 
-<br/>
-
-
 <div align="center">
-<img src="src/main/resources/images/header.svg" alt="FloodRoute Banner" width="100%"/>
 
+<br/>
 
 <img width="100%" src="https://capsule-render.vercel.app/api?type=waving&height=140&section=footer&color=0:00B7FF,50:006DFF,100:001B44"/>
 
-
-**FloodRoute &nbsp;·&nbsp; ING1 GI4 &nbsp;·&nbsp; CY Tech &nbsp;·&nbsp; 2025–2026**
+**FloodRoute · ING1 GI4 · CY Tech · 2025–2026**
 
 _Anticiper. Alerter. Protéger._
-
 
 </div>
