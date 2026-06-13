@@ -141,9 +141,6 @@ public class RescueDashboardView extends BorderPane {
         Button btnAlerts = sidebarButton("Alertes", "alert");
         btnAlerts.setOnAction(e -> { setActive(btnAlerts); showPage(new RescueAlertsView(controller)); });
 
-        Button btnResources = sidebarButton("Ressources", "resources");
-        btnResources.setOnAction(e -> { setActive(btnResources); showPage(new RescueResourcesView()); });
-
         Button btnMissions = sidebarButton("Missions", "missions");
         btnMissions.setOnAction(e -> { setActive(btnMissions); showPage(new RescueMissionsView(mapComponent, controller)); });
 
@@ -162,7 +159,7 @@ public class RescueDashboardView extends BorderPane {
         sidebar.getChildren().addAll(
             brand, profile,
             btnDashboard, btnMap, btnAlerts,
-            btnResources, btnMissions, btnProfile, btnSettings,
+            btnMissions, btnProfile, btnSettings,
             spacer, logout
         );
 
