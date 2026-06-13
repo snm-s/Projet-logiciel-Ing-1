@@ -22,7 +22,6 @@ import javafx.scene.shape.Circle;
 import javafx.scene.shape.SVGPath;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-import model.agent.Agent;
 import model.alert.Alert;
 import model.simulation.SimulationDataService;
 import model.zone.Zone;
@@ -139,9 +138,6 @@ public class RescueDashboardView extends BorderPane {
         Button btnMap = sidebarButton("Carte opérationnelle", "map");
         btnMap.setOnAction(e -> { setActive(btnMap); showPage(buildMapPage()); });
 
-        Button btnAgents = sidebarButton("Agents", "agents");
-        btnAgents.setOnAction(e -> { setActive(btnAgents); showPage(new RescueAgentsView()); });
-
         Button btnAlerts = sidebarButton("Alertes", "alert");
         btnAlerts.setOnAction(e -> { setActive(btnAlerts); showPage(new RescueAlertsView(controller)); });
 
@@ -165,7 +161,7 @@ public class RescueDashboardView extends BorderPane {
 
         sidebar.getChildren().addAll(
             brand, profile,
-            btnDashboard, btnMap, btnAgents, btnAlerts,
+            btnDashboard, btnMap, btnAlerts,
             btnResources, btnMissions, btnProfile, btnSettings,
             spacer, logout
         );
