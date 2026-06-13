@@ -84,8 +84,11 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     private double floodRadiusStep = 2.0;
 
     private java.util.function.Consumer<model.graph.Edge> onEdgeSelected;
+    private java.util.function.BiConsumer<Double, Double> onMapClicked;
+    private boolean lastClickConsumedByEdge = false;
     private model.graph.Edge selectedEdge;
     private boolean densityOverlayEnabled = false;
+    private Runnable onNodeMoveFinished;
 
     private static final GeoPosition LYON_CENTER = new GeoPosition(45.7640, 4.8357);
     private static final int DEFAULT_ZOOM = 6;
@@ -139,7 +142,13 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     }
 
     private void configureInteraction() {
-        PanMouseInputListener panListener = new PanMouseInputListener(mapViewer);
+        PanMouseInputListener panListener = new PanMouseInputListener(mapViewer) {
+            @Override public void mouseDragged(MouseEvent e) {
+                // bloquer le pan si on est en train de dragger un nœud ou agent
+                if (draggedNode != null || draggedAgent != null) return;
+                super.mouseDragged(e);
+            }
+        };
         mapViewer.addMouseListener(panListener);
         mapViewer.addMouseMotionListener(panListener);
         mapViewer.addMouseWheelListener(new ZoomMouseWheelListenerCursor(mapViewer));
@@ -193,6 +202,7 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
 
                 if (hit instanceof Edge edge) {
                     selectedEdge = edge;
+                    lastClickConsumedByEdge = true; 
                     if (onEdgeSelected != null) onEdgeSelected.accept(edge);
                     setInfo(graphOverlayPainter.infoFor(edge));
                     mapViewer.repaint();
@@ -200,6 +210,7 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
                 }
 
                 if (hit != null) {
+                    lastClickConsumedByEdge = false;
                     selectedGraphElement = hit;
                     graphOverlayPainter.setSelected(hit);
                     setInfo(graphOverlayPainter.infoFor(hit));
@@ -213,27 +224,27 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
             @Override public void mousePressed(MouseEvent e) {
                 Agent agent = agentPainter.findAgentAt(mapViewer, e.getPoint());
                 if (agent != null) {
-                    selectedGraphElement = agent; 
-            
+                    selectedGraphElement = agent;
                     draggedAgent = agent;
                     agentPainter.startDrag(agent);
-            
                     if (onAgentSelected != null) onAgentSelected.accept(agent);
-            
                     setInfo("Agent sélectionné : " + nameOf(agent));
                     mapViewer.setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
                     mapViewer.repaint();
                     e.consume();
                     return;
                 }
-            
-                Object hit = graphOverlayPainter.hitTest(mapViewer, e.getPoint());
-                if (editMode == EditMode.MOVE_NODE && hit instanceof GraphNode node) {
-                    draggedNode = node;
-                    selectedGraphElement = node;
-                    graphOverlayPainter.setSelected(node);
-                    mapViewer.setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
-                    e.consume();
+
+                if (editMode == EditMode.MOVE_NODE) {
+                    // chercher aussi dans baseNodes (zones réelles)
+                    Object hit = graphOverlayPainter.hitTest(mapViewer, e.getPoint());
+                    if (hit instanceof GraphNode node) {
+                        draggedNode = node;
+                        selectedGraphElement = node;
+                        graphOverlayPainter.setSelected(node);
+                        mapViewer.setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
+                        e.consume();
+                    }
                 }
             }
             @Override public void mouseDragged(MouseEvent e) {
@@ -248,6 +259,13 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
                     GeoPosition gp = mapViewer.convertPointToGeoPosition(e.getPoint());
                     draggedNode.lat = gp.getLatitude();
                     draggedNode.lng = gp.getLongitude();
+
+                    // NOUVEAU — synchroniser la Zone réelle du modèle
+                    if (draggedNode.zone != null) {
+                        draggedNode.zone.setLatitude(gp.getLatitude());
+                        draggedNode.zone.setLongitude(gp.getLongitude());
+                    }
+
                     setInfo("Nœud déplacé : " + draggedNode.name);
                     mapViewer.repaint();
                     e.consume();
@@ -259,12 +277,18 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
                     agentPainter.endDrag();
                     setInfo("Agent relâché et replacé sur le graphe : " + nameOf(draggedAgent));
                     draggedAgent = null;
+                    if (onNodeMoveFinished != null) {
+                        Platform.runLater(onNodeMoveFinished);
+                    }
                     mapViewer.setCursor(Cursor.getDefaultCursor());
                     mapViewer.repaint();
                     e.consume();
                 }
                 if (draggedNode != null) {
                     draggedNode = null;
+                    if (onNodeMoveFinished != null) {
+                        Platform.runLater(onNodeMoveFinished);
+                    }
                     mapViewer.setCursor(Cursor.getDefaultCursor());
                     mapViewer.repaint();
                     e.consume();
@@ -316,6 +340,11 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         SwingUtilities.invokeLater(mapViewer::repaint);
     }
     
+    public void setLastClickConsumedByEdge(boolean v) { this.lastClickConsumedByEdge = v; }
+    public boolean wasLastClickConsumedByEdge() { return lastClickConsumedByEdge; }
+
+    public void setOnNodeMoveFinished(Runnable callback) { this.onNodeMoveFinished = callback; }
+
     public void setAgents(List<Agent> agents) {
         this.agents = agents == null ? new ArrayList<>() : new ArrayList<>(agents);
     
@@ -453,6 +482,9 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
         mapViewer.repaint();
     }
 
+    public void setOnMapClicked(java.util.function.BiConsumer<Double, Double> callback) {
+        this.onMapClicked = callback;
+    }
     public void deleteSelectedGraphElement() { deleteGraphElement(selectedGraphElement); }
 
     private void deleteGraphElement(Object element) {
@@ -664,7 +696,12 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     }
 
     private void handleMapClick(Point screenPoint) {
+        
+        lastClickConsumedByEdge = false;
         GeoPosition clickPos = mapViewer.convertPointToGeoPosition(screenPoint);
+        if (onMapClicked != null) {
+            Platform.runLater(() -> onMapClicked.accept(clickPos.getLatitude(), clickPos.getLongitude()));
+        }
 
         if (manualFloodMode) {
             floodCenter = clickPos;
@@ -948,8 +985,9 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
             g2.drawOval((int) p.getX() - r, (int) p.getY() - r, r * 2, r * 2);
         }
         Object hitTest(JXMapViewer map, Point p) {
-            for (GraphNode n : visualNodes) if (map.convertGeoPositionToPoint(n.geo()).distance(p) < 15) return n;
-            for (GraphNode n : baseNodes) if (map.convertGeoPositionToPoint(n.geo()).distance(p) < 15) return n;
+            // MODIFIÉ — baseNodes en priorité, rayon 18px au lieu de 15
+            for (GraphNode n : baseNodes)  if (map.convertGeoPositionToPoint(n.geo()).distance(p) < 18) return n;
+            for (GraphNode n : visualNodes) if (map.convertGeoPositionToPoint(n.geo()).distance(p) < 18) return n;
             for (GraphEdge e : visualEdges) {
                 Point2D a = map.convertGeoPositionToPoint(e.from.geo());
                 Point2D b = map.convertGeoPositionToPoint(e.to.geo());

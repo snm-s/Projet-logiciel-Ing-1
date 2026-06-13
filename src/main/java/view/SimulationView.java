@@ -117,6 +117,8 @@ public class SimulationView extends BorderPane {
     // ─── Champs Edit Zone ─────────────────────────────────────────────────
     private TextField tfEzName, tfEzAlt, tfEzPop, tfEzDesc;
     private Zone      editingZone = null;
+    private TextField tfNhSearch, tfShSearch;
+
 
     // ─── Champs Edit Edge ─────────────────────────────────────────────────
     private TextField tfEeCap;
@@ -364,7 +366,12 @@ public class SimulationView extends BorderPane {
         });
         bMoveZ.setOnAction(e -> {
             setTool(ToolMode.MOVE_ZONE, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bResetZ, bDelZ);
-            if (mapView != null) mapView.setEditMode(MapView.EditMode.MOVE_NODE);
+            if (mapView != null) {
+                mapCtrl.setOnZoneSelected(null); // suspendre pendant le drag
+                mapView.setEditMode(MapView.EditMode.MOVE_NODE);
+                mapView.setOnNodeMoveFinished(() ->
+                    mapCtrl.setOnZoneSelected(z -> handleZoneClick(z))); // rétablir après
+            }
             showRightPanel(null);
             setGraphInfo("Glissez un nœud pour le déplacer.");
         });
@@ -566,14 +573,39 @@ public class SimulationView extends BorderPane {
             });
 
             // Clic zone
-            mapCtrl.setOnZoneSelected(zone -> handleZoneClick(zone));
+            mapCtrl.setOnZoneSelected(zone -> {
+                if (mapView != null && mapView.wasLastClickConsumedByEdge()) {
+                    mapView.setLastClickConsumedByEdge(false);
+                    return;
+                }
+                handleZoneClick(zone);
+            });
 
             // Clic arête
-            mapView.setOnEdgeSelected(edge -> handleEdgeClick(edge));
+            mapView.setOnEdgeSelected(edge -> {
+                mapView.setLastClickConsumedByEdge(true);
+                handleEdgeClick(edge);
+            });
 
             // Info graphe
             mapView.setOnGraphInfoChanged(info -> {
                 if (lblGraphInfo != null) Platform.runLater(() -> lblGraphInfo.setText(info));
+            });
+
+            mapView.setOnMapClicked((lat, lng) -> {
+                if (waitingClickNh) {
+                    waitingClickNh = false;
+                    pendingNhLat = lat;
+                    pendingNhLng = lng;
+                    updateNhCoordsLabel();
+                    Platform.runLater(() -> mapView.setEditMode(MapView.EditMode.SELECT));
+                } else if (waitingClickSh) {
+                    waitingClickSh = false;
+                    pendingShLat = lat;
+                    pendingShLng = lng;
+                    updateShCoordsLabel();
+                    Platform.runLater(() -> mapView.setEditMode(MapView.EditMode.SELECT));
+                }
             });
         }
 
@@ -584,6 +616,7 @@ public class SimulationView extends BorderPane {
      * Gestion centralisée du clic sur une zone selon le mode courant.
      */
     private void handleZoneClick(Zone zone) {
+        if (currentTool == ToolMode.MOVE_ZONE) return;
         switch (currentTool) {
             case ADD_NEIGHBORHOOD -> {
                 // Ne rien faire : la position est choisie via le bouton "Cliquer carte"
@@ -602,16 +635,6 @@ public class SimulationView extends BorderPane {
                     pendingShLat = zone.getLatitude();
                     pendingShLng = zone.getLongitude();
                     updateShCoordsLabel();
-                }
-            }
-            case ADD_AGENT -> {
-                if (waitingAgZone) {
-                    waitingAgZone = false;
-                    pendingAgZone = zone;
-                    if (lblAgZone != null) {
-                        lblAgZone.setText(zone.getName());
-                        lblAgZone.setTextFill(Color.web(GREEN));
-                    }
                 }
             }
             case ADD_EDGE -> {
@@ -708,19 +731,46 @@ public class SimulationView extends BorderPane {
         tfNhPop  = styledField("Population");
         tfNhDesc = styledField("Description");
 
-        lblNhCoords = lbl("📍 Cliquez la carte", FontWeight.NORMAL, 9, MUTED);
+        // ── Recherche adresse ──────────────────────────────────────────
+        tfNhSearch  = styledField("Rue, quartier, ville…");
+        lblNhCoords = lbl("📍 Position non définie", FontWeight.NORMAL, 9, MUTED);
+        lblNhCoords.setWrapText(true);
 
-        Button btnPickMap = smallBtn("🗺 Choisir position sur carte");
-        btnPickMap.setMaxWidth(Double.MAX_VALUE);
-        btnPickMap.setOnAction(e -> {
-            waitingClickNh = true;
-            setGraphInfo("Cliquez sur la carte pour placer le quartier.");
-            lblNhCoords.setText("📍 En attente de clic…");
+        Button btnSearch = actionBtn("🔍 Rechercher", TEAL);
+        btnSearch.setMaxWidth(Double.MAX_VALUE);
+
+        btnSearch.setOnAction(e -> {
+            String q = tfNhSearch.getText().trim();
+            if (q.isEmpty()) return;
+            lblNhCoords.setText("⏳ Recherche en cours…");
             lblNhCoords.setTextFill(Color.web(YELLOW));
-            // On intercept aussi le clic brut via mapView en ajoutant un listener temporaire
-            if (mapView != null) {
-                mapView.setEditMode(MapView.EditMode.ADD_NODE);
-            }
+            geocodeAddress(q,
+                (lat, lng) -> {
+                    pendingNhLat = lat;
+                    pendingNhLng = lng;
+                    lblNhCoords.setText(String.format("📍 %.5f,  %.5f", lat, lng));
+                    lblNhCoords.setTextFill(Color.web(GREEN));
+                    if (mapView != null) mapView.panTo(lat, lng);
+                    setGraphInfo("Position trouvée !");
+                },
+                () -> {
+                    lblNhCoords.setText("❌ Adresse introuvable à Lyon");
+                    lblNhCoords.setTextFill(Color.web(RED));
+                    setGraphInfo("Aucun résultat à Lyon — essayez : 'Bellecour', 'Gerland', 'Croix-Rousse'…");
+                });
+        });
+    
+        // Déclencher aussi sur Entrée
+        tfNhSearch.setOnAction(e -> btnSearch.fire());
+
+        Button btnRandom = smallBtn("🎲 Position aléatoire");
+        btnRandom.setMaxWidth(Double.MAX_VALUE);
+        btnRandom.setOnAction(e -> {
+            pendingNhLat = 45.7640 + (Math.random() - 0.5) * 0.06;
+            pendingNhLng = 4.8357  + (Math.random() - 0.5) * 0.08;
+            lblNhCoords.setText(String.format("📍 %.5f,  %.5f (aléatoire)", pendingNhLat, pendingNhLng));
+            lblNhCoords.setTextFill(Color.web(ORANGE));
+            if (mapView != null) mapView.panTo(pendingNhLat, pendingNhLng);
         });
 
         Button btnConfirm = actionBtn("＋ Créer le quartier", GREEN);
@@ -737,19 +787,16 @@ public class SimulationView extends BorderPane {
             lbl("Population", FontWeight.BOLD, 9, MUTED), tfNhPop,
             lbl("Description", FontWeight.BOLD, 9, MUTED), tfNhDesc,
             new Separator(),
-            lbl("Position", FontWeight.BOLD, 9, MUTED), lblNhCoords, btnPickMap,
+            lbl("Rechercher une adresse", FontWeight.BOLD, 9, MUTED),
+            tfNhSearch, btnSearch,
+            lblNhCoords, btnRandom,
             new Separator(),
             btnConfirm, btnCancel);
+
         v.getChildren().add(form);
         return v;
     }
 
-    private void resetNhForm() {
-        tfNhName.clear(); tfNhAlt.clear(); tfNhPop.clear(); tfNhDesc.clear();
-        pendingNhLat = Double.NaN; pendingNhLng = Double.NaN; waitingClickNh = false;
-        lblNhCoords.setText("📍 Cliquez la carte");
-        lblNhCoords.setTextFill(Color.web(MUTED));
-    }
 
     private void updateNhCoordsLabel() {
         if (!Double.isNaN(pendingNhLat))
@@ -758,7 +805,7 @@ public class SimulationView extends BorderPane {
                 lblNhCoords.setTextFill(Color.web(GREEN));
             });
     }
-
+    /*
     private void confirmAddNeighborhood() {
         if (ctrl == null) return;
         String name = tfNhName.getText().trim().isEmpty() ? null : tfNhName.getText().trim();
@@ -766,6 +813,26 @@ public class SimulationView extends BorderPane {
         double lng  = !Double.isNaN(pendingNhLng) ? pendingNhLng : 4.8357  + (Math.random() - 0.5) * 0.08;
         double alt  = parseDouble(tfNhAlt.getText(), 1.0);
         int    pop  = parseInt(tfNhPop.getText(), 100);
+        String desc = tfNhDesc.getText().trim();
+        ctrl.addNeighborhood(name, lat, lng, alt, pop, desc);
+        refreshUI();
+        showRightPanel(null);
+        setGraphInfo("Quartier créé.");
+        currentTool = ToolMode.NONE;
+        if (mapView != null) mapView.setEditMode(MapView.EditMode.SELECT);
+    }
+    */
+
+    private void confirmAddNeighborhood() {
+        if (ctrl == null) return;
+        String name = tfNhName.getText().trim().isEmpty() ? null : tfNhName.getText().trim();
+        // MODIFIÉ — lire lat/lng depuis les champs texte
+        double lat = !Double.isNaN(pendingNhLat) ? pendingNhLat : 45.7640 + (Math.random() - 0.5) * 0.06;
+        double lng = !Double.isNaN(pendingNhLng) ? pendingNhLng : 4.8357  + (Math.random() - 0.5) * 0.08;
+        if (Double.isNaN(lat)) lat = 45.7640 + (Math.random() - 0.5) * 0.06;
+        if (Double.isNaN(lng)) lng = 4.8357  + (Math.random() - 0.5) * 0.08;
+        double alt = parseDouble(tfNhAlt.getText(), 1.0);
+        int    pop = parseInt(tfNhPop.getText(), 100);
         String desc = tfNhDesc.getText().trim();
         ctrl.addNeighborhood(name, lat, lng, alt, pop, desc);
         refreshUI();
@@ -787,16 +854,44 @@ public class SimulationView extends BorderPane {
         tfShAlt  = styledField("Altitude (m)");
         tfShCap  = styledField("Capacité (personnes)");
         tfShDesc = styledField("Description");
-        lblShCoords = lbl("📍 Cliquez la carte", FontWeight.NORMAL, 9, MUTED);
 
-        Button btnPickMap = smallBtn("🗺 Choisir position sur carte");
-        btnPickMap.setMaxWidth(Double.MAX_VALUE);
-        btnPickMap.setOnAction(e -> {
-            waitingClickSh = true;
-            setGraphInfo("Cliquez sur la carte pour placer le refuge.");
-            lblShCoords.setText("📍 En attente de clic…");
+        tfShSearch  = styledField("Rue, quartier, ville…");
+        lblShCoords = lbl("📍 Position non définie", FontWeight.NORMAL, 9, MUTED);
+        lblShCoords.setWrapText(true);
+
+        Button btnSearch = actionBtn("🔍 Rechercher", TEAL);
+        btnSearch.setMaxWidth(Double.MAX_VALUE);
+
+        btnSearch.setOnAction(e -> {
+            String q = tfShSearch.getText().trim();
+            if (q.isEmpty()) return;
+            lblShCoords.setText("⏳ Recherche en cours…");
             lblShCoords.setTextFill(Color.web(YELLOW));
-            if (mapView != null) mapView.setEditMode(MapView.EditMode.ADD_NODE);
+            geocodeAddress(q,
+                (lat, lng) -> {
+                    pendingShLat = lat;
+                    pendingShLng = lng;
+                    lblShCoords.setText(String.format("📍 %.5f,  %.5f", lat, lng));
+                    lblShCoords.setTextFill(Color.web(GREEN));
+                    if (mapView != null) mapView.panTo(lat, lng);
+                    setGraphInfo("Position trouvée !");
+                },
+                () -> {
+                    lblShCoords.setText("❌ Adresse introuvable à Lyon");
+                    lblShCoords.setTextFill(Color.web(RED));
+                    setGraphInfo("Aucun résultat à Lyon — essayez : 'Bellecour', 'Gerland', 'Croix-Rousse'…");
+                });
+        });
+        tfShSearch.setOnAction(e -> btnSearch.fire());
+
+        Button btnRandom = smallBtn("🎲 Position aléatoire");
+        btnRandom.setMaxWidth(Double.MAX_VALUE);
+        btnRandom.setOnAction(e -> {
+            pendingShLat = 45.7640 + (Math.random() - 0.5) * 0.06;
+            pendingShLng = 4.8357  + (Math.random() - 0.5) * 0.08;
+            lblShCoords.setText(String.format("📍 %.5f,  %.5f (aléatoire)", pendingShLat, pendingShLng));
+            lblShCoords.setTextFill(Color.web(ORANGE));
+            if (mapView != null) mapView.panTo(pendingShLat, pendingShLng);
         });
 
         Button btnConfirm = actionBtn("＋ Créer le refuge", PURPLE);
@@ -813,17 +908,29 @@ public class SimulationView extends BorderPane {
             lbl("Capacité", FontWeight.BOLD, 9, MUTED), tfShCap,
             lbl("Description", FontWeight.BOLD, 9, MUTED), tfShDesc,
             new Separator(),
-            lbl("Position", FontWeight.BOLD, 9, MUTED), lblShCoords, btnPickMap,
+            lbl("Rechercher une adresse", FontWeight.BOLD, 9, MUTED),
+            tfShSearch, btnSearch,
+            lblShCoords, btnRandom,
             new Separator(),
             btnConfirm, btnCancel);
+
         v.getChildren().add(form);
         return v;
     }
 
+    private void resetNhForm() {
+        tfNhName.clear(); tfNhAlt.clear(); tfNhPop.clear(); tfNhDesc.clear();
+        tfNhSearch.clear();
+        pendingNhLat = Double.NaN; pendingNhLng = Double.NaN;
+        lblNhCoords.setText("📍 Position non définie");
+        lblNhCoords.setTextFill(Color.web(MUTED));
+    }
+
     private void resetShForm() {
         tfShName.clear(); tfShAlt.clear(); tfShCap.clear(); tfShDesc.clear();
-        pendingShLat = Double.NaN; pendingShLng = Double.NaN; waitingClickSh = false;
-        lblShCoords.setText("📍 Cliquez la carte");
+        tfShSearch.clear();
+        pendingShLat = Double.NaN; pendingShLng = Double.NaN;
+        lblShCoords.setText("📍 Position non définie");
         lblShCoords.setTextFill(Color.web(MUTED));
     }
 
@@ -886,19 +993,44 @@ public class SimulationView extends BorderPane {
         HBox stressRow = new HBox(8, rbAgCalme, rbAgStresse);
         stressRow.setAlignment(Pos.CENTER_LEFT);
 
-        lblAgZone = lbl("Aléatoire", FontWeight.BOLD, 10, MUTED);
-        Button btnPickZ = smallBtn("🗺 Choisir zone");
-        btnPickZ.setOnAction(e -> {
-            waitingAgZone = true;
-            lblAgZone.setText("Cliquez une zone…");
-            lblAgZone.setTextFill(Color.web(YELLOW));
-            setGraphInfo("Cliquez une zone de départ pour l'agent.");
+        // ── Zone de départ : ComboBox des zones existantes ─────────────
+        ComboBox<Zone> cbZone = new ComboBox<>();
+        cbZone.setMaxWidth(Double.MAX_VALUE);
+        cbZone.setPromptText("Aléatoire");
+        styleCombo(cbZone);
+
+        // Remplir avec les zones du modèle
+        if (modele != null) cbZone.getItems().addAll(modele.getZones());
+
+        // Affichage du nom de la zone dans la liste
+        cbZone.setCellFactory(lv -> new javafx.scene.control.ListCell<>() {
+            @Override protected void updateItem(Zone z, boolean empty) {
+                super.updateItem(z, empty);
+                setText(empty || z == null ? null : z.getName() + (z instanceof model.zone.Shelter ? " 🏠" : " 🏘"));
+                setStyle("-fx-background-color:#1e293b;-fx-text-fill:" + TEXT + ";-fx-font-size:10px;");
+            }
         });
-        Button btnClearZ = smallBtn("↺ Aléatoire");
-        btnClearZ.setOnAction(e -> {
-            waitingAgZone = false; pendingAgZone = null;
-            lblAgZone.setText("Aléatoire");
-            lblAgZone.setTextFill(Color.web(MUTED));
+        cbZone.setButtonCell(new javafx.scene.control.ListCell<>() {
+            @Override protected void updateItem(Zone z, boolean empty) {
+                super.updateItem(z, empty);
+                setText(empty || z == null ? "Aléatoire" : z.getName() + (z instanceof model.zone.Shelter ? " 🏠" : " 🏘"));
+                setStyle("-fx-background-color:#1e293b;-fx-text-fill:" + TEXT + ";-fx-font-size:10px;");
+            }
+        });
+
+        // Mettre à jour pendingAgZone à la sélection
+        cbZone.valueProperty().addListener((o, ov, nv) -> {
+            pendingAgZone = nv;
+            if (nv != null && mapView != null) mapView.panTo(nv.getLatitude(), nv.getLongitude());
+        });
+
+        // Bouton rafraîchir la liste (si des zones ont été ajoutées entre temps)
+        Button btnRefresh = smallBtn("↺ Rafraîchir");
+        btnRefresh.setOnAction(e -> {
+            Zone sel = cbZone.getValue();
+            cbZone.getItems().clear();
+            if (modele != null) cbZone.getItems().addAll(modele.getZones());
+            if (sel != null && cbZone.getItems().contains(sel)) cbZone.setValue(sel);
         });
 
         Button btnConfirm = actionBtn("＋ Ajouter l'agent", BLUE);
@@ -918,21 +1050,20 @@ public class SimulationView extends BorderPane {
             lbl("État", FontWeight.BOLD, 9, MUTED), stressRow,
             new Separator(),
             lbl("Zone de départ", FontWeight.BOLD, 9, MUTED),
-            lblAgZone, new HBox(4, btnPickZ, btnClearZ),
+            cbZone, btnRefresh,
             new Separator(),
             btnConfirm, btnCancel);
+
         v.getChildren().add(form);
         return v;
     }
-
     private void resetAgentForm() {
         cbAgentRole.setValue("Citoyen");
         tfAgFn.clear(); tfAgLn.clear(); tfAgAge.clear();
         slAgSpeed.setValue(1.0);
         rbAgCalme.setSelected(true);
-        pendingAgZone = null; waitingAgZone = false;
-        lblAgZone.setText("Aléatoire");
-        lblAgZone.setTextFill(Color.web(MUTED));
+        pendingAgZone = null;
+        waitingAgZone = false;
     }
 
     private void confirmAddAgent() {
@@ -1618,4 +1749,54 @@ public class SimulationView extends BorderPane {
         showRightPanel(panelAddAgent);
         resetAgentForm();
     }
+
+    /**
+     * Cherche une adresse via Nominatim OSM et appelle le callback avec lat/lng trouvés.
+     * Exécuté dans un thread séparé pour ne pas bloquer l'UI.
+     */
+private void geocodeAddress(String query, java.util.function.BiConsumer<Double, Double> onResult, Runnable onNotFound) {
+    new Thread(() -> {
+        try {
+            // Forcer la recherche dans Lyon
+            String fullQuery = query + ", Lyon, France";
+            String encoded = java.net.URLEncoder.encode(fullQuery, java.nio.charset.StandardCharsets.UTF_8);
+            String url = "https://nominatim.openstreetmap.org/search?q=" + encoded
+                    + "&format=json&limit=1&countrycodes=fr"
+                    + "&viewbox=4.7700,45.7100,4.9000,45.8200&bounded=1";
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection)
+                    new java.net.URL(url).openConnection();
+            conn.setRequestProperty("User-Agent", "FloodSimulation/1.0");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+
+            java.io.InputStream is = conn.getInputStream();
+            String json = new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            is.close();
+
+            if (json.contains("\"lat\"")) {
+                int latIdx = json.indexOf("\"lat\"") + 7;
+                int latEnd = json.indexOf("\"", latIdx);
+                int lngIdx = json.indexOf("\"lon\"") + 7;
+                int lngEnd = json.indexOf("\"", lngIdx);
+                double lat = Double.parseDouble(json.substring(latIdx, latEnd));
+                double lng = Double.parseDouble(json.substring(lngIdx, lngEnd));
+
+                // Vérifier que le résultat est bien dans la bounding box de Lyon
+                if (lat >= 45.7100 && lat <= 45.8200 && lng >= 4.7700 && lng <= 4.9000) {
+                    Platform.runLater(() -> onResult.accept(lat, lng));
+                } else {
+                    Platform.runLater(onNotFound);
+                }
+            } else {
+                Platform.runLater(onNotFound);
+            }
+        } catch (Exception ex) {
+            Platform.runLater(onNotFound);
+        }
+    }, "geocode-thread").start();
 }
+
+
+}
+
+
