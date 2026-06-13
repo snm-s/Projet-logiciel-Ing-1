@@ -1,23 +1,20 @@
 package controller.AdminPage;
-import com.fasterxml.jackson.core.type.TypeReference;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import model.agent.Agent;
-import model.agent.AdminAgent;
 import model.agent.Citizen;
 import model.agent.RescueAgent;
 import model.simulation.FloodSimulation;
 import model.simulation.SimulationDataService;
 import model.zone.Zone;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * AdminController
@@ -54,9 +51,15 @@ public class AdminController {
      * Plus de lecture JSON directe.
      */
     public void loadAgents() {
-        List<Agent> live = simulation.getAgents();
-        allAgents.setAll(live != null ? live : List.of());
+        List<Agent> agents = dataService.loadAgents();
+    
+        allAgents.setAll(agents != null ? agents : List.of());
+    
+        if (simulation != null && agents != null) {
+            simulation.setAgents(agents);
+        }
     }
+    
     public void loadZones() {
         List<Zone> live = simulation.getZones();
         allZones.setAll(live != null ? live : List.of());
