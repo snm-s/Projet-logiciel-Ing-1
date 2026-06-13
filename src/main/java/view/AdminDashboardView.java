@@ -397,7 +397,14 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
     private VBox buildStateChart() {
         VBox box = new VBox(10);
         box.setPadding(new Insets(16));
-        box.setStyle("-fx-background-color: " + BG_PANEL + "; -fx-background-radius: 10;");
+        box.setStyle(
+            "-fx-background-color: rgba(8,22,42,0.85);" +
+            "-fx-background-radius: 24;" +
+            "-fx-border-radius: 24;" +
+            "-fx-border-color: rgba(255,255,255,0.08);" +
+            "-fx-border-width: 1;" +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.45), 25, 0, 0, 10);"
+        );
 
         Label title = new Label("Répartition états citoyens");
         title.setFont(Font.font("Segoe UI", FontWeight.BOLD, 14));
@@ -429,12 +436,12 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
     private VBox statusPanel(String title, Map<String, Long> data, String accent) {
         VBox box = new VBox(10);
         box.setPadding(new Insets(16));
-        box.setPrefWidth(260);
-        box.setMinWidth(260);
+        box.setPrefWidth(500);
+        box.setMinWidth(500);
         box.setStyle("-fx-background-color: " + BG_PANEL + "; -fx-background-radius: 10;");
 
         Label lbl = new Label(title);
-        lbl.setFont(Font.font("Segoe UI", FontWeight.BOLD, 15));
+        lbl.setFont(Font.font("Segoe UI", FontWeight.BOLD, 22));
         lbl.setTextFill(Color.web(TEXT_PRIMARY));
         lbl.setWrapText(true);
         box.getChildren().add(lbl);
@@ -466,11 +473,11 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
 
             StackPane track = new StackPane();
             track.setStyle("-fx-background-color: " + BORDER + "; -fx-background-radius: 3;");
-            track.setPrefHeight(4);
+            track.setPrefHeight(10);
             track.setMaxWidth(Double.MAX_VALUE);
 
             Region fill = new Region();
-            fill.setPrefHeight(4);
+            fill.setPrefHeight(10);
             fill.setPrefWidth(total > 0 ? ((double) count / total) * 200 : 0);
             fill.setStyle("-fx-background-color: " + stateColor(state) + "; -fx-background-radius: 3;");
 
@@ -699,35 +706,58 @@ if (!"admin".equals(type)) {
     }
 
     private void showStats() {
-        VBox root = new VBox(20);
-        root.setPadding(new Insets(24));
+        VBox root = new VBox(28);
+        root.setPadding(new Insets(32));
         root.setStyle("-fx-background-color: transparent;");
-
+    
         Label titleLbl = new Label("Statistiques");
-        titleLbl.setFont(Font.font("Segoe UI", FontWeight.BOLD, 22));
+        titleLbl.setFont(Font.font("Segoe UI", FontWeight.BOLD, 34));
         titleLbl.setTextFill(Color.web(TEXT_PRIMARY));
-
-        HBox panels = new HBox(16,
-                statusPanel("États Citoyens", ctrl.getCitizenStateBreakdown(), ACCENT_BLUE),
-                statusPanel("États Agents Secours", ctrl.getRescueStateBreakdown(), ACCENT_GREEN)
+    
+        Region titleLine = new Region();
+        titleLine.setPrefWidth(80);
+        titleLine.setMaxWidth(80);
+        titleLine.setPrefHeight(5);
+        titleLine.setStyle("-fx-background-color:" + ACCENT_BLUE + "; -fx-background-radius: 99;");
+    
+        HBox panels = new HBox(24,
+                statusPanel("États Citoyens", ctrl.getCitizenStateBreakdown(), ACCENT_GREEN),
+                statusPanel("États Agents Secours", ctrl.getRescueStateBreakdown(), ACCENT_BLUE)
         );
-
-        GridPane grid = new GridPane();
-        grid.setHgap(16);
-        grid.setVgap(12);
-        grid.setPadding(new Insets(16));
-        grid.setStyle("-fx-background-color: " + BG_PANEL + "; -fx-background-radius: 10;");
-
-        addStatRow(grid, 0, "Total agents", String.valueOf(ctrl.getTotalAgents()), TEXT_PRIMARY);
-        addStatRow(grid, 1, "Citoyens", String.valueOf(ctrl.getTotalCitizens()), ACCENT_BLUE);
-        addStatRow(grid, 2, "Agents de secours", String.valueOf(ctrl.getTotalRescueAgents()), ACCENT_GREEN);
-        addStatRow(grid, 3, "Citoyens à risque", String.valueOf(ctrl.getAtRiskCount()), ACCENT_ORANGE);
-        addStatRow(grid, 4, "Citoyens sauvés", String.valueOf(ctrl.getSavedCount()), ACCENT_GREEN);
-        addStatRow(grid, 5, "Agents en intervention", String.valueOf(ctrl.getActiveRescueCount()), ACCENT_RED);
-        addStatRow(grid, 6, "Agents disponibles", String.valueOf(ctrl.getAvailableRescueCount()), ACCENT_CYAN);
-
-        root.getChildren().addAll(titleLbl, panels, grid);
-
+    
+        VBox summaryBox = new VBox(22);
+        summaryBox.setPadding(new Insets(24));
+        summaryBox.setStyle(
+                "-fx-background-color: rgba(8,22,42,0.88);" +
+                "-fx-background-radius: 26;" +
+                "-fx-border-radius: 26;" +
+                "-fx-border-color: rgba(34,211,238,0.25);" +
+                "-fx-border-width: 1;" +
+                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.45), 28, 0, 0, 10);"
+        );
+    
+        Label summaryTitle = new Label("Résumé global");
+        summaryTitle.setFont(Font.font("Segoe UI", FontWeight.BOLD, 22));
+        summaryTitle.setTextFill(Color.web(TEXT_PRIMARY));
+    
+        FlowPane statsCards = new FlowPane();
+        statsCards.setHgap(18);
+        statsCards.setVgap(18);
+    
+        statsCards.getChildren().addAll(
+                kpiCard("Total agents", String.valueOf(ctrl.getTotalAgents()), ACCENT_BLUE, "AG"),
+                kpiCard("Citoyens", String.valueOf(ctrl.getTotalCitizens()), ACCENT_GREEN, "CI"),
+                kpiCard("Agents secours", String.valueOf(ctrl.getTotalRescueAgents()), ACCENT_BLUE, "SE"),
+                kpiCard("Citoyens à risque", String.valueOf(ctrl.getAtRiskCount()), ACCENT_ORANGE, "!"),
+                kpiCard("Citoyens sauvés", String.valueOf(ctrl.getSavedCount()), ACCENT_GREEN, "OK"),
+                kpiCard("Agents en intervention", String.valueOf(ctrl.getActiveRescueCount()), ACCENT_RED, "IN"),
+                kpiCard("Agents disponibles", String.valueOf(ctrl.getAvailableRescueCount()), ACCENT_CYAN, "DP")
+        );
+    
+        summaryBox.getChildren().addAll(summaryTitle, statsCards);
+    
+        root.getChildren().addAll(titleLbl, titleLine, panels, summaryBox);
+    
         fadeIn(root);
         contentArea.getChildren().setAll(scrollWrap(root));
     }
