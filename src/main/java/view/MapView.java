@@ -394,15 +394,15 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
 
     public void setFloodSpeedFromSlider(double sliderValue) {
         // Slider range [200..5000]ms, where low = fast and high = slow.
-        // We keep the flood visible while leaving enough time for evacuation.
+        // We keep the flood clearly visible but much slower by default.
         double clamped = Math.max(200.0, Math.min(5000.0, sliderValue));
         double ratioFast = (5000.0 - clamped) / 4800.0; // 0=slow, 1=fast
 
-        // Timer cadence: slow 320ms -> fast 140ms
-        floodTimerDelayMs = (int) Math.round(320.0 - (180.0 * ratioFast));
+        // Timer cadence: slow 450ms -> fast 150ms
+        floodTimerDelayMs = (int) Math.round(450.0 - (300.0 * ratioFast));
 
-        // Radius growth per tick: slow 0.90px -> fast 2.00px
-        floodRadiusStep = 0.90 + (1.10 * ratioFast);
+        // Radius growth per tick: slow 0.35px -> fast 1.60px
+        floodRadiusStep = 0.35 + (1.25 * ratioFast);
     
         if (floodTimer != null && floodTimer.isRunning()) {
             startFloodPropagation();
@@ -655,7 +655,7 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
             }
     
             if (touched) {
-                edge.setFloodLevel(edge.getFloodLevel() + 0.07);
+                edge.setFloodLevel(edge.getFloodLevel() + 0.05);
             }
         }
     

@@ -285,6 +285,11 @@ public class MapController {
         }
 
         if (agent instanceof Citizen c && destination instanceof Shelter) {
+    c.setState(CitizenState.SAFE);
+    Main.getSharedSimulation().recordEvacuationArrival(agent, destination);
+}
+
+        if (agent instanceof Citizen c && destination instanceof Shelter) {
             c.setState(CitizenState.SAFE);
             Main.getSharedSimulation().recordEvacuationArrival(agent, destination);
         }
