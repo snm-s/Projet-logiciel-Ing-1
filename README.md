@@ -56,14 +56,7 @@ Matière : Agents et Graphes &nbsp;·&nbsp; Tutrice : D. Zaouche &nbsp;·&nbsp; 
   </tr>
 </table>
 
-</div>
 
-| Encadrement | Nom |
-|---|---|
-| Tutrice | D. Zaouche |
-| Jury | S. Hawari |
-
-</div>
 
 | Formation | Groupe | Matière | Année |
 |:---------:|:------:|:-------:|:-----:|
