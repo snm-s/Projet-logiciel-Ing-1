@@ -1,13 +1,13 @@
 package controller.AdminPage;
 
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
 import javafx.application.Platform;
 import model.alert.Alert;
 import model.alert.AlertSystem;
 import view.AdminAlertsView;
-
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
 
 public class AdminAlertsController {
 

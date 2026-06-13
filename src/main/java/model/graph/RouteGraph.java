@@ -26,6 +26,7 @@ import model.agent.Agent;
 import model.agent.RescueAgent;
 import model.algorithms.EvacuationPath;
 import model.algorithms.EvacuationRouter;
+import model.graph.Edge.WaypointProvider;
 import model.zone.Shelter;
 import model.zone.Zone;
 
@@ -45,6 +46,8 @@ public class RouteGraph {
     private static final Logger LOG       = Logger.getLogger(RouteGraph.class.getName());
     private static final String JSON_PATH = "/lyon_routes.json";
     private static final String OSRM_BASE = "https://router.project-osrm.org/route/v1/driving/";
+    private static final int DEFAULT_CAPACITY_EDGE  = 20;
+    private final WaypointProvider waypointProvider = this::fetchOsrmRoute;
 
     // ─── Topologie ────────────────────────────────────────────────────────
     private final List<Edge>         edges   = new ArrayList<>();
@@ -117,7 +120,7 @@ public class RouteGraph {
             .filter(z -> z instanceof Shelter)
             .collect(Collectors.toList());
 
-        int nextId = edges.stream().mapToInt(Edge::getId).max().orElse(0) + 1;
+        final int[] nextId = { edges.stream().mapToInt(Edge::getId).max().orElse(0) + 1 };
 
         for (Zone from : allZones) {
             // Connexions locales : seulement les 2 voisins les plus proches
@@ -140,20 +143,47 @@ public class RouteGraph {
                 .min(Comparator.comparingDouble(s -> geoDistanceSquared(from, s)))
                 .ifPresent(nearest -> {
                     if (!hasEdgeBetween(from, nearest)) {
-                        edges.add(new Edge(nextId, from.getName() + " → " + nearest.getName(),
+                        edges.add(new Edge(nextId[0]++, from.getName() + " → " + nearest.getName(),
                             from, nearest, fallbackLine(from, nearest), 5, 0, 0));
                     }
                 });
         }
     }
 
-    private boolean hasEdgeBetween(Zone a, Zone b) {
+    public boolean hasEdgeBetween(Zone a, Zone b) {
         if (a == null || b == null) return true;
         return edges.stream().anyMatch(e ->
             (e.getFromZone().getId() == a.getId() && e.getToZone().getId() == b.getId()) ||
             (e.getFromZone().getId() == b.getId() && e.getToZone().getId() == a.getId())
         );
     }
+
+    public Edge addEdge(Zone from, Zone to) {
+        if (from == null || to == null) return null;
+        if (from.getId() == to.getId()) return null;
+
+        // éviter doublons
+        if (hasEdgeBetween(from, to)) return null;
+
+        int id = edges.stream()
+            .mapToInt(Edge::getId)
+            .max()
+            .orElse(0) + 1;
+
+        String name = from.getName() + " → " + to.getName();
+
+        List<GeoPosition> wp = fetchOsrmRoute(from, to);
+
+        Edge edge = new Edge(id,name,from,to,wp, DEFAULT_CAPACITY_EDGE, 0,0);
+
+        edges.add(edge);
+
+        // important : recalcul état si UI dynamique
+        refreshAllEdges();
+        LOG.fine("Edge ajoutee : " + name);
+        return edge;
+    }
+
 
     private double geoDistanceSquared(Zone a, Zone b) {
         double dLat = a.getLatitude() - b.getLatitude();
@@ -187,7 +217,16 @@ public class RouteGraph {
             return null;
         }
 
-        EvacuationPath path = router.findNearestSafe(from, safeZones);
+        // Consigne métier : viser d'abord le refuge géographiquement le plus proche,
+        // puis calculer l'itinéraire Dijkstra vers ce refuge.
+        List<Zone> sheltersByDistance = new ArrayList<>(safeZones);
+        sheltersByDistance.sort(Comparator.comparingDouble(z -> geoDistanceSquared(from, z)));
+
+        EvacuationPath path = null;
+        for (Zone shelter : sheltersByDistance) {
+            path = router.findPath(from, shelter);
+            if (path != null) break;
+        }
         if (path == null) {
             LOG.fine("Aucun chemin trouvé depuis " + from.getName()
                 + " pour l'agent " + agent.getId());
@@ -439,6 +478,10 @@ public class RouteGraph {
     }
     private List<GeoPosition> fallbackEmpty() { return new ArrayList<>(); }
 
+    public WaypointProvider getWaypointProvider() {
+        return waypointProvider;
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // PARSING JSON
     // ─────────────────────────────────────────────────────────────────────
@@ -501,6 +544,16 @@ public class RouteGraph {
         );
     
         simulateFlows();
+        refreshAllEdges();
+    }
+
+    /**
+     * Supprime une arête du graphe par son identifiant.
+     * Les mouvements actifs utilisant cette arête doivent être gérés
+     * en amont par SimulationController.removeEdgeWithAgentRelocation().
+     */
+    public void removeEdge(int edgeId) {
+        edges.removeIf(e -> e.getId() == edgeId);
         refreshAllEdges();
     }
 

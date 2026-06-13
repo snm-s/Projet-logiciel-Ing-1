@@ -28,8 +28,8 @@ public class Edge {
     private final Zone   fromZone;
     private final Zone   toZone;
     private final List<GeoPosition> waypoints;
-    private final int    capacityMax;   // véhicules/heure
-    private int          currentFlow;   // flux courant (agents en transit)
+    private int    capacityMax;   // véhicules/heure
+    private int          currentFlow=0;   // flux courant (agents en transit)
     private int          floodedCount;  // nombre de fois inondée (statistiques)
     private EdgeState        state;
     private double floodLevel = 0.0;
@@ -126,6 +126,8 @@ public class Edge {
         refreshState();
     }
 
+    public void setCapacityMax(int ca) {capacityMax=ca;}
+
     public void addFlow(int delta) {
         setCurrentFlow(this.currentFlow + delta);
     }
@@ -178,6 +180,23 @@ public class Edge {
         }
 
         return (dist / Math.max(0.1, speedFactor)) + statePenalty + dist * congestionRatio * 2.0;
+    }
+
+    public void refreshWaypoints(Zone changedZone, WaypointProvider provider) {
+        if (changedZone == null || provider == null) return;
+
+        boolean isRelated =
+                fromZone.getId() == changedZone.getId()
+            || toZone.getId() == changedZone.getId();
+
+        if (!isRelated) return;
+
+        List<GeoPosition> newWaypoints = provider.compute(fromZone, toZone);
+
+        if (newWaypoints == null || newWaypoints.isEmpty()) return;
+
+        this.waypoints.clear();
+        this.waypoints.addAll(newWaypoints);
     }
 
     /**
@@ -300,5 +319,10 @@ public class Edge {
     public String toString() {
         return String.format("Edge[%d: %s → %s, state=%s, flow=%d/%d]",
             id, fromZone.getName(), toZone.getName(), state, currentFlow, capacityMax);
+    }
+
+    @FunctionalInterface
+    public interface WaypointProvider {
+        List<GeoPosition> compute(Zone from, Zone to);
     }
 }

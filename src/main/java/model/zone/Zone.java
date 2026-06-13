@@ -71,6 +71,10 @@ public abstract class Zone {
         return description;
     }
 
+    public int getMaxCapacity() {
+        return 50; // valeur par défaut dans Zone.java
+    }
+
     @JsonIgnore
     public boolean isFlooded() {
         return flooded;
@@ -89,6 +93,10 @@ public abstract class Zone {
     public void setEvacuated(boolean evacuated) {
         this.evacuated = evacuated;
     }
+    public void setLongitude(double l) {this.longitude=l;}
+    public void setLatitude(double l) {this.latitude=l;}
+    public void setAltitude(double l) {this.altitude=l;}
+    public void setName(String nm) {this.name = nm;}
 
     public void reset() {
         this.flooded = false;

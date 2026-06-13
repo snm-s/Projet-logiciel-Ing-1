@@ -77,11 +77,18 @@ public class MapView implements ZoneUpdateListener, Observer<Zone> {
     private GraphNode pendingEdgeStart;
     private Object selectedGraphElement;
     private boolean manualFloodMode = false;
-private GeoPosition floodCenter = null;
-private double floodRadius = 0;
-private javax.swing.Timer floodTimer;
-private int floodTimerDelayMs = 300;
-private double floodRadiusStep = 2.0;
+    private GeoPosition floodCenter = null;
+    private double floodRadius = 0;
+    private javax.swing.Timer floodTimer;
+    private int floodTimerDelayMs = 300;
+    private double floodRadiusStep = 2.0;
+
+    private java.util.function.Consumer<model.graph.Edge> onEdgeSelected;
+    private java.util.function.BiConsumer<Double, Double> onMapClicked;
+    private boolean lastClickConsumedByEdge = false;
+    private model.graph.Edge selectedEdge;
+    private boolean densityOverlayEnabled = false;
+    private Runnable onNodeMoveFinished;
 
     private static final GeoPosition LYON_CENTER = new GeoPosition(45.7640, 4.8357);
     private static final int DEFAULT_ZOOM = 6;
@@ -135,7 +142,13 @@ private double floodRadiusStep = 2.0;
     }
 
     private void configureInteraction() {
-        PanMouseInputListener panListener = new PanMouseInputListener(mapViewer);
+        PanMouseInputListener panListener = new PanMouseInputListener(mapViewer) {
+            @Override public void mouseDragged(MouseEvent e) {
+                // bloquer le pan si on est en train de dragger un nœud ou agent
+                if (draggedNode != null || draggedAgent != null) return;
+                super.mouseDragged(e);
+            }
+        };
         mapViewer.addMouseListener(panListener);
         mapViewer.addMouseMotionListener(panListener);
         mapViewer.addMouseWheelListener(new ZoomMouseWheelListenerCursor(mapViewer));
@@ -187,7 +200,17 @@ private double floodRadiusStep = 2.0;
                     return;
                 }
 
+                if (hit instanceof Edge edge) {
+                    selectedEdge = edge;
+                    lastClickConsumedByEdge = true; 
+                    if (onEdgeSelected != null) onEdgeSelected.accept(edge);
+                    setInfo(graphOverlayPainter.infoFor(edge));
+                    mapViewer.repaint();
+                    return;
+                }
+
                 if (hit != null) {
+                    lastClickConsumedByEdge = false;
                     selectedGraphElement = hit;
                     graphOverlayPainter.setSelected(hit);
                     setInfo(graphOverlayPainter.infoFor(hit));
@@ -201,27 +224,27 @@ private double floodRadiusStep = 2.0;
             @Override public void mousePressed(MouseEvent e) {
                 Agent agent = agentPainter.findAgentAt(mapViewer, e.getPoint());
                 if (agent != null) {
-                    selectedGraphElement = agent; 
-            
+                    selectedGraphElement = agent;
                     draggedAgent = agent;
                     agentPainter.startDrag(agent);
-            
                     if (onAgentSelected != null) onAgentSelected.accept(agent);
-            
                     setInfo("Agent sélectionné : " + nameOf(agent));
                     mapViewer.setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
                     mapViewer.repaint();
                     e.consume();
                     return;
                 }
-            
-                Object hit = graphOverlayPainter.hitTest(mapViewer, e.getPoint());
-                if (editMode == EditMode.MOVE_NODE && hit instanceof GraphNode node) {
-                    draggedNode = node;
-                    selectedGraphElement = node;
-                    graphOverlayPainter.setSelected(node);
-                    mapViewer.setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
-                    e.consume();
+
+                if (editMode == EditMode.MOVE_NODE) {
+                    // chercher aussi dans baseNodes (zones réelles)
+                    Object hit = graphOverlayPainter.hitTest(mapViewer, e.getPoint());
+                    if (hit instanceof GraphNode node) {
+                        draggedNode = node;
+                        selectedGraphElement = node;
+                        graphOverlayPainter.setSelected(node);
+                        mapViewer.setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
+                        e.consume();
+                    }
                 }
             }
             @Override public void mouseDragged(MouseEvent e) {
@@ -236,6 +259,13 @@ private double floodRadiusStep = 2.0;
                     GeoPosition gp = mapViewer.convertPointToGeoPosition(e.getPoint());
                     draggedNode.lat = gp.getLatitude();
                     draggedNode.lng = gp.getLongitude();
+
+                    // NOUVEAU — synchroniser la Zone réelle du modèle
+                    if (draggedNode.zone != null) {
+                        draggedNode.zone.setLatitude(gp.getLatitude());
+                        draggedNode.zone.setLongitude(gp.getLongitude());
+                    }
+
                     setInfo("Nœud déplacé : " + draggedNode.name);
                     mapViewer.repaint();
                     e.consume();
@@ -247,12 +277,18 @@ private double floodRadiusStep = 2.0;
                     agentPainter.endDrag();
                     setInfo("Agent relâché et replacé sur le graphe : " + nameOf(draggedAgent));
                     draggedAgent = null;
+                    if (onNodeMoveFinished != null) {
+                        Platform.runLater(onNodeMoveFinished);
+                    }
                     mapViewer.setCursor(Cursor.getDefaultCursor());
                     mapViewer.repaint();
                     e.consume();
                 }
                 if (draggedNode != null) {
                     draggedNode = null;
+                    if (onNodeMoveFinished != null) {
+                        Platform.runLater(onNodeMoveFinished);
+                    }
                     mapViewer.setCursor(Cursor.getDefaultCursor());
                     mapViewer.repaint();
                     e.consume();
@@ -304,6 +340,11 @@ private double floodRadiusStep = 2.0;
         SwingUtilities.invokeLater(mapViewer::repaint);
     }
     
+    public void setLastClickConsumedByEdge(boolean v) { this.lastClickConsumedByEdge = v; }
+    public boolean wasLastClickConsumedByEdge() { return lastClickConsumedByEdge; }
+
+    public void setOnNodeMoveFinished(Runnable callback) { this.onNodeMoveFinished = callback; }
+
     public void setAgents(List<Agent> agents) {
         this.agents = agents == null ? new ArrayList<>() : new ArrayList<>(agents);
     
@@ -381,13 +422,32 @@ private double floodRadiusStep = 2.0;
     public EditMode getEditMode() { return editMode; }
 
     public void setFloodSpeedFromSlider(double sliderValue) {
-        floodTimerDelayMs = (int) sliderValue;
-    
-        floodRadiusStep = Math.max(0.5, 1000.0 / sliderValue);
+        // Slider range [200..5000]ms, where low = fast and high = slow.
+        // We keep the flood clearly visible but much slower by default.
+        double clamped = Math.max(200.0, Math.min(5000.0, sliderValue));
+        double ratioFast = (5000.0 - clamped) / 4800.0; // 0=slow, 1=fast
+
+        // Timer cadence: slow 450ms -> fast 150ms
+        floodTimerDelayMs = (int) Math.round(450.0 - (300.0 * ratioFast));
+
+        // Radius growth per tick: slow 0.35px -> fast 1.60px
+        floodRadiusStep = 0.35 + (1.25 * ratioFast);
     
         if (floodTimer != null && floodTimer.isRunning()) {
             startFloodPropagation();
         }
+    }
+
+    public void pauseFloodPropagation() {
+        if (floodTimer != null) {
+            floodTimer.stop();
+        }
+    }
+
+    public void resumeFloodPropagation() {
+        if (floodCenter == null) return;
+        if (floodRadius >= 260) return;
+        startFloodPropagation();
     }
 
     public void addRandomNodes(int count) {
@@ -441,6 +501,9 @@ private double floodRadiusStep = 2.0;
         mapViewer.repaint();
     }
 
+    public void setOnMapClicked(java.util.function.BiConsumer<Double, Double> callback) {
+        this.onMapClicked = callback;
+    }
     public void deleteSelectedGraphElement() { deleteGraphElement(selectedGraphElement); }
 
     private void deleteGraphElement(Object element) {
@@ -624,15 +687,40 @@ private double floodRadiusStep = 2.0;
             }
     
             if (touched) {
-                edge.setFloodLevel(edge.getFloodLevel() + 0.12);
+                edge.setFloodLevel(edge.getFloodLevel() + 0.05);
             }
         }
     
         mapViewer.repaint();
     }
 
+    public void setOnEdgeSelected(java.util.function.Consumer<model.graph.Edge> listener) {
+    this.onEdgeSelected = listener; // stocker et appeler lors du clic sur une arête
+    }
+ 
+    /** Retourne l'arête actuellement sélectionnée dans la vue, ou null. */
+    public model.graph.Edge getSelectedEdge() {
+        return this.selectedEdge; // champ à maintenir lors de la sélection
+    }
+    
+    /**
+     * Active ou désactive la superposition de densité (gradient de couleurs
+     * sur les arêtes et nœuds selon leur taux d'occupation).
+     * Quand activé, MapView doit recalculer les couleurs à chaque repaint
+     * en interrogeant SimulationController.getEdgeDensity() / getZoneDensity().
+     */
+    public void setDensityOverlayEnabled(boolean enabled) {
+        this.densityOverlayEnabled = enabled;
+        SwingUtilities.invokeLater(mapViewer::repaint);
+    }
+
     private void handleMapClick(Point screenPoint) {
+        
+        lastClickConsumedByEdge = false;
         GeoPosition clickPos = mapViewer.convertPointToGeoPosition(screenPoint);
+        if (onMapClicked != null) {
+            Platform.runLater(() -> onMapClicked.accept(clickPos.getLatitude(), clickPos.getLongitude()));
+        }
 
         if (manualFloodMode) {
             floodCenter = clickPos;
@@ -916,8 +1004,9 @@ private double floodRadiusStep = 2.0;
             g2.drawOval((int) p.getX() - r, (int) p.getY() - r, r * 2, r * 2);
         }
         Object hitTest(JXMapViewer map, Point p) {
-            for (GraphNode n : visualNodes) if (map.convertGeoPositionToPoint(n.geo()).distance(p) < 15) return n;
-            for (GraphNode n : baseNodes) if (map.convertGeoPositionToPoint(n.geo()).distance(p) < 15) return n;
+            // MODIFIÉ — baseNodes en priorité, rayon 18px au lieu de 15
+            for (GraphNode n : baseNodes)  if (map.convertGeoPositionToPoint(n.geo()).distance(p) < 18) return n;
+            for (GraphNode n : visualNodes) if (map.convertGeoPositionToPoint(n.geo()).distance(p) < 18) return n;
             for (GraphEdge e : visualEdges) {
                 Point2D a = map.convertGeoPositionToPoint(e.from.geo());
                 Point2D b = map.convertGeoPositionToPoint(e.to.geo());

@@ -3,6 +3,7 @@ package model.agent;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.time.Period;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
@@ -37,6 +38,9 @@ public abstract class Agent {
     private String country;
 
     private Node position;
+    private Zone currentZone;
+
+
     private Node destination;
     private double maxSpeed;
     private double congestionTolerance;
@@ -108,6 +112,27 @@ public abstract class Agent {
         this.country = country;
     }
 
+    public Zone getCurrentZone() {
+        return currentZone;
+    }
+
+    public void setCurrentZone(Zone currentZone) {
+        this.currentZone = currentZone;
+    }
+
+
+    public int getAge() {
+        if (birthDate == null) {
+            return 0;
+        }
+        return Period.between(birthDate, LocalDate.now()).getYears();
+    }
+
+    public void setAge(int age) {
+        this.birthDate = LocalDate.now().minusYears(age);
+    }
+
+
     public Agent() {
         this.maxSpeed = 3.0;
         this.congestionTolerance = 1.0;
@@ -121,6 +146,12 @@ public abstract class Agent {
         this.maxSpeed = 3.0;
         this.congestionTolerance = 1.0;
     }
+
+    public Agent(int id,String firstName,String lastName, Node position,Zone currentZone) {
+        this(id, firstName, lastName, position);
+        setCurrentZone(currentZone);
+    }
+    
 
     // Getters et Setters basiques pour que le code compile
     public int getId() {
@@ -177,6 +208,4 @@ public abstract class Agent {
     public void setCongestionTolerance(double congestionTolerance) {
         this.congestionTolerance = congestionTolerance;
     }
-
-
 }

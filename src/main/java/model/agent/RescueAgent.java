@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import model.enums.RescueState;
 import model.graph.Node;
+import model.zone.Zone;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class RescueAgent extends Agent {
@@ -42,6 +43,11 @@ public class RescueAgent extends Agent {
     public RescueAgent(int id, String firstName, String lastName, Node position) {
         super(id, firstName, lastName, position);
         this.state = RescueState.DISPONIBLE; // État par défaut
+    }
+
+        public RescueAgent(int id,String firstName,String lastName, Node position,Zone currentZone) {
+        super(id, firstName, lastName, position, currentZone);
+        this.state = RescueState.INDISPONIBLE;
     }
 
 

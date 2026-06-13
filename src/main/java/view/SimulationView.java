@@ -1,22 +1,29 @@
 package view;
 
+import java.io.File;
 import java.util.List;
 
 import app.Main;
 import controller.AdminPage.SimulationController;
+import controller.AdminPage.SimulationController.AgentRole;
+import controller.AdminPage.SimulationController.NodeEdgeStats;
 import controller.MapController;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Slider;
-import javafx.scene.control.ToggleButton;
+import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.GridPane;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -26,695 +33,1809 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import javafx.stage.FileChooser;
 import javafx.util.Duration;
 import model.agent.Agent;
+import model.agent.Citizen;
+import model.graph.Edge;
 import model.simulation.FloodSimulation;
 import model.zone.Zone;
 
 /**
- * Vue simulation : carte OSM + graphe interactif + agents Mii sur arêtes.
- * Couvre les consignes : nœuds/arêtes ajout/modif/déplacement/suppression,
- * ajout masse, agents ajoutés/supprimés, sélection/statistiques, vitesse, pause, pas.
+ * Vue principale de simulation — refonte complète.
+ *
+ * Structure :
+ *   TOP    → barre fixe 52px (retour + modes + chrono + vitesse + save/export)
+ *   LEFT   → panneau outils 220px (édition graphe, agents, sélection, trajet)
+ *   CENTER → carte OSM interactive
+ *   RIGHT  → panneau contextuel 240px (formulaires add/edit zone/edge/agent + légende)
+ *   BOTTOM → barre stats 80px
  */
 public class SimulationView extends BorderPane {
 
-    private static final String BG_DARK = "#0d1117";
-    private static final String BG_CARD = "#131b2e";
-    private static final String ACCENT_BLUE = "#3b82f6";
-    private static final String ACCENT_TEAL = "#06b6d4";
-    private static final String ACCENT_GREEN = "#22c55e";
-    private static final String ACCENT_ORANGE = "#f59e0b";
-    private static final String ACCENT_RED = "#ef4444";
-    private static final String TEXT_PRIMARY = "#f1f5f9";
-    private static final String TEXT_MUTED = "#94a3b8";
-    private static final String BORDER_COLOR = "#1e293b";
+    // ─── Palette ──────────────────────────────────────────────────────────
+    private static final String BG     = "#0d1117";
+    private static final String CARD   = "#131b2e";
+    private static final String BLUE   = "#3b82f6";
+    private static final String TEAL   = "#06b6d4";
+    private static final String GREEN  = "#22c55e";
+    private static final String ORANGE = "#f59e0b";
+    private static final String RED    = "#ef4444";
+    private static final String PURPLE = "#7c3aed";
+    private static final String YELLOW = "#eab308";
+    private static final String TEXT   = "#f1f5f9";
+    private static final String MUTED  = "#94a3b8";
+    private static final String BORDER = "#1e293b";
 
-    private final SimulationController controller;
-    private final FloodSimulation modele;
-    private MapController mapController;
-    private MapView mapView;
+    // ─── Contrôleurs ─────────────────────────────────────────────────────
+    private final SimulationController ctrl;
+    private final FloodSimulation      modele;
+    private MapController              mapCtrl;
+    private MapView                    mapView;
 
-    private Label lblSelectedZone, lblNiveauEauZone, lblStatutZone;
+    // ─── Labels stats globaux ─────────────────────────────────────────────
+    private Label lblStatus, lblTimer;
+    private Label lblNiveauActuel, lblNiveauMax;
     private Label lblPopRisque, lblPersonnesSec, lblAgentsActifs;
-    private Label lblAretesSures, lblAretesRisque, lblAretesInond, lblAretesCong, lblAretesOver;
-    private Label lblRefugesTotal, lblRefugesAccess, lblRefugesInacc;
-    private Label lblNiveauActuel, lblNiveauMax, lblTempsRestant, lblZoneNiveaux;
-    private Label lblTimer, lblSimStatus, lblVitesseVal, lblGraphInfo;
-    private Button btnPause, btnPlay, btnStop, btnAleatoire, btnManuelle;
-    private Slider sliderVitesse;
-    private ToggleButton[] zoneButtons;
-    private int selectedZoneIndex = 0;
-    private Timeline refreshTimeline;
-    private Timeline simTimeline;
+    private Label lblSures, lblRisque, lblCong, lblOver, lblInond;
+    private Label lblRefTotal, lblRefAccess, lblRefInacc;
+    private Label lblActifs, lblBloques, lblCongNds;
 
-    public SimulationView(SimulationController controller) {
-        this.controller = controller;
-        this.modele = controller != null ? controller.getModele() : null;
+    // ─── Panneau sélection (gauche) ───────────────────────────────────────
+    private VBox  panelSel;
+    private Label lblSelNom, lblSelType, lblSelStatus;
+    private Label lblSelAgents, lblSelPassed, lblSelSpeed, lblSelWait, lblSelCap;
 
+    // ─── Panneau trajet (gauche) ──────────────────────────────────────────
+    private VBox  panelPath;
+    private Label lblPathInfo;
+
+    // ─── Info graphe ──────────────────────────────────────────────────────
+    private Label lblGraphInfo;
+
+    // ─── Panneau droit contextuel ─────────────────────────────────────────
+    private VBox   rightContent;
+    private VBox   panelAddNeighborhood;
+    private VBox   panelAddShelter;
+    private VBox   panelAddAgent;
+    private VBox   panelEditZone;
+    private VBox   panelEditEdge;
+    private VBox   panelEditAgent;
+    private VBox   panelLegend;
+
+    // ─── Champs Add Neighborhood ──────────────────────────────────────────
+    private TextField tfNhName, tfNhAlt, tfNhPop, tfNhDesc;
+    private Label     lblNhCoords;
+    private double    pendingNhLat = Double.NaN, pendingNhLng = Double.NaN;
+    private boolean   waitingClickNh = false;
+
+    // ─── Champs Add Shelter ───────────────────────────────────────────────
+    private TextField tfShName, tfShAlt, tfShCap, tfShDesc;
+    private Label     lblShCoords;
+    private double    pendingShLat = Double.NaN, pendingShLng = Double.NaN;
+    private boolean   waitingClickSh = false;
+
+    // ─── Champs Add Agent ─────────────────────────────────────────────────
+    private ComboBox<String> cbAgentRole;
+    private TextField        tfAgFn, tfAgLn, tfAgAge;
+    private Slider           slAgSpeed;
+    private Label            lblAgSpeed;
+    private ToggleGroup      agStressGroup;
+    private RadioButton      rbAgCalme, rbAgStresse;
+    private Label            lblAgZone;
+    private Zone             pendingAgZone   = null;
+    private boolean          waitingAgZone   = false;
+
+    // ─── Champs Edit Zone ─────────────────────────────────────────────────
+    private TextField tfEzName, tfEzAlt, tfEzPop, tfEzDesc;
+    private Zone      editingZone = null;
+    private TextField tfNhSearch, tfShSearch;
+
+
+    // ─── Champs Edit Edge ─────────────────────────────────────────────────
+    private TextField tfEeCap;
+    private Edge      editingEdge = null;
+
+    // ─── Champs Edit Agent ────────────────────────────────────────────────
+    private TextField   tfEaFn, tfEaLn, tfEaAge;
+    private Slider      slEaSpeed;
+    private Label       lblEaSpeed;
+    private ToggleGroup eaStressGroup;
+    private RadioButton rbEaCalme, rbEaStresse;
+    private Agent       editingAgent = null;
+
+    // ─── Timelines ────────────────────────────────────────────────────────
+    private Timeline refreshLoop;
+    private Timeline simLoop;
+    private boolean  simRunning = false;
+
+    // ─── Mode d'édition courant ───────────────────────────────────────────
+    private enum ToolMode { NONE, ADD_NEIGHBORHOOD, ADD_SHELTER, ADD_AGENT, ADD_EDGE,
+                            EDIT_ZONE, EDIT_EDGE, EDIT_AGENT, MOVE_ZONE, DELETE }
+    private ToolMode currentTool = ToolMode.NONE;
+
+    // ─── Sélection en cours pour liaison d'arête ─────────────────────────
+    private Zone edgeZoneA = null;
+
+    // ─────────────────────────────────────────────────────────────────────
+
+    public SimulationView(SimulationController ctrl) {
+        this.ctrl    = ctrl;
+        this.modele  = ctrl != null ? ctrl.getModele() : null;
         this.mapView = Main.getSharedMapView();
-        this.mapController = Main.getSharedMapController();
+        this.mapCtrl = Main.getSharedMapController();
 
-        setStyle("-fx-background-color:" + BG_DARK + ";");
-        buildContent();
+        setStyle("-fx-background-color:" + BG + ";");
+        buildUI();
+        wireCallbacks();
         startRefreshLoop();
     }
 
-    private void buildContent() {
+    // ─────────────────────────────────────────────────────────────────────
+    // CONSTRUCTION UI
+    // ─────────────────────────────────────────────────────────────────────
+
+    private void buildUI() {
         setTop(buildTopBar());
+        setLeft(buildLeftPanel());
         setCenter(buildMapContainer());
+        setRight(buildRightPanel());
         setBottom(buildBottomBar());
     }
+
+    private void wireCallbacks() {
+        if (ctrl == null) return;
+        ctrl.setOnStatusChanged(s -> Platform.runLater(() -> lblStatus.setText(s)));
+        ctrl.setOnWaterLevelChanged(l -> Platform.runLater(() -> {
+            lblNiveauActuel.setText(String.format("%.2f m", l));
+            lblNiveauMax.setText(String.format("Max %.2f m", l * 1.78));
+        }));
+        ctrl.setOnZonesUpdated(zs -> { if (mapView != null) mapView.updateAllZones(zs); });
+        ctrl.setOnSelectedAgentPathChanged(this::updatePathPanel);
+        ctrl.setOnStatsUpdated(this::updateSelPanel);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // TOP BAR — 52px
+    // ═════════════════════════════════════════════════════════════════════
 
     private HBox buildTopBar() {
         HBox bar = new HBox(0);
         bar.setAlignment(Pos.CENTER_LEFT);
-        bar.setStyle("-fx-background-color:" + BG_CARD + ";-fx-border-color:transparent transparent " + BORDER_COLOR + " transparent;-fx-border-width:0 0 1 0;");
-        bar.setPrefHeight(48);
+        bar.setMinHeight(52);
+        bar.setMaxHeight(52);
+        bar.setStyle("-fx-background-color:" + CARD
+            + ";-fx-border-color:transparent transparent " + BORDER + " transparent;"
+            + "-fx-border-width:0 0 1 0;");
 
-        HBox logo = new HBox(10);
-        logo.setAlignment(Pos.CENTER_LEFT);
-        logo.setPadding(new Insets(0, 20, 0, 16));
-        logo.setPrefWidth(230);
-        logo.setStyle("-fx-border-color:transparent " + BORDER_COLOR + " transparent transparent;-fx-border-width:0 1 0 0;");
-        Label ico = new Label("");
-ico.setMinWidth(0);
-ico.setPrefWidth(0);
-        VBox titleBox = new VBox(1,
-                styledLabel("Inondation", FontWeight.BOLD, 13, TEXT_PRIMARY),
-                styledLabel("Graphe + agents Mii", FontWeight.NORMAL, 10, TEXT_MUTED));
-                logo.getChildren().add(titleBox);
+        // Retour
+        Button btnBack = actionBtn("← Retour", RED);
+        btnBack.setOnAction(e -> { stopAll(); Main.showDashboardView("admin"); });
+        HBox backBox = padBox(btnBack, 0, 12, 0, 12);
+        backBox.setStyle("-fx-border-color:transparent " + BORDER + " transparent transparent;-fx-border-width:0 1 0 0;");
 
-        HBox modeBox = new HBox(8);
-        modeBox.setAlignment(Pos.CENTER);
-        modeBox.setPadding(new Insets(0, 20, 0, 20));
-        btnAleatoire = modeButton("⟳  Aléatoire", true);
-btnManuelle = modeButton("↺  Manuelle", false);
-Button btnRecommencer = modeButton("↻  Recommencer", false);
+        // Logo
+        VBox logoBox = new VBox(1,
+            lbl("Simulation Inondation", FontWeight.BOLD, 13, TEXT),
+            lbl("Graphe • Agents • Réseau", FontWeight.NORMAL, 10, MUTED));
+        HBox logo = padBox(logoBox, 0, 16, 0, 12);
+        logo.setStyle("-fx-border-color:transparent " + BORDER + " transparent transparent;-fx-border-width:0 1 0 0;");
 
-btnAleatoire.setOnAction(e -> {
-    setModeActive(btnAleatoire, btnManuelle, btnRecommencer);
+        // Modes
+        Button btnAlea   = modeBtn("⟳ Aléatoire", false);
+        Button btnManual = modeBtn("↺ Manuel",    false);
+        Button btnStep   = modeBtn("⏭ Pas",       false);
+        Button btnReset  = modeBtn("↻ Reset",     false);
 
-    if (mapView != null) {
-        mapView.setManualFloodMode(false);
-        mapView.startRandomFlood();
-    }
+        btnAlea.setOnAction(e -> {
+            activateMode(btnAlea, btnManual, btnStep, btnReset);
+            if (mapView != null) {
+                mapView.resetManualFlood();
+                mapView.setManualFloodMode(false);
+                mapView.startRandomFlood();
+            }
+            if (ctrl != null) {
+                ctrl.setModeAleatoire(true);
+                ctrl.demarrerSimulation();
+                startSim();
+            }
+            if (mapView != null) {
+                mapView.resumeFloodPropagation();
+            }
+        });
+        btnManual.setOnAction(e -> {
+            activateMode(btnManual, btnAlea, btnStep, btnReset);
+            if (mapView != null) {
+                mapView.resetManualFlood();
+                mapView.setManualFloodMode(true);
+            }
+            if (ctrl != null)   { ctrl.setModeAleatoire(false); ctrl.demarrerSimulation(); startSim(); }
+        });
+        btnStep.setOnAction(e -> {
+            activateMode(btnStep, btnAlea, btnManual, btnReset);
+            stopSim();
+            if (ctrl != null) { ctrl.reprendreSimulation(); ctrl.executerPas(); ctrl.mettreEnPause(); refreshUI(); }
+        });
+        btnReset.setOnAction(e -> {
+            activateMode(btnReset, btnAlea, btnManual, btnStep);
+            if (mapView != null) mapView.resetManualFlood();
+            if (ctrl != null)   { ctrl.resetSimulation(); ctrl.mettreEnPause(); }
+            stopSim(); refreshUI();
+        });
 
-    if (controller != null) {
-        controller.setModeAleatoire(true);
-        controller.demarrerSimulation();
-        startSimLoop();
-    }
-});
+        HBox modes = new HBox(5, btnAlea, btnManual, btnStep, btnReset);
+        modes.setAlignment(Pos.CENTER);
+        modes.setPadding(new Insets(0, 14, 0, 14));
+        modes.setStyle("-fx-border-color:transparent " + BORDER + " transparent transparent;-fx-border-width:0 1 0 0;");
 
-btnManuelle.setOnAction(e -> {
-    setModeActive(btnManuelle, btnAleatoire, btnRecommencer);
+        // Chrono
+        lblTimer  = lbl("⏱ 00:00:00", FontWeight.BOLD, 13, TEXT);
+        lblStatus = lbl("En pause",    FontWeight.NORMAL, 11, ORANGE);
+        VBox chronoBox = new VBox(2, lblTimer, lblStatus);
+        chronoBox.setAlignment(Pos.CENTER_LEFT);
+        HBox chrono = padBox(chronoBox, 0, 14, 0, 14);
+        chrono.setStyle("-fx-border-color:transparent " + BORDER + " transparent transparent;-fx-border-width:0 1 0 0;");
 
-    if (mapView != null) {
-        mapView.setManualFloodMode(true);
-    }
+        // Vitesse + Play/Pause (même bouton)
+        Slider slVitesse = new Slider(200, 5000, 2400);
+        slVitesse.setPrefWidth(110);
+        slVitesse.setStyle("-fx-control-inner-background:#1e293b;-fx-accent:" + BLUE + ";");
+        Label lblVitesse = lbl("2400ms", FontWeight.BOLD, 10, TEXT);
+        slVitesse.valueProperty().addListener((o, ov, nv) -> {
+            int v = (int) Math.round(nv.doubleValue());
+            lblVitesse.setText(v + "ms");
+            if (ctrl != null) ctrl.setVitesseSimulation(v);
+            if (mapView != null) mapView.setFloodSpeedFromSlider(v);
+            if (simRunning) startSim();
+        });
 
-    if (controller != null) {
-        controller.setModeAleatoire(false);
+        if (ctrl != null) ctrl.setVitesseSimulation(slVitesse.getValue());
+        if (mapView != null) mapView.setFloodSpeedFromSlider(slVitesse.getValue());
 
-        // Mode manuel : on lance officiellement la simulation et l'alerte,
-        // mais les agents ne bougent PAS tant qu'aucune inondation manuelle
-        // n'a été placée sur la carte.
-        controller.demarrerSimulation();
-        startSimLoop(); // boucle active, mais le controller attend le clic manuel
-    }
+        Button btnPlayPause = iconBtn("▶");
+        btnPlayPause.setOnAction(e -> {
+            if (ctrl == null) return;
+            simRunning = !simRunning;
+            if (simRunning) {
+                ctrl.reprendreSimulation();
+                if (mapView != null) mapView.resumeFloodPropagation();
+                startSim();
+                btnPlayPause.setText("⏸");
+            } else {
+                ctrl.mettreEnPause();
+                if (mapView != null) mapView.pauseFloodPropagation();
+                stopSim();
+                btnPlayPause.setText("▶");
+            }
+        });
 
-    if (lblSimStatus != null) {
-        lblSimStatus.setText("Mode manuel — cliquez sur la carte pour lancer l’inondation");
-    }
-});
+        HBox speedBox = new HBox(6, lbl("Vitesse:", FontWeight.NORMAL, 10, MUTED),
+                slVitesse, lblVitesse, btnPlayPause);
+        speedBox.setAlignment(Pos.CENTER);
+        speedBox.setPadding(new Insets(0, 14, 0, 14));
+        speedBox.setStyle("-fx-border-color:transparent " + BORDER + " transparent transparent;-fx-border-width:0 1 0 0;");
 
-btnRecommencer.setOnAction(e -> {
-    if (mapView != null) {
-        mapView.resetManualFlood();
-    }
-
-    if (controller != null) {
-        controller.resetSimulation();
-        controller.mettreEnPause();
-    }
-
-    stopSimLoop();
-    refreshUI();
-
-    lblSimStatus.setText("En pause");
-    lblTimer.setText("⏱  00:00:00");
-});
-
-modeBox.getChildren().addAll(btnAleatoire, btnManuelle, btnRecommencer);
+        // Sauvegarder état initial + Export/Import
+        Button btnSaveInit = smallBtn("💾 Sauvegarder");
+        Button btnExport   = smallBtn("↑ Exporter");
+        Button btnImport   = smallBtn("↓ Importer");
+        btnSaveInit.setOnAction(e -> { if (ctrl != null) ctrl.saveCurrentStateAsInitial(); });
+        btnExport.setOnAction(e -> handleExport());
+        btnImport.setOnAction(e -> handleImport());
+        HBox ioBox = new HBox(5, btnSaveInit, btnExport, btnImport);
+        ioBox.setAlignment(Pos.CENTER);
+        ioBox.setPadding(new Insets(0, 12, 0, 12));
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        lblSimStatus = styledLabel("En pause", FontWeight.NORMAL, 11, ACCENT_ORANGE);
-        lblTimer = styledLabel("⏱  00:00:00", FontWeight.BOLD, 12, TEXT_PRIMARY);
-        HBox status = new HBox(10, lblSimStatus, lblTimer);
-        status.setAlignment(Pos.CENTER);
-        status.setPadding(new Insets(0, 20, 0, 0));
-        Button btnBack = new Button("← Retour");
-        btnBack.setStyle(
-            "-fx-background-color:#1e293b;" +
-            "-fx-text-fill:#94a3b8;" +
-            "-fx-background-radius:6;" +
-            "-fx-font-size:11px;" +
-            "-fx-padding:5 12 5 12;" +
-            "-fx-cursor:hand;"
-        );
-        btnBack.setOnMouseEntered(e -> btnBack.setStyle(
-            "-fx-background-color:#3b82f6;" +
-            "-fx-text-fill:white;" +
-            "-fx-background-radius:6;" +
-            "-fx-font-size:11px;" +
-            "-fx-padding:5 12 5 12;" +
-            "-fx-cursor:hand;"
-        ));
-        btnBack.setOnMouseExited(e -> btnBack.setStyle(
-            "-fx-background-color:#1e293b;" +
-            "-fx-text-fill:#94a3b8;" +
-            "-fx-background-radius:6;" +
-            "-fx-font-size:11px;" +
-            "-fx-padding:5 12 5 12;" +
-            "-fx-cursor:hand;"
-        ));
-        btnBack.setOnAction(e -> {
-            stopRefresh();
-            Main.showDashboardView("admin");
-        });
 
-        bar.getChildren().addAll(btnBack, logo, modeBox, spacer, status);
+        bar.getChildren().addAll(backBox, logo, modes, chrono, speedBox, spacer, ioBox);
         return bar;
     }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // PANNEAU GAUCHE — 220px
+    // ═════════════════════════════════════════════════════════════════════
+
+    private VBox buildLeftPanel() {
+        VBox panel = new VBox(0);
+        panel.setMinWidth(220);
+        panel.setMaxWidth(220);
+        panel.setStyle("-fx-background-color:" + CARD
+            + ";-fx-border-color:transparent " + BORDER + " transparent transparent;"
+            + "-fx-border-width:0 1 0 0;");
+
+        ScrollPane scroll = new ScrollPane();
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setStyle("-fx-background:" + BG + ";-fx-background-color:" + BG + ";-fx-border-color:transparent;");
+        VBox.setVgrow(scroll, Priority.ALWAYS);
+
+        VBox content = new VBox(0);
+        content.setStyle("-fx-background-color:" + CARD + ";");
+
+        // ── Section : NŒUDS / ZONES ──────────────────────────────────────
+        content.getChildren().add(sectionHeader("NŒUDS / ZONES"));
+        VBox nodesSec = section();
+
+        Button bSel     = toolBtn("⊙ Sélection",   false);
+        Button bAddNh   = toolBtn("＋ Quartier",    false);
+        Button bAddSh   = toolBtn("＋ Refuge",      false);
+        Button bAdd5    = toolBtn("＋ 5 nœuds",     false);
+        Button bMoveZ   = toolBtn("↕ Déplacer",     false);
+        Button bEditZ   = toolBtn("✏ Modifier",     false);
+        Button bResetZ  = toolBtn("↺ Reset zones",  false);
+        Button bDelZ    = toolBtn("🗑 Supprimer",    false);
+
+        bSel.setOnAction(e -> {
+            setTool(ToolMode.NONE, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bResetZ, bDelZ);
+            if (mapView != null) mapView.setEditMode(MapView.EditMode.SELECT);
+            showRightPanel(null);
+            setGraphInfo("Mode sélection.");
+        });
+        bAddNh.setOnAction(e -> {
+            setTool(ToolMode.ADD_NEIGHBORHOOD, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bResetZ, bDelZ);
+            if (mapView != null) mapView.setEditMode(MapView.EditMode.SELECT);
+            showRightPanel(panelAddNeighborhood);
+            resetNhForm();
+            setGraphInfo("Remplissez le formulaire à droite, puis cliquez la carte pour la position.");
+        });
+        bAddSh.setOnAction(e -> {
+            setTool(ToolMode.ADD_SHELTER, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bResetZ, bDelZ);
+            if (mapView != null) mapView.setEditMode(MapView.EditMode.SELECT);
+            showRightPanel(panelAddShelter);
+            resetShForm();
+            setGraphInfo("Remplissez le formulaire à droite, puis cliquez la carte pour la position.");
+        });
+        bAdd5.setOnAction(e -> {
+            setTool(ToolMode.NONE, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bResetZ, bDelZ);
+            if (ctrl != null) {
+                for (int i = 0; i < 3; i++) ctrl.addRandomNeighborhood();
+                for (int i = 0; i < 2; i++) ctrl.addRandomShelter();
+                refreshUI();
+            }
+            setGraphInfo("5 nœuds aléatoires ajoutés.");
+        });
+        bMoveZ.setOnAction(e -> {
+            setTool(ToolMode.MOVE_ZONE, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bResetZ, bDelZ);
+            if (mapView != null) {
+                mapCtrl.setOnZoneSelected(null); // suspendre pendant le drag
+                mapView.setEditMode(MapView.EditMode.MOVE_NODE);
+                mapView.setOnNodeMoveFinished(() ->
+                    mapCtrl.setOnZoneSelected(z -> handleZoneClick(z))); // rétablir après
+            }
+            showRightPanel(null);
+            setGraphInfo("Glissez un nœud pour le déplacer.");
+        });
+        bEditZ.setOnAction(e -> {
+            setTool(ToolMode.EDIT_ZONE, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bResetZ, bDelZ);
+            if (mapView != null) mapView.setEditMode(MapView.EditMode.SELECT);
+            Zone sel = mapCtrl != null ? mapCtrl.getSelectedZone() : null;
+            if (sel != null) {
+                editingZone = sel;
+                fillEditZoneForm(sel);
+                showRightPanel(panelEditZone);
+            } else {
+                showRightPanel(panelEditZone);
+                setGraphInfo("Sélectionnez d'abord un nœud sur la carte.");
+            }
+        });
+        bResetZ.setOnAction(e -> {
+            setTool(ToolMode.NONE, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bResetZ, bDelZ);
+            if (ctrl != null) { ctrl.resetAllZones(); refreshUI(); }
+        });
+        bDelZ.setOnAction(e -> {
+            setTool(ToolMode.DELETE, bSel, bAddNh, bAddSh, bAdd5, bMoveZ, bEditZ, bResetZ, bDelZ);
+            if (mapCtrl != null && ctrl != null) {
+                Zone sel = mapCtrl.getSelectedZone();
+                if (sel != null) { ctrl.removeZone(sel.getId()); showRightPanel(null); refreshUI(); }
+                else setGraphInfo("⚠ Sélectionnez d'abord un nœud.");
+            }
+        });
+
+        nodesSec.getChildren().addAll(
+            wrapFlow(5, bSel, bAddNh, bAddSh, bAdd5),
+            wrapFlow(5, bMoveZ, bEditZ, bResetZ, bDelZ));
+        content.getChildren().add(nodesSec);
+
+        // ── Section : ROUTES / ARÊTES ─────────────────────────────────────
+        content.getChildren().add(sectionHeader("ROUTES / ARÊTES"));
+        VBox edgesSec = section();
+
+        Button bAddEdge  = toolBtn("＋ Route",      false);
+        Button bEditEdge = toolBtn("✏ Modifier",    false);
+        Button bDelEdge  = toolBtn("🗑 Supprimer",   false);
+
+        bAddEdge.setOnAction(e -> {
+            setTool(ToolMode.ADD_EDGE, bAddEdge, bEditEdge, bDelEdge);
+            if (mapView != null) mapView.setEditMode(MapView.EditMode.SELECT);
+            edgeZoneA = null;
+            showRightPanel(null);
+            setGraphInfo("Cliquez la 1ʳᵉ zone, puis la 2ᵉ pour créer une route.");
+        });
+        bEditEdge.setOnAction(e -> {
+            setTool(ToolMode.EDIT_EDGE, bAddEdge, bEditEdge, bDelEdge);
+            if (mapView != null) mapView.setEditMode(MapView.EditMode.SELECT);
+            Edge sel = mapView != null ? mapView.getSelectedEdge() : null;
+            if (sel != null) {
+                editingEdge = sel;
+                fillEditEdgeForm(sel);
+                showRightPanel(panelEditEdge);
+            } else {
+                showRightPanel(panelEditEdge);
+                setGraphInfo("Sélectionnez d'abord une route sur la carte.");
+            }
+        });
+        bDelEdge.setOnAction(e -> {
+            setTool(ToolMode.DELETE, bAddEdge, bEditEdge, bDelEdge);
+            if (mapView != null && ctrl != null) {
+                Edge selEdge = mapView.getSelectedEdge();
+                if (selEdge != null) { ctrl.removeEdgeWithAgentRelocation(selEdge.getId()); showRightPanel(null); refreshUI(); }
+                else setGraphInfo("⚠ Sélectionnez d'abord une route.");
+            }
+        });
+
+        edgesSec.getChildren().add(wrapFlow(5, bAddEdge, bEditEdge, bDelEdge));
+        content.getChildren().add(edgesSec);
+
+        // ── Section : AGENTS ──────────────────────────────────────────────
+        content.getChildren().add(sectionHeader("AGENTS"));
+        VBox agentsSec = section();
+
+        Button bAddAg   = toolBtn("＋ Agent",       false);
+        Button bAdd10   = toolBtn("＋ 10 agents",   false);
+        Button bEv      = toolBtn("⚡ Évacuer",      false);
+        Button bEditAg  = toolBtn("✏ Modifier",     false);
+        Button bDelAg   = toolBtn("🗑 Supprimer",    false);
+
+        bAddAg.setOnAction(e -> {
+            setTool(ToolMode.ADD_AGENT, bAddAg, bAdd10, bEv, bEditAg, bDelAg);
+            showRightPanel(panelAddAgent);
+            resetAgentForm();
+            setGraphInfo("Remplissez le formulaire et choisissez une zone de départ.");
+        });
+        bAdd10.setOnAction(e -> {
+            setTool(ToolMode.NONE, bAddAg, bAdd10, bEv, bEditAg, bDelAg);
+            if (ctrl != null) { ctrl.addRandomAgents(10); syncMapAgents(); }
+        });
+        bEv.setOnAction(e -> {
+            setTool(ToolMode.NONE, bAddAg, bAdd10, bEv, bEditAg, bDelAg);
+            if (mapCtrl != null) { mapCtrl.evacuateAllCitizensToShelters(); refreshUI(); }
+        });
+        bEditAg.setOnAction(e -> {
+            setTool(ToolMode.EDIT_AGENT, bAddAg, bAdd10, bEv, bEditAg, bDelAg);
+            if (mapView != null) mapView.setEditMode(MapView.EditMode.SELECT);
+            Agent sel = mapView != null ? mapView.getSelectedAgent() : null;
+            if (sel != null) {
+                editingAgent = sel;
+                fillEditAgentForm(sel);
+                showRightPanel(panelEditAgent);
+            } else {
+                showRightPanel(panelEditAgent);
+                setGraphInfo("Sélectionnez d'abord un agent sur la carte.");
+            }
+        });
+        bDelAg.setOnAction(e -> {
+            setTool(ToolMode.DELETE, bAddAg, bAdd10, bEv, bEditAg, bDelAg);
+            if (mapView != null && ctrl != null) {
+                Agent sel = mapView.getSelectedAgent();
+                if (sel != null) {
+                    ctrl.removeAgent(sel.getId()); syncMapAgents();
+                    showRightPanel(null); panelSel.setVisible(false);
+                } else setGraphInfo("⚠ Sélectionnez d'abord un agent.");
+            }
+        });
+
+        agentsSec.getChildren().addAll(
+            wrapFlow(5, bAddAg, bAdd10, bEv),
+            wrapFlow(5, bEditAg, bDelAg));
+        content.getChildren().add(agentsSec);
+
+        // ── Section : SÉLECTION ───────────────────────────────────────────
+        content.getChildren().add(sectionHeader("SÉLECTION"));
+        panelSel = section();
+        panelSel.setVisible(false);
+        panelSel.setStyle("-fx-background-color:#0d111780;");
+        lblSelNom    = lbl("—", FontWeight.BOLD,   12, TEXT);
+        lblSelType   = lbl("—", FontWeight.NORMAL, 10, MUTED);
+        lblSelAgents = lbl("0",   FontWeight.BOLD, 11, BLUE);
+        lblSelPassed = lbl("0",   FontWeight.BOLD, 11, TEAL);
+        lblSelSpeed  = lbl("0.00",FontWeight.BOLD, 11, GREEN);
+        lblSelWait   = lbl("—",   FontWeight.BOLD, 11, ORANGE);
+        lblSelStatus = lbl("Normal", FontWeight.BOLD, 11, GREEN);
+        lblSelCap    = lbl("—",   FontWeight.BOLD, 11, MUTED);
+        panelSel.getChildren().addAll(
+            lblSelNom, lblSelType, new Separator(),
+            hrow("Agents",    lblSelAgents),
+            hrow("Passés",    lblSelPassed),
+            hrow("Vit. moy.", lblSelSpeed),
+            hrow("Capacité",  lblSelCap),
+            hrow("Attente",   lblSelWait),
+            hrow("Statut",    lblSelStatus));
+        content.getChildren().add(panelSel);
+
+        // ── Section : TRAJET ACTIF ────────────────────────────────────────
+        content.getChildren().add(sectionHeader("TRAJET ACTIF"));
+        panelPath = section();
+        panelPath.setVisible(false);
+        panelPath.setStyle("-fx-background-color:#0d111780;");
+        lblPathInfo = lbl("Aucun trajet.", FontWeight.NORMAL, 9, MUTED);
+        lblPathInfo.setWrapText(true);
+        panelPath.getChildren().add(lblPathInfo);
+        content.getChildren().add(panelPath);
+
+        // ── Info graphe (pied) ────────────────────────────────────────────
+        content.getChildren().add(sectionHeader("INFO"));
+        VBox infoSec = section();
+        lblGraphInfo = lbl("Prêt.", FontWeight.NORMAL, 9, MUTED);
+        lblGraphInfo.setWrapText(true);
+        infoSec.getChildren().add(lblGraphInfo);
+        content.getChildren().add(infoSec);
+
+        scroll.setContent(content);
+        panel.getChildren().add(scroll);
+        return panel;
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // CARTE CENTRALE
+    // ═════════════════════════════════════════════════════════════════════
 
     private StackPane buildMapContainer() {
         StackPane stack = new StackPane();
         stack.setStyle("-fx-background-color:#090e1a;");
 
-        if (modele != null) {
-
-            this.mapView = Main.getSharedMapView();
-            this.mapController = Main.getSharedMapController();
-            
+        if (modele != null && mapView != null) {
             mapView.setAgents(modele.getAgents());
             modele.addZoneUpdateListener(mapView);
             stack.getChildren().add(mapView.getSwingNode());
 
+            // Clic agent
             mapView.setOnAgentSelected(agent -> {
-                lblSelectedZone.setText(agent.getFirstName() != null ? agent.getFirstName() : "Agent #" + agent.getId());
-                lblNiveauEauZone.setText("Agent sélectionné");
-                lblStatutZone.setText(agent.getClass().getSimpleName());
-                lblStatutZone.setTextFill(Color.web(ACCENT_TEAL));
+                if (ctrl != null) ctrl.selectAgent(agent);
+                updateSelPanelForAgent(agent);
+                // Si mode ADD_EDGE ou attente de zone, on ignore
+                if (currentTool == ToolMode.ADD_AGENT && waitingAgZone) {
+                    // ne pas changer de panneau
+                } else if (currentTool == ToolMode.EDIT_AGENT) {
+                    editingAgent = agent;
+                    fillEditAgentForm(agent);
+                    showRightPanel(panelEditAgent);
+                }
             });
-            mapView.setOnGraphInfoChanged(info -> lblGraphInfo.setText(info));
 
-            mapController.setOnZoneSelected(zone -> {
-                int idx = modele.getZones().indexOf(zone);
-                if (idx >= 0) selectedZoneIndex = idx;
-                lblSelectedZone.setText("Zone " + zone.getName());
-                lblNiveauEauZone.setText(String.format("%.2f m", modele.getNiveauEau()));
-                boolean flooded = zone.isFlooded();
-                double nv = modele.getNiveauEau();
-                lblStatutZone.setText(flooded ? "Inondée ⚠" : nv > 0.5 ? "En montée ↗" : "Stable →");
-                lblStatutZone.setTextFill(Color.web(flooded ? ACCENT_RED : nv > 0.5 ? ACCENT_ORANGE : ACCENT_GREEN));
+            // Clic zone
+            mapCtrl.setOnZoneSelected(zone -> {
+                if (mapView != null && mapView.wasLastClickConsumedByEdge()) {
+                    mapView.setLastClickConsumedByEdge(false);
+                    return;
+                }
+                handleZoneClick(zone);
+            });
+
+            // Clic arête
+            mapView.setOnEdgeSelected(edge -> {
+                mapView.setLastClickConsumedByEdge(true);
+                handleEdgeClick(edge);
+            });
+
+            // Info graphe
+            mapView.setOnGraphInfoChanged(info -> {
+                if (lblGraphInfo != null) Platform.runLater(() -> lblGraphInfo.setText(info));
+            });
+
+            mapView.setOnMapClicked((lat, lng) -> {
+                if (waitingClickNh) {
+                    waitingClickNh = false;
+                    pendingNhLat = lat;
+                    pendingNhLng = lng;
+                    updateNhCoordsLabel();
+                    Platform.runLater(() -> mapView.setEditMode(MapView.EditMode.SELECT));
+                } else if (waitingClickSh) {
+                    waitingClickSh = false;
+                    pendingShLat = lat;
+                    pendingShLng = lng;
+                    updateShCoordsLabel();
+                    Platform.runLater(() -> mapView.setEditMode(MapView.EditMode.SELECT));
+                }
             });
         }
 
-        VBox panelZone = buildZoneInfoPanel();
-        StackPane.setAlignment(panelZone, Pos.TOP_LEFT);
-        StackPane.setMargin(panelZone, new Insets(12, 0, 0, 12));
-
-        VBox tools = buildGraphToolsPanel();
-        StackPane.setAlignment(tools, Pos.TOP_CENTER);
-        StackPane.setMargin(tools, new Insets(12, 0, 0, 0));
-
-        VBox legend = buildLegendePanel();
-        StackPane.setAlignment(legend, Pos.TOP_RIGHT);
-        StackPane.setMargin(legend, new Insets(12, 12, 0, 0));
-
-        stack.getChildren().addAll(panelZone, tools, legend);
-
-        if (controller != null) {
-            controller.setOnStatusChanged(s -> lblSimStatus.setText(s));
-            controller.setOnWaterLevelChanged(l -> lblNiveauActuel.setText(String.format("%.2f m", l)));
-            controller.setOnZonesUpdated(zs -> { if (mapView != null) mapView.updateAllZones(zs); });
-        }
         return stack;
     }
 
-    private VBox buildZoneInfoPanel() {
-        VBox p = cardPanel(230);
-        lblSelectedZone = styledLabel("Sélection —", FontWeight.BOLD, 15, TEXT_PRIMARY);
-        lblNiveauEauZone = styledLabel("—", FontWeight.BOLD, 11, ACCENT_BLUE);
-        lblStatutZone = styledLabel("Stable →", FontWeight.BOLD, 11, ACCENT_GREEN);
-        lblGraphInfo = styledLabel("Clique un agent, un nœud ou une arête.", FontWeight.NORMAL, 10, TEXT_MUTED);
-        lblGraphInfo.setWrapText(true);
-        p.getChildren().addAll(
-                styledLabel("ÉLÉMENT SÉLECTIONNÉ", FontWeight.BOLD, 10, TEXT_MUTED),
-                lblSelectedZone,
-                hrow("Niveau d'eau", lblNiveauEauZone),
-                hrow("Statut", lblStatutZone),
-                new Separator(),
-                lblGraphInfo);
-        return p;
-    }
-
-    private VBox buildGraphToolsPanel() {
-        VBox box = cardPanel(620);
-        box.getChildren().add(styledLabel("INTERACTION AVEC LE GRAPHE", FontWeight.BOLD, 10, TEXT_MUTED));
-
-        HBox modes = new HBox(6);
-        modes.setAlignment(Pos.CENTER);
-        Button select = smallButton("Sélection");
-        Button addNode = smallButton("＋ Nœud");
-        Button addEdge = smallButton("＋ Arête");
-        Button moveNode = smallButton("↕ Déplacer nœud");
-        Button del = smallButton("🗑 Supprimer");
-
-        HBox zones = new HBox(6);
-        zones.setAlignment(Pos.CENTER);
-
-        Button addNeighborhood = smallButton("＋ Quartier");
-        Button addShelter = smallButton("＋ Refuges");
-        Button removeZone = smallButton("🗑 Suppr. zone sélect.");
-        Button resetZones = smallButton("↺ Reset zones");
-
-        addNeighborhood.setOnAction(e -> {
-            if (controller != null) { controller.addRandomNeighborhood();    refreshUI(); }
-        });
-        addShelter.setOnAction(e -> {
-            if (controller != null) { controller.addRandomShelter(); refreshUI(); }
-        });
-
-        removeZone.setOnAction(e -> {
-            // La zone sélectionnée est celle trackée par mapController
-            if (mapController != null && controller != null) {
-                model.zone.Zone selected = mapController.getSelectedZone();
-                if (selected != null) {
-                    controller.removeZone(selected.getId());
+    /**
+     * Gestion centralisée du clic sur une zone selon le mode courant.
+     */
+    private void handleZoneClick(Zone zone) {
+        if (currentTool == ToolMode.MOVE_ZONE) return;
+        switch (currentTool) {
+            case ADD_NEIGHBORHOOD -> {
+                // Ne rien faire : la position est choisie via le bouton "Cliquer carte"
+                // ou on intercepte le clic brut
+                if (waitingClickNh) {
+                    waitingClickNh = false;
+                    // position obtenue via mapView click direct — ici on prend les coords de la zone cliquée
+                    pendingNhLat = zone.getLatitude();
+                    pendingNhLng = zone.getLongitude();
+                    updateNhCoordsLabel();
+                }
+            }
+            case ADD_SHELTER -> {
+                if (waitingClickSh) {
+                    waitingClickSh = false;
+                    pendingShLat = zone.getLatitude();
+                    pendingShLng = zone.getLongitude();
+                    updateShCoordsLabel();
+                }
+            }
+            case ADD_EDGE -> {
+                if (edgeZoneA == null) {
+                    edgeZoneA = zone;
+                    setGraphInfo("Zone A : " + zone.getName() + " — cliquez la zone B.");
+                } else if (ctrl != null) {
+                    ctrl.addEdgeBetween(edgeZoneA.getId(), zone.getId());
+                    edgeZoneA = null;
                     refreshUI();
+                    setGraphInfo("Route créée.");
                 }
             }
-        });
-
-        resetZones.setOnAction(e -> {
-            if (controller != null) {
-                // Remet toutes les zones à l'état non-inondé
-                modele.getZones().forEach(z -> z.reset());
-                // Notifie via un updateZone sur chaque zone
-                modele.getZones().forEach(z -> controller.updateZone(z));
-                refreshUI();
+            case EDIT_ZONE -> {
+                editingZone = zone;
+                fillEditZoneForm(zone);
+                showRightPanel(panelEditZone);
             }
-        });
-
-
-    
-
-
-        select.setOnAction(e -> mapView.setEditMode(MapView.EditMode.SELECT));
-        addNode.setOnAction(e -> mapView.setEditMode(MapView.EditMode.ADD_NODE));
-        addEdge.setOnAction(e -> mapView.setEditMode(MapView.EditMode.ADD_EDGE));
-        moveNode.setOnAction(e -> mapView.setEditMode(MapView.EditMode.MOVE_NODE));
-        del.setOnAction(e -> mapView.setEditMode(MapView.EditMode.DELETE));
-        modes.getChildren().addAll(select, addNode, addEdge, moveNode, del);
-
-        HBox mass = new HBox(6);
-        mass.setAlignment(Pos.CENTER);
-        Button add5Nodes = smallButton("Ajouter 5 nœuds");
-        Button add1Agent = smallButton("+1 agent");
-        Button add10Agents = smallButton("+10 agents");
-        Button evacuate = smallButton("Évacuer → refuges");
-        Button removeAgent = smallButton("Suppr. agent");
-        add5Nodes.setOnAction(e -> { if (mapView != null) mapView.addRandomNodes(5); });
-        add1Agent.setOnAction(e -> addOneAgent());
-        add10Agents.setOnAction(e -> {
-            if (controller != null) {
-                controller.addRandomCitizens(10);
-        
-                if (mapView != null && modele != null) {
-                    mapView.setAgents(modele.getAgents());
-                }
-        
-                app.Main.getSharedAdminCtrl().loadAgents();
-                refreshUI();
+            default -> {
+                if (ctrl != null) updateSelPanel(ctrl.getZoneStats(zone.getId()));
             }
-        });
-        evacuate.setOnAction(e -> { if (mapController != null) { mapController.evacuateAllCitizensToShelters(); refreshUI(); } });
-        removeAgent.setOnAction(e -> {
-            if (mapView == null || controller == null || modele == null) return;
-        
-            Agent selected = mapView.getSelectedAgent();
-        
-            if (selected == null) {
-                lblGraphInfo.setText("Clique d'abord sur un agent.");
-                return;
-            }
-        
-            int id = selected.getId();
-        
-            controller.removeAgent(id);
-        
-            mapView.setAgents(modele.getAgents());
-        
-            lblGraphInfo.setText("Agent supprimé.");
-            lblSelectedZone.setText("Sélection —");
-        
-            app.Main.getSharedAdminCtrl().loadAgents();
-            refreshUI();
-        });
-
-        mass.getChildren().addAll(add5Nodes, add1Agent, add10Agents, evacuate, removeAgent);
-        zones.getChildren().addAll(addNeighborhood, addShelter, removeZone, resetZones);
-        box.getChildren().addAll(modes, mass, zones);
-        return box;
-    }
-
-    private VBox buildLegendePanel() {
-        VBox p = cardPanel(205);
-    
-        p.getChildren().add(styledLabel("ACTIONS TEMPORELLES", FontWeight.BOLD, 10, TEXT_MUTED));
-        p.getChildren().add(buildControlButtons());
-        p.getChildren().add(buildSpeedRow());
-    
-        return p;
-    }
-
-    private void addOneAgent() {
-        if (controller == null || modele == null) return;
-    
-        controller.addRandomCitizen();
-    
-        if (mapController != null) {
-            mapController.syncAgents(modele.getAgents());
         }
-    
-        if (mapView != null) {
-            mapView.setAgents(modele.getAgents());
-        }
-    
-        app.Main.getSharedAdminCtrl().loadAgents();
-        refreshUI();
     }
 
-    private GridPane buildZoneGrid() {
-        ToggleGroup tg = new ToggleGroup();
-        String[] names = {"A", "B", "C", "D", "E", "F"};
-        zoneButtons = new ToggleButton[6];
-        GridPane g = new GridPane();
-        g.setHgap(4);
-        g.setVgap(4);
-        for (int i = 0; i < 6; i++) {
-            final int idx = i;
-            ToggleButton tb = new ToggleButton(names[i]);
-            tb.setToggleGroup(tg);
-            tb.setStyle(zoneBtnStyle(i == selectedZoneIndex));
-            tb.setSelected(i == selectedZoneIndex);
-            tb.setOnAction(e -> {
-                selectedZoneIndex = idx;
-                for (ToggleButton b : zoneButtons) b.setStyle(zoneBtnStyle(false));
-                tb.setStyle(zoneBtnStyle(true));
-                if (mapController != null && modele != null) {
-                    List<Zone> zs = modele.getZones();
-                    if (idx < zs.size()) mapController.focusZone(zs.get(idx));
-                }
+    /**
+     * Gestion centralisée du clic sur une arête.
+     */
+    private void handleEdgeClick(Edge edge) {
+        if (edge == null) return;
+        if (currentTool == ToolMode.EDIT_EDGE) {
+            editingEdge = edge;
+            fillEditEdgeForm(edge);
+            showRightPanel(panelEditEdge);
+        } else {
+            if (ctrl != null) updateSelPanel(ctrl.getEdgeStats(edge.getId()));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // PANNEAU DROIT CONTEXTUEL — 240px
+    // ═════════════════════════════════════════════════════════════════════
+
+    private VBox buildRightPanel() {
+        VBox panel = new VBox(0);
+        panel.setMinWidth(240);
+        panel.setMaxWidth(240);
+        panel.setStyle("-fx-background-color:" + CARD
+            + ";-fx-border-color:transparent transparent transparent " + BORDER + ";"
+            + "-fx-border-width:0 0 0 1;");
+
+        ScrollPane scroll = new ScrollPane();
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setStyle("-fx-background:" + BG + ";-fx-background-color:" + BG + ";-fx-border-color:transparent;");
+        VBox.setVgrow(scroll, Priority.ALWAYS);
+
+        rightContent = new VBox(0);
+        rightContent.setStyle("-fx-background-color:" + CARD + ";");
+
+        // Construire tous les sous-panneaux
+        panelAddNeighborhood = buildPanelAddNeighborhood();
+        panelAddShelter      = buildPanelAddShelter();
+        panelAddAgent        = buildPanelAddAgent();
+        panelEditZone        = buildPanelEditZone();
+        panelEditEdge        = buildPanelEditEdge();
+        panelEditAgent       = buildPanelEditAgent();
+        panelLegend          = buildPanelLegend();
+
+        // Par défaut : légende visible
+        rightContent.getChildren().add(panelLegend);
+
+        scroll.setContent(rightContent);
+        panel.getChildren().add(scroll);
+        return panel;
+    }
+
+    /** Affiche uniquement le panneau demandé dans le contenu droit (+ légende en bas). */
+    private void showRightPanel(VBox target) {
+        rightContent.getChildren().clear();
+        if (target != null) rightContent.getChildren().add(target);
+        rightContent.getChildren().add(panelLegend);
+    }
+
+    // ─── Formulaire : Ajouter un Quartier ────────────────────────────────
+
+    private VBox buildPanelAddNeighborhood() {
+        VBox v = new VBox(0);
+        v.setStyle("-fx-background-color:" + CARD + ";");
+        v.getChildren().add(sectionHeader("NOUVEAU QUARTIER"));
+        VBox form = section();
+
+        tfNhName = styledField("Nom (vide = auto)");
+        tfNhAlt  = styledField("Altitude (m)");
+        tfNhPop  = styledField("Population");
+        tfNhDesc = styledField("Description");
+
+        // ── Recherche adresse ──────────────────────────────────────────
+        tfNhSearch  = styledField("Rue, quartier, ville…");
+        lblNhCoords = lbl("📍 Position non définie", FontWeight.NORMAL, 9, MUTED);
+        lblNhCoords.setWrapText(true);
+
+        Button btnSearch = actionBtn("🔍 Rechercher", TEAL);
+        btnSearch.setMaxWidth(Double.MAX_VALUE);
+
+        btnSearch.setOnAction(e -> {
+            String q = tfNhSearch.getText().trim();
+            if (q.isEmpty()) return;
+            lblNhCoords.setText("⏳ Recherche en cours…");
+            lblNhCoords.setTextFill(Color.web(YELLOW));
+            geocodeAddress(q,
+                (lat, lng) -> {
+                    pendingNhLat = lat;
+                    pendingNhLng = lng;
+                    lblNhCoords.setText(String.format("📍 %.5f,  %.5f", lat, lng));
+                    lblNhCoords.setTextFill(Color.web(GREEN));
+                    if (mapView != null) mapView.panTo(lat, lng);
+                    setGraphInfo("Position trouvée !");
+                },
+                () -> {
+                    lblNhCoords.setText("❌ Adresse introuvable à Lyon");
+                    lblNhCoords.setTextFill(Color.web(RED));
+                    setGraphInfo("Aucun résultat à Lyon — essayez : 'Bellecour', 'Gerland', 'Croix-Rousse'…");
+                });
+        });
+    
+        // Déclencher aussi sur Entrée
+        tfNhSearch.setOnAction(e -> btnSearch.fire());
+
+        Button btnRandom = smallBtn("🎲 Position aléatoire");
+        btnRandom.setMaxWidth(Double.MAX_VALUE);
+        btnRandom.setOnAction(e -> {
+            pendingNhLat = 45.7640 + (Math.random() - 0.5) * 0.06;
+            pendingNhLng = 4.8357  + (Math.random() - 0.5) * 0.08;
+            lblNhCoords.setText(String.format("📍 %.5f,  %.5f (aléatoire)", pendingNhLat, pendingNhLng));
+            lblNhCoords.setTextFill(Color.web(ORANGE));
+            if (mapView != null) mapView.panTo(pendingNhLat, pendingNhLng);
+        });
+
+        Button btnConfirm = actionBtn("＋ Créer le quartier", GREEN);
+        btnConfirm.setMaxWidth(Double.MAX_VALUE);
+        btnConfirm.setOnAction(e -> confirmAddNeighborhood());
+
+        Button btnCancel = smallBtn("Annuler");
+        btnCancel.setMaxWidth(Double.MAX_VALUE);
+        btnCancel.setOnAction(e -> { showRightPanel(null); currentTool = ToolMode.NONE; });
+
+        form.getChildren().addAll(
+            lbl("Nom", FontWeight.BOLD, 9, MUTED), tfNhName,
+            lbl("Altitude (m)", FontWeight.BOLD, 9, MUTED), tfNhAlt,
+            lbl("Population", FontWeight.BOLD, 9, MUTED), tfNhPop,
+            lbl("Description", FontWeight.BOLD, 9, MUTED), tfNhDesc,
+            new Separator(),
+            lbl("Rechercher une adresse", FontWeight.BOLD, 9, MUTED),
+            tfNhSearch, btnSearch,
+            lblNhCoords, btnRandom,
+            new Separator(),
+            btnConfirm, btnCancel);
+
+        v.getChildren().add(form);
+        return v;
+    }
+
+
+    private void updateNhCoordsLabel() {
+        if (!Double.isNaN(pendingNhLat))
+            Platform.runLater(() -> {
+                lblNhCoords.setText(String.format("📍 %.4f, %.4f", pendingNhLat, pendingNhLng));
+                lblNhCoords.setTextFill(Color.web(GREEN));
             });
-            zoneButtons[i] = tb;
-            g.add(tb, i % 3, i / 3);
-        }
-        return g;
+    }
+    /*
+    private void confirmAddNeighborhood() {
+        if (ctrl == null) return;
+        String name = tfNhName.getText().trim().isEmpty() ? null : tfNhName.getText().trim();
+        double lat  = !Double.isNaN(pendingNhLat) ? pendingNhLat : 45.7640 + (Math.random() - 0.5) * 0.06;
+        double lng  = !Double.isNaN(pendingNhLng) ? pendingNhLng : 4.8357  + (Math.random() - 0.5) * 0.08;
+        double alt  = parseDouble(tfNhAlt.getText(), 1.0);
+        int    pop  = parseInt(tfNhPop.getText(), 100);
+        String desc = tfNhDesc.getText().trim();
+        ctrl.addNeighborhood(name, lat, lng, alt, pop, desc);
+        refreshUI();
+        showRightPanel(null);
+        setGraphInfo("Quartier créé.");
+        currentTool = ToolMode.NONE;
+        if (mapView != null) mapView.setEditMode(MapView.EditMode.SELECT);
+    }
+    */
+
+    private void confirmAddNeighborhood() {
+        if (ctrl == null) return;
+        String name = tfNhName.getText().trim().isEmpty() ? null : tfNhName.getText().trim();
+        // MODIFIÉ — lire lat/lng depuis les champs texte
+        double lat = !Double.isNaN(pendingNhLat) ? pendingNhLat : 45.7640 + (Math.random() - 0.5) * 0.06;
+        double lng = !Double.isNaN(pendingNhLng) ? pendingNhLng : 4.8357  + (Math.random() - 0.5) * 0.08;
+        if (Double.isNaN(lat)) lat = 45.7640 + (Math.random() - 0.5) * 0.06;
+        if (Double.isNaN(lng)) lng = 4.8357  + (Math.random() - 0.5) * 0.08;
+        double alt = parseDouble(tfNhAlt.getText(), 1.0);
+        int    pop = parseInt(tfNhPop.getText(), 100);
+        String desc = tfNhDesc.getText().trim();
+        ctrl.addNeighborhood(name, lat, lng, alt, pop, desc);
+        refreshUI();
+        showRightPanel(null);
+        setGraphInfo("Quartier créé.");
+        currentTool = ToolMode.NONE;
+        if (mapView != null) mapView.setEditMode(MapView.EditMode.SELECT);
     }
 
-    private HBox buildControlButtons() {
-        HBox row = new HBox(6);
-        row.setAlignment(Pos.CENTER);
-        btnPause = iconBtn("⏸");
-        btnPlay = iconBtn("▶");
-        btnStop = iconBtn("⏹");
-        Button btnStep = iconBtn("⏭");
-        btnPause.setOnAction(e -> { if (controller != null) controller.mettreEnPause(); stopSimLoop(); });
-        btnPlay.setOnAction(e -> { if (controller != null) { controller.demarrerSimulation(); startSimLoop(); } });
-        btnStop.setOnAction(e -> { if (controller != null) controller.resetSimulation(); stopSimLoop(); });
-        btnStep.setOnAction(e -> { if (controller != null) { controller.reprendreSimulation(); controller.executerPas(); controller.mettreEnPause(); refreshUI(); } });
-        row.getChildren().addAll(btnPause, btnPlay, btnStep, btnStop);
-        return row;
-    }
+    // ─── Formulaire : Ajouter un Refuge ──────────────────────────────────
 
-    private HBox buildSpeedRow() {
-        HBox row = new HBox(8);
-        row.setAlignment(Pos.CENTER_LEFT);
-        sliderVitesse = new Slider(100, 1800, 500);
-        sliderVitesse.setPrefWidth(90);
-        sliderVitesse.setStyle("-fx-control-inner-background:#1e293b;-fx-accent:" + ACCENT_BLUE + ";");
-        lblVitesseVal = styledLabel("500 ms", FontWeight.BOLD, 10, TEXT_PRIMARY);
-        sliderVitesse.valueProperty().addListener((o, ov, nv) -> {
-            int v = (int) Math.round(nv.doubleValue());
-            lblVitesseVal.setText(v + " ms");
-            if (controller != null) controller.setVitesseSimulation(v);
-            if (simTimeline != null) startSimLoop();
+    private VBox buildPanelAddShelter() {
+        VBox v = new VBox(0);
+        v.setStyle("-fx-background-color:" + CARD + ";");
+        v.getChildren().add(sectionHeader("NOUVEAU REFUGE"));
+        VBox form = section();
+
+        tfShName = styledField("Nom (vide = auto)");
+        tfShAlt  = styledField("Altitude (m)");
+        tfShCap  = styledField("Capacité (personnes)");
+        tfShDesc = styledField("Description");
+
+        tfShSearch  = styledField("Rue, quartier, ville…");
+        lblShCoords = lbl("📍 Position non définie", FontWeight.NORMAL, 9, MUTED);
+        lblShCoords.setWrapText(true);
+
+        Button btnSearch = actionBtn("🔍 Rechercher", TEAL);
+        btnSearch.setMaxWidth(Double.MAX_VALUE);
+
+        btnSearch.setOnAction(e -> {
+            String q = tfShSearch.getText().trim();
+            if (q.isEmpty()) return;
+            lblShCoords.setText("⏳ Recherche en cours…");
+            lblShCoords.setTextFill(Color.web(YELLOW));
+            geocodeAddress(q,
+                (lat, lng) -> {
+                    pendingShLat = lat;
+                    pendingShLng = lng;
+                    lblShCoords.setText(String.format("📍 %.5f,  %.5f", lat, lng));
+                    lblShCoords.setTextFill(Color.web(GREEN));
+                    if (mapView != null) mapView.panTo(lat, lng);
+                    setGraphInfo("Position trouvée !");
+                },
+                () -> {
+                    lblShCoords.setText("❌ Adresse introuvable à Lyon");
+                    lblShCoords.setTextFill(Color.web(RED));
+                    setGraphInfo("Aucun résultat à Lyon — essayez : 'Bellecour', 'Gerland', 'Croix-Rousse'…");
+                });
         });
-        row.getChildren().addAll(styledLabel("Vitesse", FontWeight.NORMAL, 10, TEXT_MUTED), sliderVitesse, lblVitesseVal);
-        return row;
+        tfShSearch.setOnAction(e -> btnSearch.fire());
+
+        Button btnRandom = smallBtn("🎲 Position aléatoire");
+        btnRandom.setMaxWidth(Double.MAX_VALUE);
+        btnRandom.setOnAction(e -> {
+            pendingShLat = 45.7640 + (Math.random() - 0.5) * 0.06;
+            pendingShLng = 4.8357  + (Math.random() - 0.5) * 0.08;
+            lblShCoords.setText(String.format("📍 %.5f,  %.5f (aléatoire)", pendingShLat, pendingShLng));
+            lblShCoords.setTextFill(Color.web(ORANGE));
+            if (mapView != null) mapView.panTo(pendingShLat, pendingShLng);
+        });
+
+        Button btnConfirm = actionBtn("＋ Créer le refuge", PURPLE);
+        btnConfirm.setMaxWidth(Double.MAX_VALUE);
+        btnConfirm.setOnAction(e -> confirmAddShelter());
+
+        Button btnCancel = smallBtn("Annuler");
+        btnCancel.setMaxWidth(Double.MAX_VALUE);
+        btnCancel.setOnAction(e -> { showRightPanel(null); currentTool = ToolMode.NONE; });
+
+        form.getChildren().addAll(
+            lbl("Nom", FontWeight.BOLD, 9, MUTED), tfShName,
+            lbl("Altitude (m)", FontWeight.BOLD, 9, MUTED), tfShAlt,
+            lbl("Capacité", FontWeight.BOLD, 9, MUTED), tfShCap,
+            lbl("Description", FontWeight.BOLD, 9, MUTED), tfShDesc,
+            new Separator(),
+            lbl("Rechercher une adresse", FontWeight.BOLD, 9, MUTED),
+            tfShSearch, btnSearch,
+            lblShCoords, btnRandom,
+            new Separator(),
+            btnConfirm, btnCancel);
+
+        v.getChildren().add(form);
+        return v;
     }
+
+    private void resetNhForm() {
+        tfNhName.clear(); tfNhAlt.clear(); tfNhPop.clear(); tfNhDesc.clear();
+        tfNhSearch.clear();
+        pendingNhLat = Double.NaN; pendingNhLng = Double.NaN;
+        lblNhCoords.setText("📍 Position non définie");
+        lblNhCoords.setTextFill(Color.web(MUTED));
+    }
+
+    private void resetShForm() {
+        tfShName.clear(); tfShAlt.clear(); tfShCap.clear(); tfShDesc.clear();
+        tfShSearch.clear();
+        pendingShLat = Double.NaN; pendingShLng = Double.NaN;
+        lblShCoords.setText("📍 Position non définie");
+        lblShCoords.setTextFill(Color.web(MUTED));
+    }
+
+    private void updateShCoordsLabel() {
+        if (!Double.isNaN(pendingShLat))
+            Platform.runLater(() -> {
+                lblShCoords.setText(String.format("📍 %.4f, %.4f", pendingShLat, pendingShLng));
+                lblShCoords.setTextFill(Color.web(GREEN));
+            });
+    }
+
+    private void confirmAddShelter() {
+        if (ctrl == null) return;
+        String name = tfShName.getText().trim().isEmpty() ? null : tfShName.getText().trim();
+        double lat  = !Double.isNaN(pendingShLat) ? pendingShLat : 45.7640 + (Math.random() - 0.5) * 0.06;
+        double lng  = !Double.isNaN(pendingShLng) ? pendingShLng : 4.8357  + (Math.random() - 0.5) * 0.08;
+        double alt  = parseDouble(tfShAlt.getText(), 3.0);
+        int    cap  = parseInt(tfShCap.getText(), 200);
+        String desc = tfShDesc.getText().trim();
+        ctrl.addShelter(name, lat, lng, alt, cap, desc);
+        refreshUI();
+        showRightPanel(null);
+        setGraphInfo("Refuge créé.");
+        currentTool = ToolMode.NONE;
+        if (mapView != null) mapView.setEditMode(MapView.EditMode.SELECT);
+    }
+
+    // ─── Formulaire : Ajouter un Agent ───────────────────────────────────
+
+    private VBox buildPanelAddAgent() {
+        VBox v = new VBox(0);
+        v.setStyle("-fx-background-color:" + CARD + ";");
+        v.getChildren().add(sectionHeader("NOUVEL AGENT"));
+        VBox form = section();
+
+        cbAgentRole = new ComboBox<>();
+        cbAgentRole.getItems().addAll("Citoyen", "PMR", "Secours");
+        cbAgentRole.setValue("Citoyen");
+        cbAgentRole.setMaxWidth(Double.MAX_VALUE);
+        styleCombo(cbAgentRole);
+        cbAgentRole.valueProperty().addListener((o, ov, nv) -> {
+            boolean showStress = "Citoyen".equals(nv);
+            rbAgCalme.setVisible(showStress); rbAgCalme.setManaged(showStress);
+            rbAgStresse.setVisible(showStress); rbAgStresse.setManaged(showStress);
+        });
+
+        tfAgFn  = styledField("Prénom (vide = aléatoire)");
+        tfAgLn  = styledField("Nom (vide = aléatoire)");
+        tfAgAge = styledField("Âge (vide = aléatoire)");
+
+        slAgSpeed  = paramSlider(0.1, 5.0, 1.0);
+        lblAgSpeed = lbl("1.0 m/s", FontWeight.BOLD, 10, TEAL);
+        slAgSpeed.valueProperty().addListener((o, ov, nv) ->
+            lblAgSpeed.setText(String.format("%.1f m/s", nv.doubleValue())));
+
+        agStressGroup = new ToggleGroup();
+        rbAgCalme   = styledRadio("Calme",   agStressGroup, GREEN);
+        rbAgStresse = styledRadio("Stressé", agStressGroup, ORANGE);
+        rbAgCalme.setSelected(true);
+        HBox stressRow = new HBox(8, rbAgCalme, rbAgStresse);
+        stressRow.setAlignment(Pos.CENTER_LEFT);
+
+        // ── Zone de départ : ComboBox des zones existantes ─────────────
+        ComboBox<Zone> cbZone = new ComboBox<>();
+        cbZone.setMaxWidth(Double.MAX_VALUE);
+        cbZone.setPromptText("Aléatoire");
+        styleCombo(cbZone);
+
+        // Remplir avec les zones du modèle
+        if (modele != null) cbZone.getItems().addAll(modele.getZones());
+
+        // Affichage du nom de la zone dans la liste
+        cbZone.setCellFactory(lv -> new javafx.scene.control.ListCell<>() {
+            @Override protected void updateItem(Zone z, boolean empty) {
+                super.updateItem(z, empty);
+                setText(empty || z == null ? null : z.getName() + (z instanceof model.zone.Shelter ? " 🏠" : " 🏘"));
+                setStyle("-fx-background-color:#1e293b;-fx-text-fill:" + TEXT + ";-fx-font-size:10px;");
+            }
+        });
+        cbZone.setButtonCell(new javafx.scene.control.ListCell<>() {
+            @Override protected void updateItem(Zone z, boolean empty) {
+                super.updateItem(z, empty);
+                setText(empty || z == null ? "Aléatoire" : z.getName() + (z instanceof model.zone.Shelter ? " 🏠" : " 🏘"));
+                setStyle("-fx-background-color:#1e293b;-fx-text-fill:" + TEXT + ";-fx-font-size:10px;");
+            }
+        });
+
+        // Mettre à jour pendingAgZone à la sélection
+        cbZone.valueProperty().addListener((o, ov, nv) -> {
+            pendingAgZone = nv;
+            if (nv != null && mapView != null) mapView.panTo(nv.getLatitude(), nv.getLongitude());
+        });
+
+        // Bouton rafraîchir la liste (si des zones ont été ajoutées entre temps)
+        Button btnRefresh = smallBtn("↺ Rafraîchir");
+        btnRefresh.setOnAction(e -> {
+            Zone sel = cbZone.getValue();
+            cbZone.getItems().clear();
+            if (modele != null) cbZone.getItems().addAll(modele.getZones());
+            if (sel != null && cbZone.getItems().contains(sel)) cbZone.setValue(sel);
+        });
+
+        Button btnConfirm = actionBtn("＋ Ajouter l'agent", BLUE);
+        btnConfirm.setMaxWidth(Double.MAX_VALUE);
+        btnConfirm.setOnAction(e -> confirmAddAgent());
+
+        Button btnCancel = smallBtn("Annuler");
+        btnCancel.setMaxWidth(Double.MAX_VALUE);
+        btnCancel.setOnAction(e -> { showRightPanel(null); currentTool = ToolMode.NONE; });
+
+        form.getChildren().addAll(
+            lbl("Rôle", FontWeight.BOLD, 9, MUTED), cbAgentRole,
+            lbl("Prénom", FontWeight.BOLD, 9, MUTED), tfAgFn,
+            lbl("Nom", FontWeight.BOLD, 9, MUTED), tfAgLn,
+            lbl("Âge", FontWeight.BOLD, 9, MUTED), tfAgAge,
+            lbl("Vitesse", FontWeight.BOLD, 9, MUTED), paramRow(slAgSpeed, lblAgSpeed),
+            lbl("État", FontWeight.BOLD, 9, MUTED), stressRow,
+            new Separator(),
+            lbl("Zone de départ", FontWeight.BOLD, 9, MUTED),
+            cbZone, btnRefresh,
+            new Separator(),
+            btnConfirm, btnCancel);
+
+        v.getChildren().add(form);
+        return v;
+    }
+    private void resetAgentForm() {
+        cbAgentRole.setValue("Citoyen");
+        tfAgFn.clear(); tfAgLn.clear(); tfAgAge.clear();
+        slAgSpeed.setValue(1.0);
+        rbAgCalme.setSelected(true);
+        pendingAgZone = null;
+        waitingAgZone = false;
+    }
+
+    private void confirmAddAgent() {
+        if (ctrl == null) return;
+        AgentRole role = switch (cbAgentRole.getValue()) {
+            case "PMR"    -> AgentRole.PMR;
+            case "Secours"-> AgentRole.RESCUE;
+            default       -> AgentRole.CITIZEN;
+        };
+        String fn = tfAgFn.getText().trim().isEmpty() ? null : tfAgFn.getText().trim();
+        String ln = tfAgLn.getText().trim().isEmpty()  ? null : tfAgLn.getText().trim();
+        int    age   = -1;
+        try { age = Integer.parseInt(tfAgAge.getText().trim()); } catch (NumberFormatException ignored) {}
+        double speed  = slAgSpeed.getValue();
+        int    stress = (role == AgentRole.CITIZEN)
+            ? (rbAgCalme.isSelected() ? 0 : 1) : -1;
+
+        ctrl.addAgent(role, fn, ln, age, speed, stress, pendingAgZone);
+        syncMapAgents();
+        showRightPanel(null);
+        setGraphInfo("Agent ajouté.");
+        currentTool = ToolMode.NONE;
+    }
+
+    // ─── Formulaire : Modifier une Zone ──────────────────────────────────
+
+    private VBox buildPanelEditZone() {
+        VBox v = new VBox(0);
+        v.setStyle("-fx-background-color:" + CARD + ";");
+        v.getChildren().add(sectionHeader("MODIFIER ZONE"));
+        VBox form = section();
+
+        tfEzName = styledField("Nom");
+        tfEzAlt  = styledField("Altitude (m)");
+        tfEzPop  = styledField("Population / Capacité");
+        tfEzDesc = styledField("Description");
+
+        Button btnConfirm = actionBtn("✓ Appliquer", GREEN);
+        btnConfirm.setMaxWidth(Double.MAX_VALUE);
+        btnConfirm.setOnAction(e -> confirmEditZone());
+
+        Button btnCancel = smallBtn("Annuler");
+        btnCancel.setMaxWidth(Double.MAX_VALUE);
+        btnCancel.setOnAction(e -> { showRightPanel(null); currentTool = ToolMode.NONE; });
+
+        form.getChildren().addAll(
+            lbl("Nom", FontWeight.BOLD, 9, MUTED), tfEzName,
+            lbl("Altitude (m)", FontWeight.BOLD, 9, MUTED), tfEzAlt,
+            lbl("Population / Capacité", FontWeight.BOLD, 9, MUTED), tfEzPop,
+            lbl("Description", FontWeight.BOLD, 9, MUTED), tfEzDesc,
+            new Separator(),
+            btnConfirm, btnCancel);
+        v.getChildren().add(form);
+        return v;
+    }
+
+    private void fillEditZoneForm(Zone z) {
+        Platform.runLater(() -> {
+            tfEzName.setText(z.getName() != null ? z.getName() : "");
+            tfEzAlt.setText(String.format("%.1f", z.getAltitude()));
+            tfEzPop.setText(String.valueOf((int) z.getPopulation()));
+            tfEzDesc.setText(""); // description non exposée universellement
+        });
+    }
+
+    private void confirmEditZone() {
+        if (ctrl == null || editingZone == null) return;
+        String name = tfEzName.getText().trim().isEmpty() ? null : tfEzName.getText().trim();
+        double alt  = parseDouble(tfEzAlt.getText(), editingZone.getAltitude());
+        int    pop  = parseInt(tfEzPop.getText(), (int) editingZone.getPopulation());
+        String desc = tfEzDesc.getText().trim();
+        ctrl.updateZoneParams(editingZone.getId(), name, alt, pop, desc);
+        refreshUI();
+        showRightPanel(null);
+        setGraphInfo("Zone mise à jour.");
+        currentTool = ToolMode.NONE;
+    }
+
+    // ─── Formulaire : Modifier une Arête ─────────────────────────────────
+
+    private VBox buildPanelEditEdge() {
+        VBox v = new VBox(0);
+        v.setStyle("-fx-background-color:" + CARD + ";");
+        v.getChildren().add(sectionHeader("MODIFIER ROUTE"));
+        VBox form = section();
+
+        tfEeCap = styledField("Capacité max (agents)");
+
+        Button btnConfirm = actionBtn("✓ Appliquer", GREEN);
+        btnConfirm.setMaxWidth(Double.MAX_VALUE);
+        btnConfirm.setOnAction(e -> confirmEditEdge());
+
+        Button btnCancel = smallBtn("Annuler");
+        btnCancel.setMaxWidth(Double.MAX_VALUE);
+        btnCancel.setOnAction(e -> { showRightPanel(null); currentTool = ToolMode.NONE; });
+
+        form.getChildren().addAll(
+            lbl("Capacité maximale", FontWeight.BOLD, 9, MUTED), tfEeCap,
+            new Separator(),
+            btnConfirm, btnCancel);
+        v.getChildren().add(form);
+        return v;
+    }
+
+    private void fillEditEdgeForm(Edge e) {
+        Platform.runLater(() -> tfEeCap.setText(String.valueOf(e.getCapacityMax())));
+    }
+
+    private void confirmEditEdge() {
+        if (ctrl == null || editingEdge == null) return;
+        int cap = parseInt(tfEeCap.getText(), editingEdge.getCapacityMax());
+        ctrl.updateEdgeParams(editingEdge.getId(), cap);
+        refreshUI();
+        showRightPanel(null);
+        setGraphInfo("Route mise à jour.");
+        currentTool = ToolMode.NONE;
+    }
+
+    // ─── Formulaire : Modifier un Agent ──────────────────────────────────
+
+    private VBox buildPanelEditAgent() {
+        VBox v = new VBox(0);
+        v.setStyle("-fx-background-color:" + CARD + ";");
+        v.getChildren().add(sectionHeader("MODIFIER AGENT"));
+        VBox form = section();
+
+        tfEaFn  = styledField("Prénom");
+        tfEaLn  = styledField("Nom");
+        tfEaAge = styledField("Âge");
+
+        slEaSpeed  = paramSlider(0.1, 5.0, 1.0);
+        lblEaSpeed = lbl("1.0 m/s", FontWeight.BOLD, 10, TEAL);
+        slEaSpeed.valueProperty().addListener((o, ov, nv) ->
+            lblEaSpeed.setText(String.format("%.1f m/s", nv.doubleValue())));
+
+        eaStressGroup = new ToggleGroup();
+        rbEaCalme   = styledRadio("Calme",   eaStressGroup, GREEN);
+        rbEaStresse = styledRadio("Stressé", eaStressGroup, ORANGE);
+        rbEaCalme.setSelected(true);
+        HBox stressRow = new HBox(8, rbEaCalme, rbEaStresse);
+        stressRow.setAlignment(Pos.CENTER_LEFT);
+
+        Button btnConfirm = actionBtn("✓ Appliquer", GREEN);
+        btnConfirm.setMaxWidth(Double.MAX_VALUE);
+        btnConfirm.setOnAction(e -> confirmEditAgent());
+
+        Button btnCancel = smallBtn("Annuler");
+        btnCancel.setMaxWidth(Double.MAX_VALUE);
+        btnCancel.setOnAction(e -> { showRightPanel(null); currentTool = ToolMode.NONE; });
+
+        form.getChildren().addAll(
+            lbl("Prénom", FontWeight.BOLD, 9, MUTED), tfEaFn,
+            lbl("Nom", FontWeight.BOLD, 9, MUTED), tfEaLn,
+            lbl("Âge", FontWeight.BOLD, 9, MUTED), tfEaAge,
+            lbl("Vitesse", FontWeight.BOLD, 9, MUTED), paramRow(slEaSpeed, lblEaSpeed),
+            lbl("État", FontWeight.BOLD, 9, MUTED), stressRow,
+            new Separator(),
+            btnConfirm, btnCancel);
+        v.getChildren().add(form);
+        return v;
+    }
+
+    private void fillEditAgentForm(Agent agent) {
+        Platform.runLater(() -> {
+            tfEaFn.setText(agent.getFirstName() != null ? agent.getFirstName() : "");
+            tfEaLn.setText(agent.getLastName()  != null ? agent.getLastName()  : "");
+            tfEaAge.setText(String.valueOf(agent.getAge()));
+            slEaSpeed.setValue(agent.getMaxSpeed());
+            if (agent instanceof Citizen c) {
+                boolean stressed = c.getState() == model.enums.CitizenState.STRESSED;
+                if (stressed) rbEaStresse.setSelected(true);
+                else rbEaCalme.setSelected(true);
+            } else {
+                rbEaCalme.setVisible(false); rbEaCalme.setManaged(false);
+                rbEaStresse.setVisible(false); rbEaStresse.setManaged(false);
+            }
+        });
+    }
+
+    private void confirmEditAgent() {
+        if (ctrl == null || editingAgent == null) return;
+        String fn  = tfEaFn.getText().trim().isEmpty() ? null : tfEaFn.getText().trim();
+        String ln  = tfEaLn.getText().trim().isEmpty()  ? null : tfEaLn.getText().trim();
+        int    age = parseInt(tfEaAge.getText(), -1);
+        double spd = slEaSpeed.getValue();
+        int stress = (editingAgent instanceof Citizen)
+            ? (rbEaCalme.isSelected() ? 0 : 1) : -1;
+        ctrl.updateAgentParams(editingAgent.getId(), fn, ln, age, spd, stress);
+        syncMapAgents();
+        showRightPanel(null);
+        setGraphInfo("Agent mis à jour.");
+        currentTool = ToolMode.NONE;
+    }
+
+    // ─── Légende permanente ───────────────────────────────────────────────
+
+    private VBox buildPanelLegend() {
+        VBox v = new VBox(0);
+        v.setStyle("-fx-background-color:" + CARD + ";");
+        v.getChildren().add(sectionHeader("LÉGENDE"));
+        VBox leg = section();
+        leg.getChildren().addAll(
+            lbl("Nœuds", FontWeight.BOLD, 9, MUTED),
+            colorRow(TEAL,   "Quartier"),
+            colorRow(PURPLE, "Refuge"),
+            colorRow(RED,    "Inondé"),
+            colorRow(YELLOW, "Sélectionné"),
+            lbl("Routes", FontWeight.BOLD, 9, MUTED),
+            colorRow(GREEN,  "Sûre"),
+            colorRow(ORANGE, "À risque"),
+            colorRow(YELLOW, "Congestionnée"),
+            colorRow(RED,    "Surchargée / Inondée"),
+            lbl("Agents", FontWeight.BOLD, 9, MUTED),
+            colorRow(BLUE,   "Citoyen / PMR"),
+            colorRow(GREEN,  "En sécurité"),
+            colorRow(RED,    "Bloqué"),
+            colorRow(TEAL,   "Secouriste"));
+        v.getChildren().add(leg);
+        return v;
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // BARRE BASSE — 80px
+    // ═════════════════════════════════════════════════════════════════════
 
     private HBox buildBottomBar() {
         HBox bar = new HBox(0);
-        bar.setStyle("-fx-background-color:" + BG_CARD + ";-fx-border-color:" + BORDER_COLOR + " transparent transparent transparent;-fx-border-width:1 0 0 0;");
-        bar.setPrefHeight(96);
+        bar.setMinHeight(80);
+        bar.setMaxHeight(80);
+        bar.setAlignment(Pos.CENTER_LEFT);
+        bar.setStyle("-fx-background-color:" + CARD
+            + ";-fx-border-color:" + BORDER + " transparent transparent transparent;"
+            + "-fx-border-width:1 0 0 0;");
 
-        VBox b1 = statBloc("INFORMATIONS GÉNÉRALES");
+        VBox b1 = bottomBloc("GÉNÉRAL");
+        lblPopRisque    = val("0", ORANGE);
+        lblPersonnesSec = val("0", GREEN);
+        lblAgentsActifs = val("0", BLUE);
         b1.getChildren().addAll(
-            statRow("○", "Citoyens à évacuer", lblPopRisque = val("0", ACCENT_ORANGE)),
-            statRow("□", "Citoyens au refuge", lblPersonnesSec = val("0", ACCENT_GREEN)),
-            statRow("▣", "Agents affichés", lblAgentsActifs = val("0", ACCENT_BLUE)));
+            statRow("○", "À évacuer",   lblPopRisque),
+            statRow("□", "En sécurité", lblPersonnesSec),
+            statRow("▣", "Agents",      lblAgentsActifs));
 
-        VBox b2 = statBloc("STATUT DU RÉSEAU");
+        VBox b2 = bottomBloc("RÉSEAU");
+        lblSures = val("0%", TEXT); lblRisque = val("0%", TEXT);
+        lblCong  = val("0%", TEXT); lblOver   = val("0%", TEXT); lblInond = val("0%", TEXT);
         b2.getChildren().addAll(
-                barRow("Sûres", ACCENT_GREEN, lblAretesSures = val("0%", TEXT_PRIMARY)),
-                barRow("À risque", ACCENT_ORANGE, lblAretesRisque = val("0%", TEXT_PRIMARY)),
-                barRow("Congestion", "#eab308", lblAretesCong = val("0%", TEXT_PRIMARY)),
-                barRow("Surcharge", "#b91c1c", lblAretesOver = val("0%", TEXT_PRIMARY)),
-                barRow("Inondées", ACCENT_RED, lblAretesInond = val("0%", TEXT_PRIMARY)));
+            barRow("Sûres",      GREEN,  lblSures),
+            barRow("Risque",     ORANGE, lblRisque),
+            barRow("Congestion", YELLOW, lblCong),
+            barRow("Surcharge",  RED,    lblOver),
+            barRow("Inondées",   PURPLE, lblInond));
 
-        VBox b3 = statBloc("POINTS DE REFUGE");
+        VBox b3 = bottomBloc("REFUGES");
+        lblRefTotal  = val("0", TEXT);
+        lblRefAccess = val("0", GREEN);
+        lblRefInacc  = val("0", RED);
         b3.getChildren().addAll(
-            statRow("⌂", "Total", lblRefugesTotal = val("0", TEXT_PRIMARY)),
-            statRow("✓", "Accessibles", lblRefugesAccess = val("0", ACCENT_GREEN)),
-            statRow("×", "Inaccessibles", lblRefugesInacc = val("0", ACCENT_RED)));
+            statRow("⌂", "Total",         lblRefTotal),
+            statRow("✓", "Accessibles",   lblRefAccess),
+            statRow("✗", "Inaccessibles", lblRefInacc));
 
-        VBox b4 = statBloc("NIVEAU D'EAU MOYEN");
-        lblNiveauActuel = styledLabel("0.00 m", FontWeight.BOLD, 18, ACCENT_BLUE);
-        lblNiveauMax = styledLabel("Max prédit 0.00 m", FontWeight.NORMAL, 10, ACCENT_RED);
-        b4.getChildren().addAll(styledLabel("Actuel", FontWeight.NORMAL, 10, TEXT_MUTED), lblNiveauActuel, lblNiveauMax);
+        VBox b4 = bottomBloc("NIVEAU EAU");
+        lblNiveauActuel = lbl("0.00 m",     FontWeight.BOLD, 18, BLUE);
+        lblNiveauMax    = lbl("Max 0.00 m", FontWeight.NORMAL, 10, RED);
+        b4.getChildren().addAll(lblNiveauActuel, lblNiveauMax);
 
-        VBox b5 = statBloc("PROCHAINE ÉTAPE");
-        lblTempsRestant = styledLabel("+ 2 min", FontWeight.BOLD, 13, ACCENT_TEAL);
-        lblZoneNiveaux = styledLabel("—", FontWeight.NORMAL, 10, TEXT_PRIMARY);
-        lblZoneNiveaux.setStyle("-fx-font-family:monospace;-fx-font-size:10px;");
-        b5.getChildren().addAll(lblTempsRestant, styledLabel("Niveaux estimés par zone", FontWeight.NORMAL, 10, TEXT_MUTED), lblZoneNiveaux);
+        VBox b5 = bottomBloc("DÉPLACEMENTS");
+        lblActifs  = val("0", TEAL);
+        lblBloques = val("0", RED);
+        lblCongNds = val("0", ORANGE);
+        b5.getChildren().addAll(
+            statRow("→", "En transit",   lblActifs),
+            statRow("✗", "Bloqués",      lblBloques),
+            statRow("⚠", "Nœuds cong.", lblCongNds));
 
-        bar.getChildren().addAll(wrap(b1), div(), wrap(b2), div(), wrap(b3), div(), wrap(b4), div(), wrap(b5));
+        refreshLoop = new Timeline(new KeyFrame(Duration.millis(400), e -> {
+            refreshUI();
+            if (ctrl != null && modele != null) {
+                lblActifs.setText(String.valueOf(ctrl.getNombreAgentsEnDeplacement()));
+                long nc = modele.getZones().stream()
+                    .filter(z -> ctrl.isZoneOvercrowded(z.getId())).count();
+                lblCongNds.setText(String.valueOf(nc));
+            }
+        }));
+        refreshLoop.setCycleCount(Timeline.INDEFINITE);
+        refreshLoop.play();
+
+        for (VBox b : new VBox[]{b1, b2, b3, b4, b5}) {
+            HBox.setHgrow(b, Priority.ALWAYS);
+            b.setMaxWidth(Double.MAX_VALUE);
+        }
+        bar.getChildren().addAll(b1, vDiv(), b2, vDiv(), b3, vDiv(), b4, vDiv(), b5);
         return bar;
     }
 
-    private void startRefreshLoop() {
-        refreshTimeline = new Timeline(new KeyFrame(Duration.millis(400), e -> refreshUI()));
-        refreshTimeline.setCycleCount(Timeline.INDEFINITE);
-        refreshTimeline.play();
+    // ═════════════════════════════════════════════════════════════════════
+    // UPDATE PANELS SÉLECTION
+    // ═════════════════════════════════════════════════════════════════════
+
+    private void updateSelPanel(NodeEdgeStats s) {
+        if (s == null || panelSel == null) return;
+        Platform.runLater(() -> {
+            panelSel.setVisible(true);
+            lblSelNom.setText(s.name);
+            lblSelType.setText(s.type);
+            lblSelAgents.setText(String.valueOf(s.currentAgents));
+            lblSelPassed.setText(String.valueOf(s.totalPassed));
+            lblSelSpeed.setText(String.format("%.2f ag/cyc", s.avgSpeed));
+            lblSelCap.setText(s.capacity > 0 ? String.valueOf(s.capacity) : "—");
+            lblSelWait.setText(s.congested ? s.waitCycles + " cyc" : "—");
+            lblSelStatus.setText(s.status);
+            String col = switch (s.status) {
+                case "Inondé", "OVERLOADED" -> RED;
+                case "Forte congestion", "AT_RISK" -> ORANGE;
+                case "CONGESTED" -> YELLOW;
+                default -> GREEN;
+            };
+            lblSelStatus.setTextFill(Color.web(col));
+        });
     }
 
-    private void startSimLoop() {
-        if (simTimeline != null) simTimeline.stop();
-        double intervalMs = controller != null ? controller.getVitesseSimulationMs() : 500;
-        simTimeline = new Timeline(new KeyFrame(Duration.millis(intervalMs), e -> { if (controller != null) controller.executerPas(); }));
-        simTimeline.setCycleCount(Timeline.INDEFINITE);
-        simTimeline.play();
+    private void updateSelPanelForAgent(Agent agent) {
+        if (panelSel == null) return;
+        Platform.runLater(() -> {
+            panelSel.setVisible(true);
+            String name = ((agent.getFirstName() != null ? agent.getFirstName() + " " : "")
+                + (agent.getLastName() != null ? agent.getLastName() : "")).trim();
+            lblSelNom.setText(name.isBlank() ? "Agent #" + agent.getId() : name);
+            lblSelType.setText(agent.getClass().getSimpleName()
+                + " | vit. " + String.format("%.1f", agent.getMaxSpeed()) + " m/s");
+            lblSelStatus.setText("En déplacement");
+            lblSelStatus.setTextFill(Color.web(BLUE));
+        });
     }
 
-    private void stopSimLoop() { if (simTimeline != null) simTimeline.stop(); }
+    private void updatePathPanel(List<Zone> path) {
+        Platform.runLater(() -> {
+            if (panelPath == null) return;
+            panelPath.setVisible(!path.isEmpty());
+            if (path.isEmpty()) { lblPathInfo.setText("Aucun trajet actif."); return; }
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < path.size(); i++) {
+                sb.append(path.get(i).getName());
+                if (i < path.size() - 1) sb.append(" →\n");
+            }
+            lblPathInfo.setText(sb.toString());
+        });
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // IMPORT / EXPORT
+    // ═════════════════════════════════════════════════════════════════════
+
+    private void handleExport() {
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Exporter l'état");
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Flood Simulation", "*.flood"));
+        fc.setInitialFileName("simulation.flood");
+        File f = fc.showSaveDialog(getScene() != null ? getScene().getWindow() : null);
+        if (f != null && ctrl != null) ctrl.exportState(f);
+    }
+
+    private void handleImport() {
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Importer un état");
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Flood Simulation", "*.flood"));
+        File f = fc.showOpenDialog(getScene() != null ? getScene().getWindow() : null);
+        if (f != null && ctrl != null) { stopSim(); ctrl.importState(f); refreshUI(); }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // BOUCLES SIMULATION
+    // ═════════════════════════════════════════════════════════════════════
+
+    private void startSim() {
+        if (simLoop != null) simLoop.stop();
+        double ms = ctrl != null ? ctrl.getVitesseSimulationMs() : 1500;
+        simLoop = new Timeline(new KeyFrame(Duration.millis(ms),
+            e -> { if (ctrl != null) ctrl.executerPas(); }));
+        simLoop.setCycleCount(Timeline.INDEFINITE);
+        simLoop.play();
+        simRunning = true;
+        if (mapView != null) mapView.resumeFloodPropagation();
+    }
+
+    private void stopSim() {
+        if (simLoop != null) simLoop.stop();
+        simRunning = false;
+        if (mapView != null) mapView.pauseFloodPropagation();
+    }
+
+    public void stopAll() {
+        if (refreshLoop != null) refreshLoop.stop();
+        stopSim();
+    }
+
+    public void stopRefresh() { stopAll(); }
+
+    private void startRefreshLoop() { /* lancé dans buildBottomBar */ }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // REFRESH UI
+    // ═════════════════════════════════════════════════════════════════════
 
     private void refreshUI() {
         if (modele == null) return;
         try {
             int s = (int) modele.getTempsEcoule();
-            lblTimer.setText(String.format("⏱  %02d:%02d:%02d", s / 3600, (s % 3600) / 60, s % 60));
+            lblTimer.setText(String.format("⏱ %02d:%02d:%02d", s / 3600, (s % 3600) / 60, s % 60));
             boolean pause = modele.isEnPause();
-            lblSimStatus.setText(pause ? "En pause" : "Simulation en cours");
-            lblSimStatus.setTextFill(Color.web(pause ? ACCENT_ORANGE : ACCENT_GREEN));
+            lblStatus.setText(pause ? "En pause" : "En cours");
+            lblStatus.setTextFill(Color.web(pause ? ORANGE : GREEN));
+            if (pause && mapView != null) {
+                mapView.pauseFloodPropagation();
+            } else if (!pause && simRunning && mapView != null) {
+                mapView.resumeFloodPropagation();
+            }
 
-            double nv = modele.getNiveauEau();
+            double nv = modele.getNiveauEau() / SimulationController.FLOOD_SPEED_FACTOR;
             lblNiveauActuel.setText(String.format("%.2f m", nv));
-            lblNiveauMax.setText(String.format("Max prédit %.2f m", nv * 1.78));
+            lblNiveauMax.setText(String.format("Max %.2f m", nv * 1.78));
 
-            if (controller != null) {
-                double[] r = controller.getStatutReseau();
+            if (ctrl != null) {
+                double[] r = ctrl.getStatutReseau();
                 if (r != null && r.length >= 5) {
-                    lblAretesSures.setText(String.format("%.0f%%", r[0]));
-                    lblAretesRisque.setText(String.format("%.0f%%", r[1]));
-                    lblAretesCong.setText(String.format("%.0f%%", r[2]));
-                    lblAretesOver.setText(String.format("%.0f%%", r[3]));
-                    lblAretesInond.setText(String.format("%.0f%%", r[4]));
+                    lblSures.setText(String.format("%.0f%%", r[0]));
+                    lblRisque.setText(String.format("%.0f%%", r[1]));
+                    lblCong.setText(String.format("%.0f%%", r[2]));
+                    lblOver.setText(String.format("%.0f%%", r[3]));
+                    lblInond.setText(String.format("%.0f%%", r[4]));
                 }
-                lblPopRisque.setText(String.valueOf(controller.getPopulationARisque()));
-                lblPersonnesSec.setText(String.valueOf(controller.getPopulationEnSecurite()));
+                lblPopRisque.setText(String.valueOf(ctrl.getPopulationARisque()));
+                lblPersonnesSec.setText(String.valueOf(ctrl.getPopulationEnSecurite()));
             }
             lblAgentsActifs.setText(String.valueOf(modele.getNombreAgents()));
-            if (mapController != null) {
-                lblRefugesTotal.setText(String.valueOf(mapController.countSheltersTotal()));
-                lblRefugesAccess.setText(String.valueOf(mapController.countSheltersAccessible()));
-                lblRefugesInacc.setText(String.valueOf(Math.max(0, mapController.countSheltersTotal() - mapController.countSheltersAccessible())));
-            }
 
-            List<Zone> zones = modele.getZones();
-            if (!zones.isEmpty() && selectedZoneIndex < zones.size()) {
-                Zone z = zones.get(selectedZoneIndex);
-                lblNiveauEauZone.setText(String.format("%.2f m", nv));
-                boolean fl = z.isFlooded();
-                lblStatutZone.setText(fl ? "Inondée ⚠" : nv > 0.5 ? "En montée ↗" : "Stable →");
-                lblStatutZone.setTextFill(Color.web(fl ? ACCENT_RED : nv > 0.5 ? ACCENT_ORANGE : ACCENT_GREEN));
+            if (mapCtrl != null) {
+                lblRefTotal.setText(String.valueOf(mapCtrl.countSheltersTotal()));
+                lblRefAccess.setText(String.valueOf(mapCtrl.countSheltersAccessible()));
+                lblRefInacc.setText(String.valueOf(Math.max(0,
+                    mapCtrl.countSheltersTotal() - mapCtrl.countSheltersAccessible())));
             }
-            if (zones.size() >= 6) lblZoneNiveaux.setText(String.format("A %.2fm   B %.2fm%nC %.2fm   F %.2fm", nv * .8, nv, nv * .9, nv * .65));
-        } catch (Exception e) {
-            System.err.println("refreshUI: " + e.getMessage());
+        } catch (Exception ex) {
+            System.err.println("refreshUI: " + ex.getMessage());
         }
     }
 
-    public void stopRefresh() {
-        if (refreshTimeline != null) refreshTimeline.stop();
-        if (simTimeline != null) simTimeline.stop();
+    // ═════════════════════════════════════════════════════════════════════
+    // HELPERS AGENTS
+    // ═════════════════════════════════════════════════════════════════════
+
+    private void syncMapAgents() {
+        if (mapCtrl != null) mapCtrl.syncAgents(modele.getAgents());
+        if (mapView != null) mapView.setAgents(modele.getAgents());
+        try { Main.getSharedAdminCtrl().loadAgents(); } catch (Exception ignored) {}
+        refreshUI();
     }
 
-    private Label styledLabel(String text, FontWeight fw, int size, String color) {
-        Label l = new Label(text);
-        l.setFont(Font.font("System", fw, size));
-        l.setTextFill(Color.web(color));
-        return l;
-    }
-    private Label val(String text, String color) { return styledLabel(text, FontWeight.BOLD, 12, color); }
-
-    private VBox cardPanel(int maxW) {
-        VBox p = new VBox(6);
-        p.setPadding(new Insets(12, 14, 12, 14));
-        p.setMaxWidth(maxW);
-        // Très important : dans un StackPane, un enfant resizable peut prendre toute la hauteur.
-        // On force donc les panneaux overlay à garder leur hauteur naturelle pour ne pas cacher la carte.
-        p.setMinHeight(Region.USE_PREF_SIZE);
-        p.setPrefHeight(Region.USE_COMPUTED_SIZE);
-        p.setMaxHeight(Region.USE_PREF_SIZE);
-        p.setPickOnBounds(false);
-        p.setStyle("-fx-background-color:" + BG_CARD + ";-fx-background-radius:8;-fx-border-color:" + BORDER_COLOR + ";-fx-border-radius:8;-fx-effect:dropshadow(gaussian,rgba(0,0,0,0.6),12,0,0,4);");
-        return p;
+    private void setGraphInfo(String msg) {
+        if (lblGraphInfo != null) Platform.runLater(() -> lblGraphInfo.setText(msg));
     }
 
-    private Rectangle iconLine(String color) {
-        Rectangle r = new Rectangle(22, 3);
-        r.setArcWidth(3);
-        r.setArcHeight(3);
-        r.setFill(Color.web(color));
-        return r;
+    // ═════════════════════════════════════════════════════════════════════
+    // GESTION DES MODES OUTILS
+    // ═════════════════════════════════════════════════════════════════════
+
+    private void setTool(ToolMode mode, Button... buttons) {
+        currentTool = mode;
+        // tous inactifs, puis le premier actif
+        for (Button b : buttons) applyToolStyle(b, false);
+        if (buttons.length > 0) applyToolStyle(buttons[0], true);
     }
 
-    private VBox statBloc(String title) {
-        VBox b = new VBox(8);
-        b.setPadding(new Insets(12, 18, 10, 18));
-    
-        Label titleLabel = styledLabel(title, FontWeight.BOLD, 9, TEXT_MUTED);
-    
-        Rectangle underline = new Rectangle(150, 2);
-        underline.setFill(Color.web(ACCENT_BLUE));
-        underline.setArcWidth(3);
-        underline.setArcHeight(3);
-    
-        b.getChildren().addAll(titleLabel, underline);
+    // ═════════════════════════════════════════════════════════════════════
+    // HELPERS VISUELS
+    // ═════════════════════════════════════════════════════════════════════
+
+    private HBox sectionHeader(String title) {
+        HBox h = new HBox();
+        h.setAlignment(Pos.CENTER_LEFT);
+        h.setPadding(new Insets(5, 12, 5, 12));
+        h.setStyle("-fx-background-color:" + BORDER + ";");
+        h.getChildren().add(lbl(title, FontWeight.BOLD, 9, MUTED));
+        return h;
+    }
+
+    private VBox section() {
+        VBox v = new VBox(5);
+        v.setPadding(new Insets(7, 10, 7, 10));
+        return v;
+    }
+
+    private VBox bottomBloc(String title) {
+        VBox b = new VBox(3);
+        b.setPadding(new Insets(6, 12, 6, 12));
+        b.setAlignment(Pos.CENTER_LEFT);
+        b.getChildren().add(lbl(title, FontWeight.BOLD, 9, MUTED));
         return b;
     }
 
-    private HBox hrow(String label, Label value) {
+    private Label lbl(String t, FontWeight fw, int sz, String col) {
+        Label l = new Label(t);
+        l.setFont(Font.font("System", fw, sz));
+        l.setTextFill(Color.web(col));
+        return l;
+    }
+
+    private Label val(String t, String col) { return lbl(t, FontWeight.BOLD, 11, col); }
+
+    private HBox hrow(String label, Label val) {
         HBox r = new HBox(6);
         r.setAlignment(Pos.CENTER_LEFT);
-        r.getChildren().addAll(styledLabel(label, FontWeight.NORMAL, 10, TEXT_MUTED), value);
+        Label l = lbl(label + ":", FontWeight.NORMAL, 10, MUTED);
+        l.setMinWidth(58);
+        Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
+        r.getChildren().addAll(l, sp, val);
         return r;
     }
 
-    private HBox statRow(String icon, String label, Label value) {
-        HBox r = new HBox(8);
+    private HBox statRow(String icon, String label, Label val) {
+        HBox r = new HBox(5);
         r.setAlignment(Pos.CENTER_LEFT);
-    
-        Label ic = new Label(icon);
-        ic.setTextFill(Color.web(TEXT_MUTED));
-        ic.setFont(Font.font("System", FontWeight.BOLD, 15));
-        ic.setMinWidth(22);
-    
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-    
-        r.getChildren().addAll(ic, styledLabel(label, FontWeight.NORMAL, 11, TEXT_MUTED), sp, value);
+        Label ic = lbl(icon, FontWeight.BOLD, 11, MUTED);
+        ic.setMinWidth(14);
+        Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
+        r.getChildren().addAll(ic, lbl(label, FontWeight.NORMAL, 10, MUTED), sp, val);
         return r;
     }
 
-    private HBox barRow(String label, String color, Label value) {
-        HBox r = new HBox(8);
+    private HBox barRow(String label, String color, Label val) {
+        HBox r = new HBox(5);
         r.setAlignment(Pos.CENTER_LEFT);
-        Rectangle dot = new Rectangle(12, 3);
-        dot.setFill(Color.web(color));
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-        r.getChildren().addAll(dot, styledLabel(label, FontWeight.NORMAL, 11, TEXT_MUTED), sp, value);
+        Rectangle dot = new Rectangle(10, 3, Color.web(color));
+        Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
+        r.getChildren().addAll(dot, lbl(label, FontWeight.NORMAL, 10, MUTED), sp, val);
         return r;
     }
 
-    private HBox colorBar(String color, String text) {
+    private HBox colorRow(String color, String text) {
         HBox r = new HBox(6);
         r.setAlignment(Pos.CENTER_LEFT);
-        Rectangle rect = new Rectangle(16, 8);
-        rect.setFill(Color.web(color));
-        rect.setArcWidth(3);
-        rect.setArcHeight(3);
-        r.getChildren().addAll(rect, styledLabel(text, FontWeight.NORMAL, 10, TEXT_MUTED));
+        r.setPadding(new Insets(1, 0, 1, 0));
+        Rectangle rect = new Rectangle(12, 6, Color.web(color));
+        rect.setArcWidth(2); rect.setArcHeight(2);
+        r.getChildren().addAll(rect, lbl(text, FontWeight.NORMAL, 10, MUTED));
         return r;
     }
 
-    private Separator separator() {
-        Separator s = new Separator();
-        s.setStyle("-fx-background-color:" + BORDER_COLOR + ";");
+    private HBox paramRow(Slider sl, Label val) {
+        HBox r = new HBox(5);
+        r.setAlignment(Pos.CENTER_LEFT);
+        sl.setPrefWidth(120);
+        r.getChildren().addAll(sl, val);
+        return r;
+    }
+
+    private HBox padBox(javafx.scene.Node node, double top, double right, double bottom, double left) {
+        HBox b = new HBox(node);
+        b.setAlignment(Pos.CENTER);
+        b.setPadding(new Insets(top, right, bottom, left));
+        return b;
+    }
+
+    private Slider paramSlider(double min, double max, double val) {
+        Slider s = new Slider(min, max, val);
+        s.setStyle("-fx-control-inner-background:#1e293b;-fx-accent:" + BLUE + ";");
         return s;
     }
 
-    private Button smallButton(String text) {
-        Button b = new Button(text);
-        b.setStyle("-fx-background-color:#1e293b;-fx-text-fill:" + TEXT_PRIMARY + ";-fx-background-radius:6;-fx-font-size:10px;-fx-padding:5 8 5 8;-fx-cursor:hand;");
-        b.setOnMouseEntered(e -> b.setStyle("-fx-background-color:" + ACCENT_BLUE + ";-fx-text-fill:white;-fx-background-radius:6;-fx-font-size:10px;-fx-padding:5 8 5 8;-fx-cursor:hand;"));
-        b.setOnMouseExited(e -> b.setStyle("-fx-background-color:#1e293b;-fx-text-fill:" + TEXT_PRIMARY + ";-fx-background-radius:6;-fx-font-size:10px;-fx-padding:5 8 5 8;-fx-cursor:hand;"));
+    private TextField styledField(String prompt) {
+        TextField tf = new TextField();
+        tf.setPromptText(prompt);
+        tf.setStyle("-fx-background-color:#1e293b;-fx-text-fill:" + TEXT
+            + ";-fx-prompt-text-fill:" + MUTED + ";-fx-background-radius:5;"
+            + "-fx-font-size:11px;-fx-padding:5 8 5 8;");
+        return tf;
+    }
+
+    private void styleCombo(ComboBox<?> cb) {
+        cb.setStyle("-fx-background-color:#1e293b;-fx-text-fill:" + TEXT
+            + ";-fx-font-size:10px;-fx-background-radius:5;");
+    }
+
+    private RadioButton styledRadio(String text, ToggleGroup group, String activeColor) {
+        RadioButton rb = new RadioButton(text);
+        rb.setToggleGroup(group);
+        rb.setFont(Font.font("System", FontWeight.NORMAL, 10));
+        rb.setTextFill(Color.web(MUTED));
+        rb.setStyle("-fx-cursor:hand;");
+        rb.selectedProperty().addListener((o, ov, nv) ->
+            rb.setTextFill(Color.web(nv ? activeColor : MUTED)));
+        return rb;
+    }
+
+    private Button smallBtn(String t) {
+        Button b = new Button(t);
+        String base  = "-fx-background-color:#1e293b;-fx-text-fill:" + TEXT
+            + ";-fx-background-radius:5;-fx-font-size:10px;-fx-padding:4 7 4 7;-fx-cursor:hand;";
+        String hover = "-fx-background-color:" + BLUE + ";-fx-text-fill:white;"
+            + "-fx-background-radius:5;-fx-font-size:10px;-fx-padding:4 7 4 7;-fx-cursor:hand;";
+        b.setStyle(base);
+        b.setOnMouseEntered(e -> b.setStyle(hover));
+        b.setOnMouseExited(e  -> b.setStyle(base));
         return b;
     }
 
-    private Button modeButton(String text, boolean active) {
-        Button b = new Button(text);
-        b.setStyle(active ? "-fx-background-color:#1e40af;-fx-text-fill:#93c5fd;-fx-background-radius:6;-fx-font-size:11px;-fx-padding:5 12 5 12;-fx-cursor:hand;"
-                : "-fx-background-color:#1e293b;-fx-text-fill:" + TEXT_MUTED + ";-fx-background-radius:6;-fx-font-size:11px;-fx-padding:5 12 5 12;-fx-cursor:hand;");
+    private Button actionBtn(String t, String col) {
+        Button b = new Button(t);
+        b.setStyle("-fx-background-color:" + col + "22;-fx-text-fill:" + col
+            + ";-fx-background-radius:6;-fx-font-size:11px;-fx-padding:5 12 5 12;"
+            + "-fx-border-color:" + col + "55;-fx-border-radius:6;-fx-cursor:hand;");
+        b.setOnMouseEntered(e -> b.setStyle(
+            "-fx-background-color:" + col + ";-fx-text-fill:white;"
+            + "-fx-background-radius:6;-fx-font-size:11px;-fx-padding:5 12 5 12;-fx-cursor:hand;"));
+        b.setOnMouseExited(e  -> b.setStyle(
+            "-fx-background-color:" + col + "22;-fx-text-fill:" + col
+            + ";-fx-background-radius:6;-fx-font-size:11px;-fx-padding:5 12 5 12;"
+            + "-fx-border-color:" + col + "55;-fx-border-radius:6;-fx-cursor:hand;"));
         return b;
     }
 
-    private void setModeActive(Button active, Button... inactives) {
-        active.setStyle("-fx-background-color:#1e40af;-fx-text-fill:#93c5fd;-fx-background-radius:6;-fx-font-size:11px;-fx-padding:5 12 5 12;-fx-cursor:hand;");
-    
-        for (Button inactive : inactives) {
-            inactive.setStyle("-fx-background-color:#1e293b;-fx-text-fill:" + TEXT_MUTED + ";-fx-background-radius:6;-fx-font-size:11px;-fx-padding:5 12 5 12;-fx-cursor:hand;");
-        }
+    /** Bouton outil : inactif par défaut, met en surbrillance quand actif. */
+    private Button toolBtn(String t, boolean active) {
+        Button b = new Button(t);
+        applyToolStyle(b, active);
+        return b;
+    }
+
+    private void applyToolStyle(Button b, boolean active) {
+        b.setStyle(active
+            ? "-fx-background-color:#1e40af;-fx-text-fill:#93c5fd;"
+              + "-fx-background-radius:5;-fx-font-size:10px;-fx-padding:4 7 4 7;-fx-cursor:hand;"
+            : "-fx-background-color:#1e293b;-fx-text-fill:" + TEXT + ";"
+              + "-fx-background-radius:5;-fx-font-size:10px;-fx-padding:4 7 4 7;-fx-cursor:hand;");
+    }
+
+    private Button modeBtn(String t, boolean active) {
+        Button b = new Button(t);
+        applyModeStyle(b, active);
+        return b;
+    }
+
+    private void applyModeStyle(Button b, boolean active) {
+        b.setStyle(active
+            ? "-fx-background-color:#1e40af;-fx-text-fill:#93c5fd;"
+              + "-fx-background-radius:6;-fx-font-size:11px;-fx-padding:5 11 5 11;-fx-cursor:hand;"
+            : "-fx-background-color:#1e293b;-fx-text-fill:" + MUTED + ";"
+              + "-fx-background-radius:6;-fx-font-size:11px;-fx-padding:5 11 5 11;-fx-cursor:hand;");
+    }
+
+    private void activateMode(Button active, Button... others) {
+        applyModeStyle(active, true);
+        for (Button b : others) applyModeStyle(b, false);
     }
 
     private Button iconBtn(String icon) {
         Button b = new Button(icon);
-        b.setStyle("-fx-background-color:#1e293b;-fx-text-fill:" + TEXT_PRIMARY + ";-fx-background-radius:6;-fx-font-size:13px;-fx-padding:5 10 5 10;-fx-cursor:hand;");
+        b.setStyle("-fx-background-color:#1e293b;-fx-text-fill:" + TEXT
+            + ";-fx-background-radius:6;-fx-font-size:14px;-fx-padding:4 10 4 10;-fx-cursor:hand;");
         return b;
     }
 
-    private String zoneBtnStyle(boolean selected) {
-        return selected ? "-fx-background-color:" + ACCENT_BLUE + ";-fx-text-fill:white;-fx-background-radius:4;-fx-font-size:11px;-fx-font-weight:bold;-fx-min-width:36;-fx-min-height:24;-fx-cursor:hand;"
-                : "-fx-background-color:#1e293b;-fx-text-fill:" + TEXT_MUTED + ";-fx-background-radius:4;-fx-font-size:11px;-fx-min-width:36;-fx-min-height:24;-fx-cursor:hand;";
+    private Rectangle vDiv() {
+        return new Rectangle(1, 60, Color.web(BORDER));
     }
 
-    private HBox wrap(VBox b) { HBox.setHgrow(b, Priority.ALWAYS); b.setMaxWidth(Double.MAX_VALUE); HBox w = new HBox(b); HBox.setHgrow(w, Priority.ALWAYS); return w; }
-    private Rectangle div() { Rectangle r = new Rectangle(1, 75); r.setFill(Color.web(BORDER_COLOR)); return r; }
+    private FlowPane wrapFlow(double gap, Button... buttons) {
+        FlowPane fp = new FlowPane(gap, gap);
+        fp.getChildren().addAll(buttons);
+        return fp;
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // HELPERS PARSING
+    // ═════════════════════════════════════════════════════════════════════
+
+    private double parseDouble(String s, double defaultVal) {
+        try { return Double.parseDouble(s.trim()); } catch (Exception e) { return defaultVal; }
+    }
+
+    private int parseInt(String s, int defaultVal) {
+        try { return Integer.parseInt(s.trim()); } catch (Exception e) { return defaultVal; }
+    }
+
+    // ─── Overlay ajout agent (modal, conservé pour compatibilité externe) ─
+
+    public void showAddAgentOverlay() {
+        // Redirige vers le panneau droit intégré
+        showRightPanel(panelAddAgent);
+        resetAgentForm();
+    }
+
+    /**
+     * Cherche une adresse via Nominatim OSM et appelle le callback avec lat/lng trouvés.
+     * Exécuté dans un thread séparé pour ne pas bloquer l'UI.
+     */
+private void geocodeAddress(String query, java.util.function.BiConsumer<Double, Double> onResult, Runnable onNotFound) {
+    new Thread(() -> {
+        try {
+            // Forcer la recherche dans Lyon
+            String fullQuery = query + ", Lyon, France";
+            String encoded = java.net.URLEncoder.encode(fullQuery, java.nio.charset.StandardCharsets.UTF_8);
+            String url = "https://nominatim.openstreetmap.org/search?q=" + encoded
+                    + "&format=json&limit=1&countrycodes=fr"
+                    + "&viewbox=4.7700,45.7100,4.9000,45.8200&bounded=1";
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection)
+                    new java.net.URL(url).openConnection();
+            conn.setRequestProperty("User-Agent", "FloodSimulation/1.0");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+
+            java.io.InputStream is = conn.getInputStream();
+            String json = new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            is.close();
+
+            if (json.contains("\"lat\"")) {
+                int latIdx = json.indexOf("\"lat\"") + 7;
+                int latEnd = json.indexOf("\"", latIdx);
+                int lngIdx = json.indexOf("\"lon\"") + 7;
+                int lngEnd = json.indexOf("\"", lngIdx);
+                double lat = Double.parseDouble(json.substring(latIdx, latEnd));
+                double lng = Double.parseDouble(json.substring(lngIdx, lngEnd));
+
+                // Vérifier que le résultat est bien dans la bounding box de Lyon
+                if (lat >= 45.7100 && lat <= 45.8200 && lng >= 4.7700 && lng <= 4.9000) {
+                    Platform.runLater(() -> onResult.accept(lat, lng));
+                } else {
+                    Platform.runLater(onNotFound);
+                }
+            } else {
+                Platform.runLater(onNotFound);
+            }
+        } catch (Exception ex) {
+            Platform.runLater(onNotFound);
+        }
+    }, "geocode-thread").start();
 }
+
+
+}
+
 

@@ -289,6 +289,7 @@ public class FloodSimulation {
     public void setGravite(double gravite) {
         this.gravite = Math.max(MIN_GRAVITE, gravite);
     }
+    public double getGravite() {return this.gravite;}
 
     public void resetSimulation() {
         this.niveauEau = DEFAULT_NIVEAU_EAU;
@@ -433,6 +434,10 @@ public class FloodSimulation {
 
     public int nextZoneId() {
         return zones.stream().mapToInt(Zone::getId).max().orElse(0) + 1;
+    }
+    
+    public int nextAgentId() {
+        return agents.stream().mapToInt(Agent::getId).max().orElse(0) + 1;
     }
 
     public void replaceAllAgents(List<Agent> newAgents) {

@@ -45,7 +45,7 @@
   "state" : "DISPONIBLE",
   "idle" : true,
   "saved" : false
-}, {
+},{
   "type" : "citizen",
   "id" : 3,
   "firstName" : "Jean",
@@ -66,7 +66,7 @@
   "maxSpeed" : 3.0,
   "congestionTolerance" : 1.0,
   "strategy" : null,
-  "mobilityStatus" : "pmr",
+  "mobilityStatus" : "normal",
   "houseType" : null,
   "floor" : 0,
   "householdSize" : 0,
@@ -79,7 +79,7 @@
   "backgroundLocationEnabled" : true,
   "displayScale" : 112.0,
   "saved" : false
-}, {
+},   {
   "type" : "rescueAgent",
   "id" : 4,
   "firstName" : "Lieutenant",
@@ -104,41 +104,7 @@
   "state" : "EN_INTERVENTION",
   "idle" : true,
   "saved" : false
-}, {
-  "type" : "citizen",
-  "id" : 5,
-  "firstName" : "Sophie",
-  "lastName" : "Martin",
-  "birthDate" : null,
-  "email" : "sophie@test.com",
-  "phone" : null,
-  "passwordHash" : "sophie123",
-  "address" : null,
-  "city" : "Lyon",
-  "country" : "France",
-  "position" : {
-    "id" : 0,
-    "lat" : 45.77306213283766,
-    "lng" : 4.830853498050818
-  },
-  "destination" : null,
-  "maxSpeed" : 3.0,
-  "congestionTolerance" : 1.0,
-  "strategy" : null,
-  "mobilityStatus" : "normal",
-  "houseType" : null,
-  "floor" : 0,
-  "householdSize" : 0,
-  "hasPets" : false,
-  "medicalNeeds" : null,
-  "emergencyContact" : null,
-  "emergencyAlertsEnabled" : true,
-  "soundNotificationsEnabled" : false,
-  "routeUpdatesEnabled" : true,
-  "backgroundLocationEnabled" : true,
-  "displayScale" : 100.0,
-  "saved" : false
-}, {
+},{
   "type" : "citizen",
   "id" : 6,
   "firstName" : "Lucas",
@@ -324,38 +290,4 @@
   "backgroundLocationEnabled" : true,
   "displayScale" : 100.0,
   "saved" : false
-}, {
-  "type" : "citizen",
-  "id" : 12,
-  "firstName" : "François",
-  "lastName" : "Auto12",
-  "birthDate" : null,
-  "email" : null,
-  "phone" : null,
-  "passwordHash" : null,
-  "address" : null,
-  "city" : null,
-  "country" : null,
-  "position" : {
-    "id" : 0,
-    "lat" : 45.763686907589765,
-    "lng" : 4.805962714964121
-  },
-  "destination" : null,
-  "maxSpeed" : 3.208462810243444,
-  "congestionTolerance" : 0.36196773212627037,
-  "strategy" : null,
-  "mobilityStatus" : "normal",
-  "houseType" : null,
-  "floor" : 0,
-  "householdSize" : 0,
-  "hasPets" : false,
-  "medicalNeeds" : null,
-  "emergencyContact" : null,
-  "emergencyAlertsEnabled" : true,
-  "soundNotificationsEnabled" : false,
-  "routeUpdatesEnabled" : true,
-  "backgroundLocationEnabled" : true,
-  "displayScale" : 100.0,
-  "saved" : false
-} ]
+}]
