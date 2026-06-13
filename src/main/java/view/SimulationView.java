@@ -37,6 +37,7 @@ import javafx.stage.FileChooser;
 import javafx.util.Duration;
 import model.agent.Agent;
 import model.agent.Citizen;
+import model.enums.CitizenState;
 import model.graph.Edge;
 import model.simulation.FloodSimulation;
 import model.zone.Zone;
@@ -161,11 +162,6 @@ public class SimulationView extends BorderPane {
 
     // ─────────────────────────────────────────────────────────────────────
 
-    /**
-     * Create the simulation control view bound to the simulation controller.
-     *
-     * @param ctrl simulation controller that manages simulation actions
-     */
     public SimulationView(SimulationController ctrl) {
         this.ctrl    = ctrl;
         this.modele  = ctrl != null ? ctrl.getModele() : null;
@@ -182,9 +178,6 @@ public class SimulationView extends BorderPane {
     // CONSTRUCTION UI
     // ─────────────────────────────────────────────────────────────────────
 
-    /**
-     * Builds ui.
-     */
     private void buildUI() {
         setTop(buildTopBar());
         setLeft(buildLeftPanel());
@@ -193,9 +186,6 @@ public class SimulationView extends BorderPane {
         setBottom(buildBottomBar());
     }
 
-    /**
-     * Performs callbacks.
-     */
     private void wireCallbacks() {
         if (ctrl == null) return;
         ctrl.setOnStatusChanged(s -> Platform.runLater(() -> lblStatus.setText(s)));
@@ -212,10 +202,6 @@ public class SimulationView extends BorderPane {
     // TOP BAR — 52px
     // ═════════════════════════════════════════════════════════════════════
 
-    /**
-     * Builds top bar.
-     * @return the HBox.
-     */
     private HBox buildTopBar() {
         HBox bar = new HBox(0);
         bar.setAlignment(Pos.CENTER_LEFT);
@@ -354,10 +340,6 @@ public class SimulationView extends BorderPane {
     // PANNEAU GAUCHE — 220px
     // ═════════════════════════════════════════════════════════════════════
 
-    /**
-     * Builds left panel.
-     * @return the VBox.
-     */
     private VBox buildLeftPanel() {
         VBox panel = new VBox(0);
         panel.setMinWidth(220);
@@ -608,10 +590,6 @@ public class SimulationView extends BorderPane {
     // CARTE CENTRALE
     // ═════════════════════════════════════════════════════════════════════
 
-    /**
-     * Builds map container.
-     * @return the StackPane.
-     */
     private StackPane buildMapContainer() {
         StackPane stack = new StackPane();
         stack.setStyle("-fx-background-color:#090e1a;");
@@ -759,10 +737,6 @@ public class SimulationView extends BorderPane {
     // PANNEAU DROIT CONTEXTUEL — 240px
     // ═════════════════════════════════════════════════════════════════════
 
-    /**
-     * Builds right panel.
-     * @return the VBox.
-     */
     private VBox buildRightPanel() {
         VBox panel = new VBox(0);
         panel.setMinWidth(240);
@@ -806,10 +780,6 @@ public class SimulationView extends BorderPane {
 
     // ─── Formulaire : Ajouter un Quartier ────────────────────────────────
 
-    /**
-     * Builds panel add neighborhood.
-     * @return the VBox.
-     */
     private VBox buildPanelAddNeighborhood() {
         VBox v = new VBox(0);
         v.setStyle("-fx-background-color:" + CARD + ";");
@@ -888,9 +858,6 @@ public class SimulationView extends BorderPane {
     }
 
 
-    /**
-     * Updates nh coords label.
-     */
     private void updateNhCoordsLabel() {
         if (!Double.isNaN(pendingNhLat))
             Platform.runLater(() -> {
@@ -898,6 +865,23 @@ public class SimulationView extends BorderPane {
                 lblNhCoords.setTextFill(Color.web(GREEN));
             });
     }
+    /*
+    private void confirmAddNeighborhood() {
+        if (ctrl == null) return;
+        String name = tfNhName.getText().trim().isEmpty() ? null : tfNhName.getText().trim();
+        double lat  = !Double.isNaN(pendingNhLat) ? pendingNhLat : 45.7640 + (Math.random() - 0.5) * 0.06;
+        double lng  = !Double.isNaN(pendingNhLng) ? pendingNhLng : 4.8357  + (Math.random() - 0.5) * 0.08;
+        double alt  = parseDouble(tfNhAlt.getText(), 1.0);
+        int    pop  = parseInt(tfNhPop.getText(), 100);
+        String desc = tfNhDesc.getText().trim();
+        ctrl.addNeighborhood(name, lat, lng, alt, pop, desc);
+        refreshUI();
+        showRightPanel(null);
+        setGraphInfo("Quartier créé.");
+        currentTool = ToolMode.NONE;
+        if (mapView != null) mapView.setEditMode(MapView.EditMode.SELECT);
+    }
+    */
 
     private void confirmAddNeighborhood() {
         if (ctrl == null) return;
@@ -920,10 +904,6 @@ public class SimulationView extends BorderPane {
 
     // ─── Formulaire : Ajouter un Refuge ──────────────────────────────────
 
-    /**
-     * Builds panel add shelter.
-     * @return the VBox.
-     */
     private VBox buildPanelAddShelter() {
         VBox v = new VBox(0);
         v.setStyle("-fx-background-color:" + CARD + ";");
@@ -998,9 +978,6 @@ public class SimulationView extends BorderPane {
         return v;
     }
 
-    /**
-     * Resets nh form.
-     */
     private void resetNhForm() {
         tfNhName.clear(); tfNhAlt.clear(); tfNhPop.clear(); tfNhDesc.clear();
         tfNhSearch.clear();
@@ -1009,9 +986,6 @@ public class SimulationView extends BorderPane {
         lblNhCoords.setTextFill(Color.web(MUTED));
     }
 
-    /**
-     * Resets sh form.
-     */
     private void resetShForm() {
         tfShName.clear(); tfShAlt.clear(); tfShCap.clear(); tfShDesc.clear();
         tfShSearch.clear();
@@ -1020,9 +994,6 @@ public class SimulationView extends BorderPane {
         lblShCoords.setTextFill(Color.web(MUTED));
     }
 
-    /**
-     * Updates sh coords label.
-     */
     private void updateShCoordsLabel() {
         if (!Double.isNaN(pendingShLat))
             Platform.runLater(() -> {
@@ -1031,9 +1002,6 @@ public class SimulationView extends BorderPane {
             });
     }
 
-    /**
-     * Performs add shelter.
-     */
     private void confirmAddShelter() {
         if (ctrl == null) return;
         String name = tfShName.getText().trim().isEmpty() ? null : tfShName.getText().trim();
@@ -1052,10 +1020,6 @@ public class SimulationView extends BorderPane {
 
     // ─── Formulaire : Ajouter un Agent ───────────────────────────────────
 
-    /**
-     * Builds panel add agent.
-     * @return the VBox.
-     */
     private VBox buildPanelAddAgent() {
         VBox v = new VBox(0);
         v.setStyle("-fx-background-color:" + CARD + ";");
@@ -1153,9 +1117,6 @@ public class SimulationView extends BorderPane {
         v.getChildren().add(form);
         return v;
     }
-    /**
-     * Resets agent form.
-     */
     private void resetAgentForm() {
         cbAgentRole.setValue("Citoyen");
         tfAgFn.clear(); tfAgLn.clear(); tfAgAge.clear();
@@ -1165,9 +1126,6 @@ public class SimulationView extends BorderPane {
         waitingAgZone = false;
     }
 
-    /**
-     * Performs add agent.
-     */
     private void confirmAddAgent() {
         if (ctrl == null) return;
         AgentRole role = switch (cbAgentRole.getValue()) {
@@ -1192,10 +1150,6 @@ public class SimulationView extends BorderPane {
 
     // ─── Formulaire : Modifier une Zone ──────────────────────────────────
 
-    /**
-     * Builds panel edit zone.
-     * @return the VBox.
-     */
     private VBox buildPanelEditZone() {
         VBox v = new VBox(0);
         v.setStyle("-fx-background-color:" + CARD + ";");
@@ -1226,10 +1180,6 @@ public class SimulationView extends BorderPane {
         return v;
     }
 
-    /**
-     * Performs edit zone form.
-     * @param z the z.
-     */
     private void fillEditZoneForm(Zone z) {
         Platform.runLater(() -> {
             tfEzName.setText(z.getName() != null ? z.getName() : "");
@@ -1239,9 +1189,6 @@ public class SimulationView extends BorderPane {
         });
     }
 
-    /**
-     * Performs edit zone.
-     */
     private void confirmEditZone() {
         if (ctrl == null || editingZone == null) return;
         String name = tfEzName.getText().trim().isEmpty() ? null : tfEzName.getText().trim();
@@ -1257,10 +1204,6 @@ public class SimulationView extends BorderPane {
 
     // ─── Formulaire : Modifier une Arête ─────────────────────────────────
 
-    /**
-     * Builds panel edit edge.
-     * @return the VBox.
-     */
     private VBox buildPanelEditEdge() {
         VBox v = new VBox(0);
         v.setStyle("-fx-background-color:" + CARD + ";");
@@ -1285,17 +1228,10 @@ public class SimulationView extends BorderPane {
         return v;
     }
 
-    /**
-     * Performs edit edge form.
-     * @param e the e.
-     */
     private void fillEditEdgeForm(Edge e) {
         Platform.runLater(() -> tfEeCap.setText(String.valueOf(e.getCapacityMax())));
     }
 
-    /**
-     * Performs edit edge.
-     */
     private void confirmEditEdge() {
         if (ctrl == null || editingEdge == null) return;
         int cap = parseInt(tfEeCap.getText(), editingEdge.getCapacityMax());
@@ -1308,10 +1244,6 @@ public class SimulationView extends BorderPane {
 
     // ─── Formulaire : Modifier un Agent ──────────────────────────────────
 
-    /**
-     * Builds panel edit agent.
-     * @return the VBox.
-     */
     private VBox buildPanelEditAgent() {
         VBox v = new VBox(0);
         v.setStyle("-fx-background-color:" + CARD + ";");
@@ -1354,10 +1286,6 @@ public class SimulationView extends BorderPane {
         return v;
     }
 
-    /**
-     * Performs edit agent form.
-     * @param agent the agent.
-     */
     private void fillEditAgentForm(Agent agent) {
         Platform.runLater(() -> {
             tfEaFn.setText(agent.getFirstName() != null ? agent.getFirstName() : "");
@@ -1375,9 +1303,6 @@ public class SimulationView extends BorderPane {
         });
     }
 
-    /**
-     * Performs edit agent.
-     */
     private void confirmEditAgent() {
         if (ctrl == null || editingAgent == null) return;
         String fn  = tfEaFn.getText().trim().isEmpty() ? null : tfEaFn.getText().trim();
@@ -1395,31 +1320,35 @@ public class SimulationView extends BorderPane {
 
     // ─── Légende permanente ───────────────────────────────────────────────
 
-    /**
-     * Builds panel legend.
-     * @return the VBox.
-     */
     private VBox buildPanelLegend() {
         VBox v = new VBox(0);
         v.setStyle("-fx-background-color:" + CARD + ";");
         v.getChildren().add(sectionHeader("LÉGENDE"));
+    
         VBox leg = section();
+    
         leg.getChildren().addAll(
             lbl("Nœuds", FontWeight.BOLD, 9, MUTED),
             colorRow(TEAL,   "Quartier"),
             colorRow(PURPLE, "Refuge"),
-            colorRow(RED,    "Inondé"),
+            colorRow(RED,    "Zone inondée"),
             colorRow(YELLOW, "Sélectionné"),
+    
+            new Separator(),
+    
             lbl("Routes", FontWeight.BOLD, 9, MUTED),
-            colorRow(GREEN,  "Sûre"),
-            colorRow(ORANGE, "À risque"),
-            colorRow(YELLOW, "Congestionnée"),
-            colorRow(RED,    "Surchargée / Inondée"),
+            colorRow(TEAL,   "Route sûre"),
+            colorRow(ORANGE, "Route à risque"),
+            colorRow(RED,    "Route inondée"),
+    
+            new Separator(),
+    
             lbl("Agents", FontWeight.BOLD, 9, MUTED),
             colorRow(BLUE,   "Citoyen / PMR"),
-            colorRow(GREEN,  "En sécurité"),
-            colorRow(RED,    "Bloqué"),
-            colorRow(TEAL,   "Secouriste"));
+            colorRow(GREEN,  "En sécurité / Secouriste"),
+            colorRow(RED,    "Bloqué / stressé")
+        );
+    
         v.getChildren().add(leg);
         return v;
     }
@@ -1428,10 +1357,6 @@ public class SimulationView extends BorderPane {
     // BARRE BASSE — 80px
     // ═════════════════════════════════════════════════════════════════════
 
-    /**
-     * Builds bottom bar.
-     * @return the HBox.
-     */
     private HBox buildBottomBar() {
         HBox bar = new HBox(0);
         bar.setMinHeight(80);
@@ -1451,14 +1376,17 @@ public class SimulationView extends BorderPane {
             statRow("▣", "Agents",      lblAgentsActifs));
 
         VBox b2 = bottomBloc("RÉSEAU");
-        lblSures = val("0%", TEXT); lblRisque = val("0%", TEXT);
-        lblCong  = val("0%", TEXT); lblOver   = val("0%", TEXT); lblInond = val("0%", TEXT);
+        lblSures = val("0%", TEAL);
+lblRisque = val("0%", ORANGE);
+lblCong  = val("0%", YELLOW);
+lblOver  = val("0%", RED);
+lblInond = val("0%", RED);
         b2.getChildren().addAll(
-            barRow("Sûres",      GREEN,  lblSures),
-            barRow("Risque",     ORANGE, lblRisque),
+            barRow("Sûres",      TEAL,   lblSures),
+            barRow("À risque",   ORANGE, lblRisque),
             barRow("Congestion", YELLOW, lblCong),
-            barRow("Surcharge",  RED,    lblOver),
-            barRow("Inondées",   PURPLE, lblInond));
+            barRow("Bloquées",   RED,    lblOver),
+            barRow("Inondées",   RED,    lblInond));
 
         VBox b3 = bottomBloc("REFUGES");
         lblRefTotal  = val("0", TEXT);
@@ -1507,10 +1435,6 @@ public class SimulationView extends BorderPane {
     // UPDATE PANELS SÉLECTION
     // ═════════════════════════════════════════════════════════════════════
 
-    /**
-     * Updates sel panel.
-     * @param s the s.
-     */
     private void updateSelPanel(NodeEdgeStats s) {
         if (s == null || panelSel == null) return;
         Platform.runLater(() -> {
@@ -1533,10 +1457,6 @@ public class SimulationView extends BorderPane {
         });
     }
 
-    /**
-     * Updates sel panel for agent.
-     * @param agent the agent.
-     */
     private void updateSelPanelForAgent(Agent agent) {
         if (panelSel == null) return;
         Platform.runLater(() -> {
@@ -1551,10 +1471,6 @@ public class SimulationView extends BorderPane {
         });
     }
 
-    /**
-     * Updates path panel.
-     * @param path the path.
-     */
     private void updatePathPanel(List<Zone> path) {
         Platform.runLater(() -> {
             if (panelPath == null) return;
@@ -1573,9 +1489,6 @@ public class SimulationView extends BorderPane {
     // IMPORT / EXPORT
     // ═════════════════════════════════════════════════════════════════════
 
-    /**
-     * Handles export.
-     */
     private void handleExport() {
         FileChooser fc = new FileChooser();
         fc.setTitle("Exporter l'état");
@@ -1585,9 +1498,6 @@ public class SimulationView extends BorderPane {
         if (f != null && ctrl != null) ctrl.exportState(f);
     }
 
-    /**
-     * Handles import.
-     */
     private void handleImport() {
         FileChooser fc = new FileChooser();
         fc.setTitle("Importer un état");
@@ -1600,9 +1510,6 @@ public class SimulationView extends BorderPane {
     // BOUCLES SIMULATION
     // ═════════════════════════════════════════════════════════════════════
 
-    /**
-     * Starts sim.
-     */
     private void startSim() {
         if (simLoop != null) simLoop.stop();
         double ms = ctrl != null ? ctrl.getVitesseSimulationMs() : 1500;
@@ -1614,40 +1521,25 @@ public class SimulationView extends BorderPane {
         if (mapView != null) mapView.resumeFloodPropagation();
     }
 
-    /**
-     * Stops sim.
-     */
     private void stopSim() {
         if (simLoop != null) simLoop.stop();
         simRunning = false;
         if (mapView != null) mapView.pauseFloodPropagation();
     }
 
-    /**
-     * Stops all.
-     */
     public void stopAll() {
         if (refreshLoop != null) refreshLoop.stop();
         stopSim();
     }
 
-    /**
-     * Stops refresh.
-     */
     public void stopRefresh() { stopAll(); }
 
-    /**
-     * Starts refresh loop.
-     */
     private void startRefreshLoop() { /* lancé dans buildBottomBar */ }
 
     // ═════════════════════════════════════════════════════════════════════
     // REFRESH UI
     // ═════════════════════════════════════════════════════════════════════
 
-    /**
-     * Refreshes ui.
-     */
     private void refreshUI() {
         if (modele == null) return;
         try {
@@ -1675,10 +1567,32 @@ public class SimulationView extends BorderPane {
                     lblOver.setText(String.format("%.0f%%", r[3]));
                     lblInond.setText(String.format("%.0f%%", r[4]));
                 }
-                lblPopRisque.setText(String.valueOf(ctrl.getPopulationARisque()));
-                lblPersonnesSec.setText(String.valueOf(ctrl.getPopulationEnSecurite()));
+                long totalAgents = modele.getAgents().size();
+
+                boolean evacuationLancee =
+                simRunning
+                || ctrl.getNombreAgentsEnDeplacement() > 0
+                || modele.getTempsEcoule() > 0;
+        
+        long citoyensAEvacuer = evacuationLancee
+            ? modele.getAgents().stream()
+                .filter(a -> a instanceof Citizen)
+                .map(a -> (Citizen) a)
+                .filter(c -> c.getState() != CitizenState.SAFE)
+                .count()
+            : 0;
+
+long citoyensEnSecurite = modele.getAgents().stream()
+    .filter(a -> a instanceof Citizen)
+    .map(a -> (Citizen) a)
+    .filter(c -> c.getState() == CitizenState.SAFE)
+    .count();
+
+lblAgentsActifs.setText(String.valueOf(totalAgents));
+lblPopRisque.setText(String.valueOf(citoyensAEvacuer));
+lblPersonnesSec.setText(String.valueOf(citoyensEnSecurite));
             }
-            lblAgentsActifs.setText(String.valueOf(modele.getNombreAgents()));
+          
 
             if (mapCtrl != null) {
                 lblRefTotal.setText(String.valueOf(mapCtrl.countSheltersTotal()));
@@ -1695,20 +1609,21 @@ public class SimulationView extends BorderPane {
     // HELPERS AGENTS
     // ═════════════════════════════════════════════════════════════════════
 
-    /**
-     * Performs map agents.
-     */
     private void syncMapAgents() {
-        if (mapCtrl != null) mapCtrl.syncAgents(modele.getAgents());
-        if (mapView != null) mapView.setAgents(modele.getAgents());
-        try { Main.getSharedAdminCtrl().loadAgents(); } catch (Exception ignored) {}
+        if (modele == null) return;
+    
+        if (mapCtrl != null) {
+            mapCtrl.syncAgents(modele.getAgents());
+        }
+    
+        if (mapView != null) {
+            mapView.setAgents(modele.getAgents());
+            mapView.refreshMap();
+        }
+    
         refreshUI();
     }
 
-    /**
-     * Sets the graph info.
-     * @param msg the msg.
-     */
     private void setGraphInfo(String msg) {
         if (lblGraphInfo != null) Platform.runLater(() -> lblGraphInfo.setText(msg));
     }
@@ -1717,11 +1632,6 @@ public class SimulationView extends BorderPane {
     // GESTION DES MODES OUTILS
     // ═════════════════════════════════════════════════════════════════════
 
-    /**
-     * Sets the tool.
-     * @param mode the mode.
-     * @param buttons the buttons.
-     */
     private void setTool(ToolMode mode, Button... buttons) {
         currentTool = mode;
         // tous inactifs, puis le premier actif
@@ -1733,11 +1643,6 @@ public class SimulationView extends BorderPane {
     // HELPERS VISUELS
     // ═════════════════════════════════════════════════════════════════════
 
-    /**
-     * Performs header.
-     * @param title the title.
-     * @return the HBox.
-     */
     private HBox sectionHeader(String title) {
         HBox h = new HBox();
         h.setAlignment(Pos.CENTER_LEFT);
@@ -1747,21 +1652,12 @@ public class SimulationView extends BorderPane {
         return h;
     }
 
-    /**
-     * Performs section.
-     * @return the VBox.
-     */
     private VBox section() {
         VBox v = new VBox(5);
         v.setPadding(new Insets(7, 10, 7, 10));
         return v;
     }
 
-    /**
-     * Performs bloc.
-     * @param title the title.
-     * @return the VBox.
-     */
     private VBox bottomBloc(String title) {
         VBox b = new VBox(3);
         b.setPadding(new Insets(6, 12, 6, 12));
@@ -1770,14 +1666,6 @@ public class SimulationView extends BorderPane {
         return b;
     }
 
-    /**
-     * Performs lbl.
-     * @param t the t.
-     * @param fw the fw.
-     * @param sz the sz.
-     * @param col the col.
-     * @return the Label.
-     */
     private Label lbl(String t, FontWeight fw, int sz, String col) {
         Label l = new Label(t);
         l.setFont(Font.font("System", fw, sz));
@@ -1785,20 +1673,8 @@ public class SimulationView extends BorderPane {
         return l;
     }
 
-    /**
-     * Performs val.
-     * @param t the t.
-     * @param col the col.
-     * @return the Label.
-     */
     private Label val(String t, String col) { return lbl(t, FontWeight.BOLD, 11, col); }
 
-    /**
-     * Performs hrow.
-     * @param label the label.
-     * @param val the val.
-     * @return the HBox.
-     */
     private HBox hrow(String label, Label val) {
         HBox r = new HBox(6);
         r.setAlignment(Pos.CENTER_LEFT);
@@ -1809,13 +1685,6 @@ public class SimulationView extends BorderPane {
         return r;
     }
 
-    /**
-     * Performs row.
-     * @param icon the icon.
-     * @param label the label.
-     * @param val the val.
-     * @return the HBox.
-     */
     private HBox statRow(String icon, String label, Label val) {
         HBox r = new HBox(5);
         r.setAlignment(Pos.CENTER_LEFT);
@@ -1826,13 +1695,6 @@ public class SimulationView extends BorderPane {
         return r;
     }
 
-    /**
-     * Performs row.
-     * @param label the label.
-     * @param color the color.
-     * @param val the val.
-     * @return the HBox.
-     */
     private HBox barRow(String label, String color, Label val) {
         HBox r = new HBox(5);
         r.setAlignment(Pos.CENTER_LEFT);
@@ -1842,12 +1704,6 @@ public class SimulationView extends BorderPane {
         return r;
     }
 
-    /**
-     * Performs row.
-     * @param color the color.
-     * @param text the text.
-     * @return the HBox.
-     */
     private HBox colorRow(String color, String text) {
         HBox r = new HBox(6);
         r.setAlignment(Pos.CENTER_LEFT);
@@ -1858,12 +1714,6 @@ public class SimulationView extends BorderPane {
         return r;
     }
 
-    /**
-     * Performs row.
-     * @param sl the sl.
-     * @param val the val.
-     * @return the HBox.
-     */
     private HBox paramRow(Slider sl, Label val) {
         HBox r = new HBox(5);
         r.setAlignment(Pos.CENTER_LEFT);
@@ -1872,15 +1722,6 @@ public class SimulationView extends BorderPane {
         return r;
     }
 
-    /**
-     * Performs box.
-     * @param node the node.
-     * @param top the top.
-     * @param right the right.
-     * @param bottom the bottom.
-     * @param left the left.
-     * @return the HBox.
-     */
     private HBox padBox(javafx.scene.Node node, double top, double right, double bottom, double left) {
         HBox b = new HBox(node);
         b.setAlignment(Pos.CENTER);
@@ -1888,24 +1729,12 @@ public class SimulationView extends BorderPane {
         return b;
     }
 
-    /**
-     * Performs slider.
-     * @param min the min.
-     * @param max the max.
-     * @param val the val.
-     * @return the Slider.
-     */
     private Slider paramSlider(double min, double max, double val) {
         Slider s = new Slider(min, max, val);
         s.setStyle("-fx-control-inner-background:#1e293b;-fx-accent:" + BLUE + ";");
         return s;
     }
 
-    /**
-     * Performs field.
-     * @param prompt the prompt.
-     * @return the TextField.
-     */
     private TextField styledField(String prompt) {
         TextField tf = new TextField();
         tf.setPromptText(prompt);
@@ -1915,22 +1744,11 @@ public class SimulationView extends BorderPane {
         return tf;
     }
 
-    /**
-     * Performs combo.
-     * @param cb the cb.
-     */
     private void styleCombo(ComboBox<?> cb) {
         cb.setStyle("-fx-background-color:#1e293b;-fx-text-fill:" + TEXT
             + ";-fx-font-size:10px;-fx-background-radius:5;");
     }
 
-    /**
-     * Performs radio.
-     * @param text the text.
-     * @param group the group.
-     * @param activeColor the activeColor.
-     * @return the RadioButton.
-     */
     private RadioButton styledRadio(String text, ToggleGroup group, String activeColor) {
         RadioButton rb = new RadioButton(text);
         rb.setToggleGroup(group);
@@ -1942,11 +1760,6 @@ public class SimulationView extends BorderPane {
         return rb;
     }
 
-    /**
-     * Performs btn.
-     * @param t the t.
-     * @return the Button.
-     */
     private Button smallBtn(String t) {
         Button b = new Button(t);
         String base  = "-fx-background-color:#1e293b;-fx-text-fill:" + TEXT
@@ -1959,12 +1772,6 @@ public class SimulationView extends BorderPane {
         return b;
     }
 
-    /**
-     * Performs btn.
-     * @param t the t.
-     * @param col the col.
-     * @return the Button.
-     */
     private Button actionBtn(String t, String col) {
         Button b = new Button(t);
         b.setStyle("-fx-background-color:" + col + "22;-fx-text-fill:" + col
@@ -1987,11 +1794,6 @@ public class SimulationView extends BorderPane {
         return b;
     }
 
-    /**
-     * Performs tool style.
-     * @param b the b.
-     * @param active the active.
-     */
     private void applyToolStyle(Button b, boolean active) {
         b.setStyle(active
             ? "-fx-background-color:#1e40af;-fx-text-fill:#93c5fd;"
@@ -2000,23 +1802,12 @@ public class SimulationView extends BorderPane {
               + "-fx-background-radius:5;-fx-font-size:10px;-fx-padding:4 7 4 7;-fx-cursor:hand;");
     }
 
-    /**
-     * Performs btn.
-     * @param t the t.
-     * @param active the active.
-     * @return the Button.
-     */
     private Button modeBtn(String t, boolean active) {
         Button b = new Button(t);
         applyModeStyle(b, active);
         return b;
     }
 
-    /**
-     * Performs mode style.
-     * @param b the b.
-     * @param active the active.
-     */
     private void applyModeStyle(Button b, boolean active) {
         b.setStyle(active
             ? "-fx-background-color:#1e40af;-fx-text-fill:#93c5fd;"
@@ -2025,21 +1816,11 @@ public class SimulationView extends BorderPane {
               + "-fx-background-radius:6;-fx-font-size:11px;-fx-padding:5 11 5 11;-fx-cursor:hand;");
     }
 
-    /**
-     * Performs mode.
-     * @param active the active.
-     * @param others the others.
-     */
     private void activateMode(Button active, Button... others) {
         applyModeStyle(active, true);
         for (Button b : others) applyModeStyle(b, false);
     }
 
-    /**
-     * Performs btn.
-     * @param icon the icon.
-     * @return the Button.
-     */
     private Button iconBtn(String icon) {
         Button b = new Button(icon);
         b.setStyle("-fx-background-color:#1e293b;-fx-text-fill:" + TEXT
@@ -2047,20 +1828,10 @@ public class SimulationView extends BorderPane {
         return b;
     }
 
-    /**
-     * Performs div.
-     * @return the Rectangle.
-     */
     private Rectangle vDiv() {
         return new Rectangle(1, 60, Color.web(BORDER));
     }
 
-    /**
-     * Performs flow.
-     * @param gap the gap.
-     * @param buttons the buttons.
-     * @return the FlowPane.
-     */
     private FlowPane wrapFlow(double gap, Button... buttons) {
         FlowPane fp = new FlowPane(gap, gap);
         fp.getChildren().addAll(buttons);
@@ -2071,31 +1842,16 @@ public class SimulationView extends BorderPane {
     // HELPERS PARSING
     // ═════════════════════════════════════════════════════════════════════
 
-    /**
-     * Performs double.
-     * @param s the s.
-     * @param defaultVal the defaultVal.
-     * @return the double result.
-     */
     private double parseDouble(String s, double defaultVal) {
         try { return Double.parseDouble(s.trim()); } catch (Exception e) { return defaultVal; }
     }
 
-    /**
-     * Performs int.
-     * @param s the s.
-     * @param defaultVal the defaultVal.
-     * @return the int result.
-     */
     private int parseInt(String s, int defaultVal) {
         try { return Integer.parseInt(s.trim()); } catch (Exception e) { return defaultVal; }
     }
 
     // ─── Overlay ajout agent (modal, conservé pour compatibilité externe) ─
 
-    /**
-     * Displays add agent overlay.
-     */
     public void showAddAgentOverlay() {
         // Redirige vers le panneau droit intégré
         showRightPanel(panelAddAgent);
