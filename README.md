@@ -267,61 +267,59 @@ EvacuationRouter.compute(graph, source, refuge, currentState);
 
 <br/>
 
-## 🏗️ Architecture du projet
-
-```
-Projet-logiciel-Ing-1/
+Projet-logiciel-Ing-1
 │
-├── data/
+├── data
 │   ├── users.json
 │   └── zones.json
 │
-├── src/main/
-│   ├── java/
-│   │   ├── app/                        # Point d'entrée (Main.java)
-│   │   ├── cli/                        # Version console (ConsoleApp.java)
-│   │   ├── controller/                 # Contrôleurs JavaFX
-│   │   │   ├── AdminPage/
-│   │   │   ├── AuthPage/
-│   │   │   ├── CitizenPage/
-│   │   │   ├── RescuePage/
+├── src/main
+│   ├── java
+│   │   ├── app
+│   │   ├── cli
+│   │   ├── controller
+│   │   │   ├── AdminPage
+│   │   │   ├── AuthPage
+│   │   │   ├── CitizenPage
+│   │   │   ├── RescuePage
 │   │   │   └── MapController.java
-│   │   ├── model/
-│   │   │   ├── agent/                  # Agents (Citoyen, PMR, Secours, Admin)
-│   │   │   ├── alert/                  # Système d'alertes
-│   │   │   ├── algorithms/             # Calcul d'itinéraires (Dijkstra)
-│   │   │   ├── auth/                   # Authentification et mots de passe
-│   │   │   ├── graph/                  # Graphe, nœuds, arêtes, routes
-│   │   │   ├── observer/               # Pattern Observer
-│   │   │   ├── sensor/                 # Capteurs de niveau d'eau
-│   │   │   ├── simulation/             # Moteur de simulation
-│   │   │   ├── statistics/             # Statistiques
-│   │   │   └── strategy/               # Stratégies de comportement des agents
-│   │   ├── service/                    # Services géocodage et adresse
-│   │   └── view/                       # Toutes les vues JavaFX
-│   │       ├── components/             # Header, Sidebar, GraphMap
-│   │       ├── WelcomeView.java
+│   │   │
+│   │   ├── model
+│   │   │   ├── agent
+│   │   │   ├── alert
+│   │   │   ├── algorithms
+│   │   │   ├── auth
+│   │   │   ├── enums
+│   │   │   ├── graph
+│   │   │   ├── observer
+│   │   │   ├── persistence
+│   │   │   ├── sensor
+│   │   │   ├── simulation
+│   │   │   ├── statistics
+│   │   │   ├── strategy
+│   │   │   ├── validation
+│   │   │   └── zone
+│   │   │
+│   │   ├── service
+│   │   └── view
+│   │       ├── components
+│   │       ├── AdminAlertsView.java
+│   │       ├── AdminDashboardView.java
+│   │       ├── CitizenDashboardView.java
 │   │       ├── LoginView.java
 │   │       ├── MapView.java
+│   │       ├── RescueDashboardView.java
 │   │       ├── SimulationView.java
-│   │       └── ...
+│   │       └── WelcomeView.java
 │   │
-│   └── resources/
-│       ├── css/                        # Feuilles de style JavaFX
-│       ├── images/                     # Assets graphiques
-│       ├── map/                        # Leaflet (carte interactive)
-│       │   ├── leaflet.css
-│       │   ├── leaflet.js
-│       │   └── map.html
+│   └── resources
+│       ├── css
+│       ├── images
+│       ├── map
 │       └── lyon_routes.json
 │
 ├── pom.xml
 └── README.md
-```
-
-<div align="center">
-
-<br/>
 
 | Package | Rôle |
 |---------|------|
