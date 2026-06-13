@@ -537,32 +537,41 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
 
         HBox toolbar = new HBox(10);
 
-        Button delBtn = btn("Supprimer la sélection", ACCENT_RED);
-        delBtn.setOnAction(e -> {
-            Agent sel = table.getSelectionModel().getSelectedItem();
+if (!"admin".equals(type)) {
 
-            if (sel == null) return;
+    Button delBtn = btn("Supprimer la sélection", ACCENT_RED);
 
-            Alert confirm = new Alert(
-                    Alert.AlertType.CONFIRMATION,
-                    "Supprimer " + sel.getFirstName() + " " + sel.getLastName() + " ?",
-                    ButtonType.YES,
-                    ButtonType.NO
-            );
+    delBtn.setOnAction(e -> {
+        Agent sel = table.getSelectionModel().getSelectedItem();
 
-            confirm.showAndWait().ifPresent(bt -> {
-                if (bt == ButtonType.YES) {
-                    ctrl.deleteAgent(sel);
-                }
-            });
+        if (sel == null) return;
+
+        Alert confirm = new Alert(
+                Alert.AlertType.CONFIRMATION,
+                "Supprimer " + sel.getFirstName() + " " + sel.getLastName() + " ?",
+                ButtonType.YES,
+                ButtonType.NO
+        );
+
+        confirm.showAndWait().ifPresent(bt -> {
+            if (bt == ButtonType.YES) {
+                ctrl.deleteAgent(sel);
+            }
         });
+    });
 
-        toolbar.getChildren().add(delBtn);
+    toolbar.getChildren().add(delBtn);
+}
 
-        VBox tableBox = new VBox(10);
-        tableBox.setPadding(new Insets(16));
-        tableBox.setStyle("-fx-background-color: " + BG_PANEL + "; -fx-background-radius: 10;");
-        tableBox.getChildren().addAll(toolbar, table);
+VBox tableBox = new VBox(10);
+tableBox.setPadding(new Insets(16));
+tableBox.setStyle("-fx-background-color: " + BG_PANEL + "; -fx-background-radius: 10;");
+
+if (!"admin".equals(type)) {
+    tableBox.getChildren().addAll(toolbar, table);
+} else {
+    tableBox.getChildren().add(table);
+}
         VBox.setVgrow(table, Priority.ALWAYS);
 
         root.getChildren().addAll(header, tableBox);
