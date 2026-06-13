@@ -7,4 +7,7 @@ public class Neighborhood extends Zone {
     public Neighborhood() {
         super();
     }
+    public void setPopulation(int pop) {this.population=pop;}
+    public void setDescription(String des) {this.description=des;}
+
 }

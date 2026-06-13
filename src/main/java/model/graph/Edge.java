@@ -28,7 +28,7 @@ public class Edge {
     private final Zone   fromZone;
     private final Zone   toZone;
     private final List<GeoPosition> waypoints;
-    private final int    capacityMax;   // véhicules/heure
+    private int    capacityMax;   // véhicules/heure
     private int          currentFlow=0;   // flux courant (agents en transit)
     private int          floodedCount;  // nombre de fois inondée (statistiques)
     private EdgeState        state;
@@ -122,6 +122,8 @@ public class Edge {
         this.currentFlow = Math.max(0, flow);
         refreshState();
     }
+
+    public void setCapacityMax(int ca) {capacityMax=ca;}
 
     public void addFlow(int delta) {
         setCurrentFlow(this.currentFlow + delta);

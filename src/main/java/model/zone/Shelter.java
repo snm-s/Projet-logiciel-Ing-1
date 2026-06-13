@@ -14,6 +14,10 @@ public class Shelter extends Zone {
     
     public Shelter() {super();}
 
+    public void setPopulation(int pop) {this.population=pop;}
+    public void setDescription(String des) {this.description=des;}
+    public void setCapacity(int ca) {capacity=ca;}
+
     public int getCapacity() { return capacity; }
     @JsonIgnore public int getCurrentOccupancy() { return currentOccupancy; }
     public boolean canAccommodate(int numberOfPeople) { return (currentOccupancy + numberOfPeople) <= capacity; }

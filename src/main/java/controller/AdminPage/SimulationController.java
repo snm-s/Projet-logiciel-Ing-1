@@ -437,6 +437,49 @@ public class SimulationController {
         notifyAgentsUpdated();
     }
 
+
+
+
+    /**
+     * Met à jour les paramètres d'un agent existant.
+     * Appelé depuis le panneau droit lors de l'édition d'un agent sélectionné.
+     */
+    public void updateAgentParams(int agentId, String firstName, String lastName,
+                                int age, double speed, int stress) {
+        Agent agent = modele.getAgents().stream()
+            .filter(a -> a.getId() == agentId).findFirst().orElse(null);
+        if (agent == null) return;
+    
+        if (firstName != null && !firstName.isBlank()) agent.setFirstName(firstName);
+        if (lastName  != null && !lastName.isBlank())  agent.setLastName(lastName);
+        if (age > 0)   agent.setAge(age);
+        if (speed > 0) agent.setMaxSpeed(speed);
+    
+        if (agent instanceof model.agent.Citizen c && stress >= 0) {
+            c.setState(stress == 1
+                ? model.enums.CitizenState.STRESSED
+                : model.enums.CitizenState.CALM);
+        }
+    
+        if (mapController != null) mapController.syncAgents(modele.getAgents());
+        notifyAgentsUpdated();
+        notifyStatus("Agent mis à jour : " + agent.getFirstName() + " " + agent.getLastName());
+    }
+
+    public void teleportAgent(int agentId, Zone targetZone) {
+        Agent agent = modele.getAgents().stream()
+            .filter(a -> a.getId() == agentId).findFirst().orElse(null);
+        if (agent == null || targetZone == null) return;
+        agent.setCurrentZone(targetZone);
+        agent.setPosition(new model.graph.Node(targetZone.getLatitude(), targetZone.getLongitude()));
+        if (mapController != null) mapController.syncAgents(modele.getAgents());
+        notifyAgentsUpdated();
+        notifyStatus("Agent déplacé vers " + targetZone.getName());
+    }
+
+
+
+
     // ─────────────────────────────────────────────────────────────────────
     // PLAGES DE GÉNÉRATION D'AGENTS
     // ─────────────────────────────────────────────────────────────────────
@@ -533,6 +576,31 @@ public class SimulationController {
             100 + rng.nextInt(400), "Refuge généré");
     }
 
+
+    /**
+     * Met à jour les paramètres d'une zone existante.
+     * Appelé depuis le panneau droit lors de l'édition d'un nœud sélectionné.
+     */
+    public void updateZoneParams(int zoneId, String name, double altitude,
+                                int population, String description) {
+        Zone zone = getZoneById(zoneId);
+        if (zone == null) return;
+        if (name != null && !name.isBlank()) zone.setName(name);
+        zone.setAltitude(altitude);
+        if (zone instanceof model.zone.Neighborhood n) {
+            n.setPopulation(population);
+            n.setDescription(description != null ? description : "");
+        } else if (zone instanceof model.zone.Shelter s) {
+            s.setCapacity(population); // capacity for shelters
+            s.setDescription(description != null ? description : "");
+        }
+        modele.updateZone(zone);
+        if (mapController != null) mapController.syncZones(modele.getZones());
+        Platform.runLater(() -> { if (onZonesUpdated != null) onZonesUpdated.accept(modele.getZones()); });
+        notifyStatus("Zone mise à jour : " + zone.getName());
+    }
+
+
     /**
      * Déplace une zone existante vers de nouvelles coordonnées.
      * Les arêtes connectées restent dans le RouteGraph mais leurs waypoints
@@ -558,6 +626,26 @@ public class SimulationController {
         if (mapController != null) mapController.syncZones(modele.getZones());
         Platform.runLater(() -> { if (onZonesUpdated != null) onZonesUpdated.accept(modele.getZones()); });
     }
+
+
+
+    /**
+     * Met à jour la capacité maximale d'une arête.
+     * Appelé depuis le panneau droit lors de l'édition d'une arête sélectionnée.
+     */
+    public void updateEdgeParams(int edgeId, int newCapacity) {
+        if (mapController == null || mapController.getRouteGraph() == null) return;
+        model.graph.RouteGraph rg = mapController.getRouteGraph();
+        rg.getEdges().stream()
+            .filter(e -> e.getId() == edgeId)
+            .findFirst()
+            .ifPresent(edge -> {
+                edge.setCapacityMax(newCapacity);
+                notifyStatus("Arête mise à jour : capacité=" + newCapacity);
+                if (mapController != null) mapController.syncZones(modele.getZones());
+            });
+    }
+
 
     /**
      * Crée une arête entre deux zones.
