@@ -1,7 +1,6 @@
 package controller.AdminPage;
 
 import java.io.*;
-import java.nio.file.*;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -11,7 +10,10 @@ import controller.MapController;
 import javafx.application.Platform;
 import model.agent.Agent;
 import model.agent.Citizen;
+import model.agent.PMRAgent;
 import model.agent.RescueAgent;
+import model.enums.CitizenState;
+import model.enums.RescueState;
 import model.graph.AgentMovement;
 import model.graph.Edge;
 import model.graph.EdgeState;
@@ -21,47 +23,37 @@ import model.simulation.SimulationDataService;
 import model.zone.Zone;
 
 /**
- * Contrôleur principal de la simulation d'inondation — version corrigée.
+ * Contrôleur principal de la simulation d'inondation.
  *
- * Corrections apportées :
- * ─ removeZone        : supprime bien toutes les arêtes connectées + relocalise agents statiques ET en transit
- * ─ removeAgent       : retire l'agent du RouteGraph avant de le supprimer
- * ─ resetZones        : propage la remise à zéro au mapController + dataService
- * ─ addAgent          : fusion Citizen/RescueAgent selon rôle ; support nom/prénom/rôle/âge/localisation
- * ─ addRandomCitizens → addRandomAgents (10 agents mélangés)
- * ─ État agent SAFE / AVAILABLE à l'arrivée
- * ─ Vitesse par défaut 3 min = 180 s pour une inondation complète ; facteur FLOOD_SPEED_FACTOR
- * ─ Stats nœud/arête : recordAgentPassedZone appelé à l'arrivée + compteurs arête mis à jour à chaque tick
- * ─ hasManualFloodStarted : utilise EdgeState sans appel à getFloodLevel()
- * ─ removeEdgeWithAgentRelocation : relocalise vers zone SOURCE correctement
- * ─ clearStats / tickWaitCycles / checkAndSetOvercrowding : inchangés mais corrigés
+ * Responsabilités :
+ * ─ Orchestration (démarrage, pause, tick, reset)
+ * ─ Modifications runtime (ajout/suppression agents et zones) → via FloodSimulation uniquement
+ * ─ Statistiques nœuds/arêtes (locales au controller, non persistées)
+ * ─ Export/import d'état (sérialisation snapshot)
+ * ─ Callbacks UI (Platform.runLater)
+ *
+ * Ce controller NE DOIT PAS appeler dataService pour les modifications runtime.
+ * dataService est utilisé uniquement :
+ *   • Au démarrage (chargement initial via FloodSimulation)
+ *   • À l'export/import explicite de fichier
  */
 public class SimulationController {
 
     // ─── Constantes ──────────────────────────────────────────────────────
-    /** Niveau d'eau (m) déclenchant l'évacuation automatique. */
     private static final double SEUIL_EVACUATION_M   = 0.5;
-    /** Incrément de temps simulé par pas (secondes). */
-    private static final double DELTA_SECONDS         = 1.0;
-    /** Cycles d'attente lors d'une forte congestion. */
+    private static final double DELTA_SECONDS        = 1.0;
     private static final int    OVERCROWD_WAIT_CYCLES = 2;
-    /**
-     * Facteur de ralentissement de l'inondation.
-     * À 1.0 le niveau monte vite (quelques secondes) ;
-     * réduire ce facteur permet ~3 minutes à vitesse 500 ms/cycle.
-     * Le niveau brut du modèle est divisé par ce facteur pour l'affichage et les décisions.
-     */
-    public static final double FLOOD_SPEED_FACTOR = 60.0;
+    public  static final double FLOOD_SPEED_FACTOR   = 60.0;
 
     // ─── Rôles d'agents ──────────────────────────────────────────────────
-    public enum AgentRole { CITIZEN, RESCUE }
+    public enum AgentRole { CITIZEN, PMR, RESCUE }
 
     // ─── Mode fin de trajet ──────────────────────────────────────────────
     public enum AgentEndBehavior { RANDOM_DESTINATION, REMOVE_AGENT }
 
     // ─── Modèle & services ───────────────────────────────────────────────
     private final FloodSimulation       modele;
-    private final SimulationDataService dataService;
+    private final SimulationDataService dataService;   // lecture initiale + export/import fichier UNIQUEMENT
     private MapController               mapController;
 
     // ─── Paramètres simulation ───────────────────────────────────────────
@@ -70,7 +62,7 @@ public class SimulationController {
     private AgentEndBehavior agentEndBehavior     = AgentEndBehavior.RANDOM_DESTINATION;
     private boolean          evacuationDeclenchee = false;
 
-    // ─── Plages de création d'agents (réglables depuis l'UI) ─────────────
+    // ─── Plages de création d'agents ─────────────────────────────────────
     private int    agentAgeMin    = 18;  private int    agentAgeMax    = 75;
     private double agentSpeedMin  = 0.5; private double agentSpeedMax  = 2.0;
     private double agentStressMin = 0.0; private double agentStressMax = 1.0;
@@ -91,13 +83,13 @@ public class SimulationController {
     private Agent selectedAgent = null;
 
     // ─── Callbacks UI ─────────────────────────────────────────────────────
-    private Consumer<String>         onStatusChanged;
-    private Consumer<Double>         onWaterLevelChanged;
-    private Consumer<List<Zone>>     onZonesUpdated;
-    private Consumer<List<Agent>>    onAgentsUpdated;
-    private Consumer<AgentMovement>  onAgentArrived;
-    private Consumer<NodeEdgeStats>  onStatsUpdated;
-    private Consumer<List<Zone>>     onSelectedAgentPathChanged;
+    private Consumer<String>           onStatusChanged;
+    private Consumer<Double>           onWaterLevelChanged;
+    private Consumer<List<Zone>>       onZonesUpdated;
+    private Consumer<List<Agent>>      onAgentsUpdated;
+    private Consumer<AgentMovement>    onAgentArrived;
+    private Consumer<NodeEdgeStats>    onStatsUpdated;
+    private Consumer<List<Zone>>       onSelectedAgentPathChanged;
 
     // ─── État sauvegardé pour "Recommencer" ──────────────────────────────
     private byte[] savedStateBytes = null;
@@ -109,7 +101,7 @@ public class SimulationController {
     public SimulationController(FloodSimulation simulation, SimulationDataService dataService) {
         this.modele      = simulation;
         this.dataService = dataService;
-        dataService.takeSnapshot(modele.getZones(), modele.getAgents());
+        // Snapshot pris une seule fois au démarrage pour pouvoir "Recommencer"
         saveInitialState();
     }
 
@@ -134,13 +126,15 @@ public class SimulationController {
     // ACCÈS MODÈLE
     // ─────────────────────────────────────────────────────────────────────
 
-    public FloodSimulation       getModele()       { return modele; }
-    public List<Zone>            getZones()        { return modele.getZones(); }
-    public SimulationDataService getDataService()  { return dataService; }
-    public MapController         getMapController(){ return mapController; }
+    public FloodSimulation       getModele()        { return modele; }
+    public List<Zone>            getZones()         { return modele.getZones(); }
+    public List<Agent>           getAgents()        { return modele.getAgents(); }
+    public SimulationDataService getDataService()   { return dataService; }
+    public MapController         getMapController() { return mapController; }
 
     public Zone getZoneById(int id) {
-        return modele.getZones().stream().filter(z -> z.getId() == id).findFirst().orElse(null);
+        return modele.getZones().stream()
+            .filter(z -> z.getId() == id).findFirst().orElse(null);
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -148,8 +142,7 @@ public class SimulationController {
     // ─────────────────────────────────────────────────────────────────────
 
     public void demarrerSimulation() {
-        modele.demarrer();
-        modele.publishSimulationStartAlert();
+        modele.demarrer();                     // publie l'alerte de démarrage
         if (modeAleatoire) {
             if (!evacuationDeclenchee) {
                 declencherEvacuationAutomatique();
@@ -164,22 +157,13 @@ public class SimulationController {
     public void mettreEnPause()       { modele.setEnPause(true);  notifyStatus("En pause"); }
     public void reprendreSimulation() { modele.setEnPause(false); notifyStatus("Simulation en cours"); }
 
-    /**
-     * Exécute un pas complet de simulation.
-     * FIX : le niveau d'eau brut est mis à l'échelle par FLOOD_SPEED_FACTOR
-     * pour que la montée soit lisible sur ~3 minutes à 500 ms/cycle.
-     */
     public void executerPas() {
         if (modele.isEnPause()) return;
 
-        // Avancement physique uniquement en mode aléatoire
         if (modeAleatoire) modele.executerPas();
 
-        // Niveau pondéré pour les décisions et l'affichage
-        double niveauBrut   = modele.getNiveauEau();
-        double niveauScaled = niveauBrut / FLOOD_SPEED_FACTOR;
+        double niveauScaled = modele.getNiveauEau() / FLOOD_SPEED_FACTOR;
 
-        // Déclenchement de l'évacuation
         if (!evacuationDeclenchee) {
             boolean doEvac = modeAleatoire
                 ? niveauScaled >= SEUIL_EVACUATION_M
@@ -190,7 +174,6 @@ public class SimulationController {
             }
         }
 
-        // Tick du moteur de déplacement
         if (mapController != null) {
             if (evacuationDeclenchee) mapController.tick(DELTA_SECONDS);
             mapController.updateAllZones(modele.getZones());
@@ -200,23 +183,32 @@ public class SimulationController {
         updateEdgeStats();
         notifySelectedAgentPath();
 
-        final double nv = niveauScaled;
         Platform.runLater(() -> {
-            if (onWaterLevelChanged != null) onWaterLevelChanged.accept(nv);
+            if (onWaterLevelChanged != null) onWaterLevelChanged.accept(niveauScaled);
             if (onZonesUpdated      != null) onZonesUpdated.accept(modele.getZones());
         });
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // RESET
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Remet la simulation à l'état initial sauvegardé.
+     * Utilise le snapshot en mémoire (savedStateBytes), sinon dataService.reset().
+     * Ne persiste PAS dans dataService — la simulation est l'état de référence.
+     */
     public void resetSimulation() {
         if (savedStateBytes != null) {
             restoreFromBytes(savedStateBytes);
         } else {
+            // Fallback : relecture depuis dataService (démarrage seulement)
             Object[] initial = dataService.reset();
             @SuppressWarnings("unchecked") List<Zone>  zones  = (List<Zone>)  initial[0];
             @SuppressWarnings("unchecked") List<Agent> agents = (List<Agent>) initial[1];
             modele.resetSimulation();
-            if (!zones.isEmpty())  modele.setZones(zones);
-            if (!agents.isEmpty()) modele.setAgents(agents);
+            if (zones  != null && !zones.isEmpty())  modele.setZones(zones);
+            if (agents != null && !agents.isEmpty()) modele.setAgents(agents);
         }
 
         evacuationDeclenchee = false;
@@ -235,14 +227,14 @@ public class SimulationController {
         });
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // RESET ZONES (bouton "↺ Reset zones")
-    // FIX : propage la remise à zéro au mapController et au dataService.
-    // ─────────────────────────────────────────────────────────────────────
-
+    /**
+     * Remet toutes les zones à leur état initial (non inondées, non évacuées).
+     * Modifie FloodSimulation uniquement — pas de persistance dataService.
+     */
     public void resetAllZones() {
         modele.getZones().forEach(Zone::reset);
-        dataService.saveZones(modele.getZones());
+        // Notifie les observers de FloodSimulation via setZones (recopy)
+        modele.setZones(modele.getZones());
         if (mapController != null) mapController.syncZones(modele.getZones());
         clearStats();
         evacuationDeclenchee = false;
@@ -251,15 +243,12 @@ public class SimulationController {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // EXPORT / IMPORT ÉTAT
+    // EXPORT / IMPORT ÉTAT  ← seuls endroits légitimes pour dataService I/O
     // ─────────────────────────────────────────────────────────────────────
 
     public boolean exportState(File file) {
-        try {
-            SimulationSnapshot snap = buildSnapshot();
-            try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
-                oos.writeObject(snap);
-            }
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
+            oos.writeObject(buildSnapshot());
             notifyStatus("État exporté : " + file.getName());
             return true;
         } catch (Exception e) {
@@ -270,8 +259,7 @@ public class SimulationController {
 
     public boolean importState(File file) {
         try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
-            SimulationSnapshot snap = (SimulationSnapshot) ois.readObject();
-            applySnapshot(snap);
+            applySnapshot((SimulationSnapshot) ois.readObject());
             notifyStatus("État importé : " + file.getName());
             return true;
         } catch (Exception e) {
@@ -280,6 +268,7 @@ public class SimulationController {
         }
     }
 
+    /** Enregistre l'état courant comme point de départ de "Recommencer". */
     public void saveCurrentStateAsInitial() {
         saveInitialState();
         notifyStatus("État initial enregistré.");
@@ -288,9 +277,7 @@ public class SimulationController {
     private void saveInitialState() {
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ObjectOutputStream oos = new ObjectOutputStream(baos);
-            oos.writeObject(buildSnapshot());
-            oos.close();
+            new ObjectOutputStream(baos).writeObject(buildSnapshot());
             savedStateBytes = baos.toByteArray();
         } catch (Exception e) {
             System.err.println("saveInitialState: " + e.getMessage());
@@ -298,10 +285,8 @@ public class SimulationController {
     }
 
     private void restoreFromBytes(byte[] bytes) {
-        try {
-            ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes));
-            SimulationSnapshot snap = (SimulationSnapshot) ois.readObject();
-            applySnapshot(snap);
+        try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
+            applySnapshot((SimulationSnapshot) ois.readObject());
         } catch (Exception e) {
             System.err.println("restoreFromBytes: " + e.getMessage());
         }
@@ -336,65 +321,82 @@ public class SimulationController {
         Platform.runLater(() -> {
             if (onZonesUpdated      != null) onZonesUpdated.accept(modele.getZones());
             if (onAgentsUpdated     != null) onAgentsUpdated.accept(modele.getAgents());
-            if (onWaterLevelChanged != null) onWaterLevelChanged.accept(snap.niveauEau);
+            if (onWaterLevelChanged != null) onWaterLevelChanged.accept(snap.niveauEau / FLOOD_SPEED_FACTOR);
         });
     }
 
     // ─────────────────────────────────────────────────────────────────────
     // GESTION DES AGENTS
-    // FIX :
-    //   • Fusion Citizen / RescueAgent via AgentRole
-    //   • Support nom, prénom, âge, vitesse, stress, zone de départ
-    //   • addRandomAgents(n) génère un mix citoyen + secours
-    //   • removeAgent retire aussi du RouteGraph
+    // Toutes les modifications passent par modele.addAgent / modele.removeAgent
+    // → pas de dataService ici.
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Crée et ajoute un agent avec les paramètres fournis.
+     * Crée et ajoute un agent.
+     * La construction instancie directement les classes concrètes
+     * (Citizen, PMRAgent, RescueAgent) sans passer par dataService.
      *
-     * @param role      CITIZEN ou RESCUE (null → CITIZEN)
-     * @param firstName prénom (null → aléatoire)
+     * @param role      type d'agent (null → CITIZEN)
+     * @param firstName prénom (null → aléatoire via dataService.createRandom*)
      * @param lastName  nom   (null → aléatoire)
-     * @param age       &lt;0 → aléatoire dans la plage
-     * @param speed     &lt;0 → aléatoire dans la plage
-     * @param stress    &lt;0 → aléatoire dans la plage
-     * @param startZone zone de départ (null → aléatoire)
+     * @param age       < 0 → tiré dans la plage configurée
+     * @param speed     < 0 → tiré dans la plage configurée
+     * @param stress    < 0 → tiré dans la plage configurée (Citizen uniquement)
+     * @param startZone zone de départ (null → aléatoire parmi les zones non inondées)
      */
     public Agent addAgent(AgentRole role, String firstName, String lastName,
-                          int age, double speed, double stress, Zone startZone) {
+                          int age, double speed, int stress, Zone startZone) {
         Random rng = new Random();
-        AgentRole effectiveRole = (role != null) ? role : AgentRole.CITIZEN;
+        AgentRole effectiveRole = role != null ? role : AgentRole.CITIZEN;
 
-        int    effAge   = age   < 0 ? agentAgeMin   + rng.nextInt(Math.max(1, agentAgeMax   - agentAgeMin))   : age;
-        double effSpeed = speed < 0 ? agentSpeedMin + rng.nextDouble() * (agentSpeedMax - agentSpeedMin) : speed;
-        double effStress= stress< 0 ? agentStressMin+ rng.nextDouble() * (agentStressMax - agentStressMin): stress;
+        int    effAge    = age    < 0 ? agentAgeMin    + rng.nextInt(Math.max(1, agentAgeMax    - agentAgeMin))    : age;
+        double effSpeed  = speed  < 0 ? agentSpeedMin  + rng.nextDouble() * (agentSpeedMax  - agentSpeedMin)  : speed;
+        int effStress = stress < 0 ? rng.nextInt(2) : stress; //il faut que dans le view on puisse cocher stresser ou pas
 
-        int id = nextAgentId();
-        Agent agent;
+        // Zone de départ : paramètre > zone non inondée aléatoire
+        Zone zone = startZone != null ? startZone : pickRandomNonFloodedZone(rng);
 
-        if (effectiveRole == AgentRole.RESCUE) {
-            RescueAgent ra = dataService.createRandomRescueAgent(id, modele.getZones());
-            if (ra == null) return null;
-            if (firstName != null) trySet(ra, "setFirstName", String.class, firstName);
-            if (lastName  != null) trySet(ra, "setLastName",  String.class, lastName);
-            trySet(ra, "setAge",         int.class,    effAge);
-            trySet(ra, "setSpeed",       double.class, effSpeed);
-            if (startZone != null) trySet(ra, "setCurrentZone", Zone.class, startZone);
-            agent = ra;
-        } else {
-            Citizen c = dataService.createRandomCitizen(id, modele.getZones());
-            if (c == null) return null;
-            if (firstName != null) trySet(c, "setFirstName", String.class, firstName);
-            if (lastName  != null) trySet(c, "setLastName",  String.class, lastName);
-            trySet(c, "setAge",          int.class,    effAge);
-            trySet(c, "setSpeed",        double.class, effSpeed);
-            trySet(c, "setStressLevel",  double.class, effStress);
-            if (startZone != null) trySet(c, "setCurrentZone", Zone.class, startZone);
-            agent = c;
-        }
+        int id = modele.nextAgentId();
 
-        modele.getAgents().add(agent);
-        persistAndPropagate(agent);
+        // Node correspondant à la zone (null accepté par les constructeurs)
+        model.graph.Node node = zone != null ? zoneToNode(zone) : null;
+
+        String fn = firstName != null ? firstName : randomFirstName(rng);
+        String ln = lastName  != null ? lastName  : randomLastName(rng);
+
+        Agent agent = switch (effectiveRole) {
+            case PMR -> {
+                PMRAgent pmr = new PMRAgent(id, fn, ln, node);
+                pmr.setAge(effAge);
+                pmr.setMaxSpeed(effSpeed);
+                if (zone != null) pmr.setCurrentZone(zone);
+                yield pmr;
+            }
+            case RESCUE -> {
+                RescueAgent ra = new RescueAgent(id, fn, ln, node);
+                ra.setAge(effAge);
+                ra.setMaxSpeed(effSpeed);
+                ra.setState(RescueState.DISPONIBLE);
+                if (zone != null) ra.setCurrentZone(zone);
+                yield ra;
+            }
+            default -> {  // CITIZEN
+                Citizen c = new Citizen(id, fn, ln, node);
+                c.setAge(effAge);
+                c.setMaxSpeed(effSpeed);
+                if (effStress==1) {
+                    c.setState(CitizenState.STRESSED);
+                } else {
+                    c.setState(CitizenState.CALM);
+                }
+                if (zone != null) c.setCurrentZone(zone);
+                yield c;
+            }
+        };
+
+        // Ajout dans FloodSimulation (notifie les observers)
+        modele.addAgent(agent);
+        propagateAgentToMap(agent);
         return agent;
     }
 
@@ -408,15 +410,13 @@ public class SimulationController {
         return (RescueAgent) addAgent(AgentRole.RESCUE, null, null, -1, -1, -1, null);
     }
 
-    /**
-     * Ajoute n agents avec paramètres aléatoires (mix citoyens + secours).
-     * FIX : remplace addRandomCitizens(10) → addRandomAgents(10)
-     */
+    /** Ajoute n agents avec paramètres aléatoires (~20 % secours, ~10 % PMR). */
     public List<Agent> addRandomAgents(int count) {
         List<Agent> added = new ArrayList<>();
         Random rng = new Random();
         for (int i = 0; i < count; i++) {
-            AgentRole role = rng.nextInt(5) == 0 ? AgentRole.RESCUE : AgentRole.CITIZEN; // ~20 % secours
+            int r = rng.nextInt(10);
+            AgentRole role = r == 0 ? AgentRole.RESCUE : r == 1 ? AgentRole.PMR : AgentRole.CITIZEN;
             Agent a = addAgent(role, null, null, -1, -1, -1, null);
             if (a != null) added.add(a);
         }
@@ -424,29 +424,40 @@ public class SimulationController {
     }
 
     /**
-     * Supprime un agent du modèle ET du RouteGraph.
-     * FIX : l'ancienne version ne retirait pas l'agent des mouvements actifs.
+     * Supprime un agent de FloodSimulation ET du RouteGraph.
+     * Pas de persistance dataService.
      */
     public boolean removeAgent(int agentId) {
-        // 1. Retirer du RouteGraph (mouvements actifs)
-        if (mapController != null && mapController.getRouteGraph() != null) {
+        // 1. Annuler les mouvements actifs dans le graphe
+        if (mapController != null && mapController.getRouteGraph() != null)
             mapController.getRouteGraph().removeMovementsOfAgent(agentId);
+
+        // 2. Trouver l'agent avant suppression (pour nettoyer la sélection)
+        Agent toRemove = modele.getAgents().stream()
+            .filter(a -> a.getId() == agentId).findFirst().orElse(null);
+        if (toRemove == null) return false;
+
+        // 3. Supprimer de FloodSimulation (notifie les observers)
+        modele.removeAgent(toRemove);
+
+        // 4. Synchro MapController
+        if (mapController != null) mapController.removeAgent(agentId);
+
+        // 5. Nettoyer la sélection
+        if (selectedAgent != null && selectedAgent.getId() == agentId) {
+            selectedAgent = null;
+            if (onSelectedAgentPathChanged != null)
+                Platform.runLater(() -> onSelectedAgentPathChanged.accept(new ArrayList<>()));
         }
-        // 2. Retirer de la liste du modèle
-        boolean removed = modele.getAgents().removeIf(a -> a.getId() == agentId);
-        if (removed) {
-            dataService.saveAgents(modele.getAgents());
-            if (mapController != null) mapController.removeAgent(agentId);
-            if (selectedAgent != null && selectedAgent.getId() == agentId) {
-                selectedAgent = null;
-                if (onSelectedAgentPathChanged != null)
-                    Platform.runLater(() -> onSelectedAgentPathChanged.accept(new ArrayList<>()));
-            }
-            notifyAgentsUpdated();
-        }
-        return removed;
+
+        notifyAgentsUpdated();
+        return true;
     }
 
+    /**
+     * Remplace toute la liste d'agents dans FloodSimulation.
+     * Utilisé lors d'un import ou d'un reset.
+     */
     public void setAgents(List<Agent> agents) {
         modele.setAgents(agents);
         if (mapController != null) mapController.syncAgents(modele.getAgents());
@@ -457,9 +468,9 @@ public class SimulationController {
     // PLAGES DE GÉNÉRATION D'AGENTS
     // ─────────────────────────────────────────────────────────────────────
 
-    public void setAgentAgeRange(int min, int max)        { agentAgeMin = min;    agentAgeMax = max; }
-    public void setAgentSpeedRange(double min, double max){ agentSpeedMin = min;  agentSpeedMax = max; }
-    public void setAgentStressRange(double min, double max){ agentStressMin = min; agentStressMax = max; }
+    public void setAgentAgeRange(int min, int max)          { agentAgeMin = min;    agentAgeMax = max; }
+    public void setAgentSpeedRange(double min, double max)  { agentSpeedMin = min;  agentSpeedMax = max; }
+    public void setAgentStressRange(double min, double max) { agentStressMin = min; agentStressMax = max; }
 
     public int    getAgentAgeMin()    { return agentAgeMin; }
     public int    getAgentAgeMax()    { return agentAgeMax; }
@@ -469,7 +480,7 @@ public class SimulationController {
     public double getAgentStressMax() { return agentStressMax; }
 
     // ─────────────────────────────────────────────────────────────────────
-    // SÉLECTION AGENT — TRAJET RESTANT
+    // SÉLECTION AGENT
     // ─────────────────────────────────────────────────────────────────────
 
     public void  selectAgent(Agent agent) { this.selectedAgent = agent; notifySelectedAgentPath(); }
@@ -487,30 +498,42 @@ public class SimulationController {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // SUPPRESSION NŒUD AVEC RELOCALISATION
-    // FIX :
-    //   • Cherche les agents statiques (currentZone) ET en transit
-    //   • Supprime toutes les arêtes connectées du RouteGraph
-    //   • Annule les mouvements qui passent par ce nœud
+    // GESTION DES ZONES
+    // Toutes les modifications passent par FloodSimulation — pas de dataService.
     // ─────────────────────────────────────────────────────────────────────
 
+    public void addZone(Zone zone) {
+        modele.addZone(zone);                          // notifie les observers
+        if (mapController != null) mapController.syncZones(modele.getZones());
+        Platform.runLater(() -> { if (onZonesUpdated != null) onZonesUpdated.accept(modele.getZones()); });
+    }
+
+    public void updateZone(Zone zone) {
+        modele.updateZone(zone);                       // notifie les observers
+        if (mapController != null) mapController.syncZones(modele.getZones());
+        Platform.runLater(() -> { if (onZonesUpdated != null) onZonesUpdated.accept(modele.getZones()); });
+    }
+
+    /**
+     * Supprime une zone de FloodSimulation avec relocalisation des agents.
+     * Supprime aussi les arêtes connectées du RouteGraph.
+     * Pas de persistance dataService.
+     */
     public void removeZone(int zoneId) {
         Zone toRemove = getZoneById(zoneId);
         if (toRemove == null) return;
 
-        // Agents à relocaliser = statiques dans la zone + en transit vers/depuis elle
+        // Agents à relocaliser (statiques + en transit)
         List<Agent> agentsToRelocate = new ArrayList<>();
         agentsToRelocate.addAll(findAgentsStaticInZone(zoneId));
         agentsToRelocate.addAll(findAgentsTransitThroughZone(zoneId));
-        // Dédupliquer
         agentsToRelocate = agentsToRelocate.stream().distinct().collect(Collectors.toList());
 
         List<Zone> adjacent = findAdjacentZones(zoneId);
 
         if (!agentsToRelocate.isEmpty()) {
             if (adjacent.isEmpty()) {
-                final List<Agent> toRemoveAgents = agentsToRelocate;
-                toRemoveAgents.forEach(a -> modele.getAgents().remove(a));
+                agentsToRelocate.forEach(a -> modele.removeAgent(a));
                 notifyStatus("⚠ Agents supprimés (aucune zone adjacente disponible)");
             } else {
                 Zone fallback = adjacent.get(0);
@@ -526,15 +549,12 @@ public class SimulationController {
         // Supprimer les arêtes connectées du RouteGraph
         if (mapController != null && mapController.getRouteGraph() != null) {
             RouteGraph rg = mapController.getRouteGraph();
-            List<Edge> connected = new ArrayList<>(rg.getEdges()).stream()
+            new ArrayList<>(rg.getEdges()).stream()
                 .filter(e -> e.getFromZone().getId() == zoneId || e.getToZone().getId() == zoneId)
-                .collect(Collectors.toList());
-            connected.forEach(e -> rg.removeEdge(e.getId()));
+                .forEach(e -> rg.removeEdge(e.getId()));
         }
 
-        modele.removeZoneById(zoneId);
-        dataService.saveZones(modele.getZones());
-        dataService.saveAgents(modele.getAgents());
+        modele.removeZoneById(zoneId);                 // notifie les observers
 
         if (mapController != null) {
             mapController.syncZones(modele.getZones());
@@ -542,60 +562,6 @@ public class SimulationController {
         }
 
         notifyAgentsUpdated();
-        Platform.runLater(() -> { if (onZonesUpdated != null) onZonesUpdated.accept(modele.getZones()); });
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // SUPPRESSION ARÊTE AVEC RELOCALISATION
-    // FIX : relocalise vers la zone SOURCE de l'arête (logique correcte)
-    // ─────────────────────────────────────────────────────────────────────
-
-    public void removeEdgeWithAgentRelocation(int edgeId) {
-        if (mapController == null) return;
-        RouteGraph rg = mapController.getRouteGraph();
-        if (rg == null) return;
-
-        Edge edge = rg.getEdges().stream().filter(e -> e.getId() == edgeId).findFirst().orElse(null);
-        if (edge == null) return;
-
-        Zone sourceZone = edge.getFromZone();
-
-        List<AgentMovement> toRelocate = rg.getActiveMovements().stream()
-            .filter(mv -> mv.getCurrentEdge() != null && mv.getCurrentEdge().getId() == edgeId)
-            .collect(Collectors.toList());
-
-        toRelocate.forEach(mv -> {
-            rg.removeMovementsOfAgent(mv.getAgent().getId());
-            relocateAgent(mv.getAgent(), sourceZone);
-        });
-
-        if (!toRelocate.isEmpty()) {
-            checkAndSetOvercrowding(sourceZone, toRelocate.size());
-            notifyStatus("Agents relocalisés vers " + sourceZone.getName());
-        }
-
-        rg.removeEdge(edgeId);
-        dataService.saveAgents(modele.getAgents());
-
-        if (mapController != null) mapController.syncZones(modele.getZones());
-        notifyAgentsUpdated();
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // GESTION DES ZONES
-    // ─────────────────────────────────────────────────────────────────────
-
-    public void updateZone(Zone zone) {
-        modele.updateZone(zone);
-        dataService.saveZones(modele.getZones());
-        if (mapController != null) mapController.syncZones(modele.getZones());
-        Platform.runLater(() -> { if (onZonesUpdated != null) onZonesUpdated.accept(modele.getZones()); });
-    }
-
-    public void addZone(Zone zone) {
-        modele.addZone(zone);
-        dataService.saveZones(modele.getZones());
-        if (mapController != null) mapController.syncZones(modele.getZones());
         Platform.runLater(() -> { if (onZonesUpdated != null) onZonesUpdated.accept(modele.getZones()); });
     }
 
@@ -622,7 +588,41 @@ public class SimulationController {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // CONGESTION FORTE
+    // SUPPRESSION ARÊTE AVEC RELOCALISATION
+    // ─────────────────────────────────────────────────────────────────────
+
+    public void removeEdgeWithAgentRelocation(int edgeId) {
+        if (mapController == null) return;
+        RouteGraph rg = mapController.getRouteGraph();
+        if (rg == null) return;
+
+        Edge edge = rg.getEdges().stream()
+            .filter(e -> e.getId() == edgeId).findFirst().orElse(null);
+        if (edge == null) return;
+
+        Zone sourceZone = edge.getFromZone();
+
+        List<AgentMovement> toRelocate = rg.getActiveMovements().stream()
+            .filter(mv -> mv.getCurrentEdge() != null && mv.getCurrentEdge().getId() == edgeId)
+            .collect(Collectors.toList());
+
+        toRelocate.forEach(mv -> {
+            rg.removeMovementsOfAgent(mv.getAgent().getId());
+            relocateAgent(mv.getAgent(), sourceZone);
+        });
+
+        if (!toRelocate.isEmpty()) {
+            checkAndSetOvercrowding(sourceZone, toRelocate.size());
+            notifyStatus("Agents relocalisés vers " + sourceZone.getName());
+        }
+
+        rg.removeEdge(edgeId);
+        if (mapController != null) mapController.syncZones(modele.getZones());
+        notifyAgentsUpdated();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // CONGESTION
     // ─────────────────────────────────────────────────────────────────────
 
     private void checkAndSetOvercrowding(Zone zone, int addedCount) {
@@ -655,41 +655,37 @@ public class SimulationController {
     public int     getZoneWaitCycles(int zoneId) { return zoneWaitCycles.getOrDefault(zoneId, 0); }
 
     // ─────────────────────────────────────────────────────────────────────
-    // STATISTIQUES NŒUDS / ARÊTES
-    // FIX : recordAgentPassedZone est désormais appelé à l'arrivée de l'agent
-    //       et aussi depuis handleAgentArrived pour les zones intermédiaires.
+    // STATISTIQUES NŒUDS / ARÊTES  (locales au controller, non persistées)
     // ─────────────────────────────────────────────────────────────────────
 
-    public void recordAgentPassedZone(int zoneId) {
-        zonePassCount.merge(zoneId, 1, Integer::sum);
-    }
-
-    public void recordAgentPassedEdge(int edgeId) {
-        edgePassCount.merge(edgeId, 1, Integer::sum);
-    }
+    public void recordAgentPassedZone(int zoneId) { zonePassCount.merge(zoneId, 1, Integer::sum); }
+    public void recordAgentPassedEdge(int edgeId) { edgePassCount.merge(edgeId, 1, Integer::sum); }
 
     public NodeEdgeStats getZoneStats(int zoneId) {
         Zone z = getZoneById(zoneId);
         if (z == null) return null;
-        int     agents = countAgentsInZone(zoneId);
-        int     passed = zonePassCount.getOrDefault(zoneId, 0);
-        double  avgSpd = computeZoneAvgSpeed(zoneId);
-        boolean overc  = isZoneOvercrowded(zoneId);
-        int     waitC  = getZoneWaitCycles(zoneId);
-        String  status = z.isFlooded() ? "Inondé" : overc ? "Forte congestion" : "Normal";
-        return new NodeEdgeStats(z.getName(), "Nœud", agents, passed, avgSpd, overc, waitC, status,
-            z.getMaxCapacity(), (int) z.getPopulation());
+        int     agents  = countAgentsInZone(zoneId);
+        int     passed  = zonePassCount.getOrDefault(zoneId, 0);
+        double  avgSpd  = computeZoneAvgSpeed(zoneId);
+        boolean overc   = isZoneOvercrowded(zoneId);
+        int     waitC   = getZoneWaitCycles(zoneId);
+        String  status  = z.isFlooded() ? "Inondé" : overc ? "Forte congestion" : "Normal";
+        return new NodeEdgeStats(z.getName(), "Nœud", agents, passed, avgSpd,
+            overc, waitC, status, z.getMaxCapacity(), (int) z.getPopulation());
     }
 
     public NodeEdgeStats getEdgeStats(int edgeId) {
         if (mapController == null) return null;
         RouteGraph rg = mapController.getRouteGraph();
         if (rg == null) return null;
-        Edge edge = rg.getEdges().stream().filter(e -> e.getId() == edgeId).findFirst().orElse(null);
+        Edge edge = rg.getEdges().stream()
+            .filter(e -> e.getId() == edgeId).findFirst().orElse(null);
         if (edge == null) return null;
         int current = (int) rg.getActiveMovements().stream()
-            .filter(mv -> mv.getCurrentEdge() != null && mv.getCurrentEdge().getId() == edgeId).count();
-        boolean congested = edge.getState() == EdgeState.CONGESTED || edge.getState() == EdgeState.OVERLOADED;
+            .filter(mv -> mv.getCurrentEdge() != null
+                       && mv.getCurrentEdge().getId() == edgeId).count();
+        boolean congested = edge.getState() == EdgeState.CONGESTED
+                         || edge.getState() == EdgeState.OVERLOADED;
         return new NodeEdgeStats(
             edge.getName(), "Arête", current,
             edgePassCount.getOrDefault(edgeId, 0),
@@ -703,8 +699,7 @@ public class SimulationController {
         if (mapController == null) return 0.0;
         RouteGraph rg = mapController.getRouteGraph();
         if (rg == null) return 0.0;
-        return rg.getEdges().stream().filter(e -> e.getId() == edgeId)
-            .findFirst()
+        return rg.getEdges().stream().filter(e -> e.getId() == edgeId).findFirst()
             .map(e -> Math.min(1.0, (double) e.getCurrentFlow() / Math.max(1, e.getCapacityMax())))
             .orElse(0.0);
     }
@@ -715,17 +710,13 @@ public class SimulationController {
         return Math.min(1.0, (double) countAgentsInZone(zoneId) / Math.max(1, z.getMaxCapacity()));
     }
 
-    /**
-     * Met à jour les stats de débit sur toutes les arêtes à chaque tick.
-     * FIX : met aussi à jour edgePassCount quand le flux d'une arête augmente.
-     */
     private void updateEdgeStats() {
         if (mapController == null) return;
         RouteGraph rg = mapController.getRouteGraph();
         if (rg == null) return;
         for (Edge e : rg.getEdges()) {
-            int  id   = e.getId();
-            int  flow = e.getCurrentFlow();
+            int id   = e.getId();
+            int flow = e.getCurrentFlow();
             edgeFlowCumul.merge(id,  (long) flow, Long::sum);
             edgeCycleCumul.merge(id, 1L,           Long::sum);
             long f = edgeFlowCumul.getOrDefault(id, 1L);
@@ -744,13 +735,14 @@ public class SimulationController {
     // STATISTIQUES GLOBALES
     // ─────────────────────────────────────────────────────────────────────
 
-    public int  getPopulationARisque() {
+    public int getPopulationARisque() {
         return mapController != null
             ? (int) mapController.countCitizensAtRisk()
             : (int) modele.getAgents().stream().filter(a -> a instanceof Citizen).count();
     }
-    public int  getPopulationEnSecurite() { return mapController != null ? (int) mapController.countCitizensSafe() : 0; }
-    public long getNombreZonesInondees()  { return modele.getZones().stream().filter(Zone::isFlooded).count(); }
+
+    public int  getPopulationEnSecurite()     { return mapController != null ? (int) mapController.countCitizensSafe() : 0; }
+    public long getNombreZonesInondees()       { return modele.getZones().stream().filter(Zone::isFlooded).count(); }
     public int  getNombreAgentsEnDeplacement() {
         return mapController == null || mapController.getRouteGraph() == null
             ? 0 : mapController.getRouteGraph().getActiveMovements().size();
@@ -773,8 +765,7 @@ public class SimulationController {
         long over  = edges.stream().filter(e -> e.getState() == EdgeState.OVERLOADED).count();
         long flood = edges.stream().filter(e -> e.getState() == EdgeState.FLOODED).count();
         return new double[]{
-            safe *100/total, risk*100/total,
-            cong *100/total, over*100/total, flood*100/total
+            safe*100/total, risk*100/total, cong*100/total, over*100/total, flood*100/total
         };
     }
 
@@ -782,14 +773,14 @@ public class SimulationController {
     // PARAMÈTRES
     // ─────────────────────────────────────────────────────────────────────
 
-    public void    setVitesseSimulation(double ms)  { this.vitesseSimulationMs = Math.max(50.0, ms); }
-    public double  getVitesseSimulationMs()          { return vitesseSimulationMs; }
-    public void    setGravite(double g)              { modele.setGravite(g); }
-    public void    setNiveauEau(double nv)           { modele.setNiveauEau(nv); Platform.runLater(() -> { if (onWaterLevelChanged != null) onWaterLevelChanged.accept(nv / FLOOD_SPEED_FACTOR); }); }
-    public void    setModeAleatoire(boolean b)       { this.modeAleatoire = b; }
-    public boolean isModeAleatoire()                 { return modeAleatoire; }
-    public void    setAgentEndBehavior(AgentEndBehavior b) { this.agentEndBehavior = b; }
-    public AgentEndBehavior getAgentEndBehavior()    { return agentEndBehavior; }
+    public void    setVitesseSimulation(double ms)           { this.vitesseSimulationMs = Math.max(50.0, ms); }
+    public double  getVitesseSimulationMs()                  { return vitesseSimulationMs; }
+    public void    setGravite(double g)                      { modele.setGravite(g); }
+    public void    setNiveauEau(double nv)                   { modele.setNiveauEau(nv); Platform.runLater(() -> { if (onWaterLevelChanged != null) onWaterLevelChanged.accept(nv / FLOOD_SPEED_FACTOR); }); }
+    public void    setModeAleatoire(boolean b)               { this.modeAleatoire = b; }
+    public boolean isModeAleatoire()                         { return modeAleatoire; }
+    public void    setAgentEndBehavior(AgentEndBehavior b)   { this.agentEndBehavior = b; }
+    public AgentEndBehavior getAgentEndBehavior()            { return agentEndBehavior; }
 
     // ─────────────────────────────────────────────────────────────────────
     // CALLBACKS
@@ -801,7 +792,7 @@ public class SimulationController {
     public void setOnAgentsUpdated(Consumer<List<Agent>>         cb) { this.onAgentsUpdated             = cb; }
     public void setOnAgentArrived(Consumer<AgentMovement>        cb) { this.onAgentArrived              = cb; }
     public void setOnStatsUpdated(Consumer<NodeEdgeStats>        cb) { this.onStatsUpdated              = cb; }
-    public void setOnSelectedAgentPathChanged(Consumer<List<Zone>> cb) { this.onSelectedAgentPathChanged = cb; }
+    public void setOnSelectedAgentPathChanged(Consumer<List<Zone>> cb){ this.onSelectedAgentPathChanged = cb; }
 
     // ─────────────────────────────────────────────────────────────────────
     // DTO Stats nœud / arête
@@ -834,7 +825,7 @@ public class SimulationController {
     // ─────────────────────────────────────────────────────────────────────
 
     public static class SimulationSnapshot implements Serializable {
-        private static final long serialVersionUID = 2L;   // bumped après refactor
+        private static final long serialVersionUID = 3L;
         public final List<Zone>       zones;
         public final List<Agent>      agents;
         public final double           niveauEau;
@@ -842,13 +833,14 @@ public class SimulationController {
         public final boolean          modeAleatoire;
         public final AgentEndBehavior agentEndBehavior;
 
-        public SimulationSnapshot(List<Zone> zones, List<Agent> agents, double niveauEau,
-                                  double gravite, boolean modeAleatoire, AgentEndBehavior agentEndBehavior) {
-            this.zones            = zones;
-            this.agents           = agents;
-            this.niveauEau        = niveauEau;
-            this.gravite          = gravite;
-            this.modeAleatoire    = modeAleatoire;
+        public SimulationSnapshot(List<Zone> zones, List<Agent> agents,
+                                  double niveauEau, double gravite,
+                                  boolean modeAleatoire, AgentEndBehavior agentEndBehavior) {
+            this.zones           = zones;
+            this.agents          = agents;
+            this.niveauEau       = niveauEau;
+            this.gravite         = gravite;
+            this.modeAleatoire   = modeAleatoire;
             this.agentEndBehavior = agentEndBehavior;
         }
     }
@@ -857,10 +849,6 @@ public class SimulationController {
     // PRIVÉS — helpers
     // ─────────────────────────────────────────────────────────────────────
 
-    /**
-     * Vérifie si une inondation manuelle a démarré sur le graphe.
-     * FIX : utilise l'état de l'arête uniquement, sans appel à getFloodLevel().
-     */
     private boolean hasManualFloodStarted() {
         if (mapController == null || mapController.getRouteGraph() == null) return false;
         return mapController.getRouteGraph().getEdges().stream()
@@ -878,43 +866,31 @@ public class SimulationController {
         notifyStatus("⚠ Évacuation déclenchée — trajets attribués aux citoyens");
     }
 
-    /**
-     * Gère l'arrivée d'un agent à destination.
-     * FIX :
-     *  • Enregistre le passage dans les stats de la zone de destination
-     *  • Change l'état de l'agent : SAFE pour Citizen, AVAILABLE pour RescueAgent
-     *  • Comportement de fin de trajet (REMOVE / RANDOM_DESTINATION)
-     */
     private void handleAgentArrived(AgentMovement mv) {
         Agent agent = mv.getAgent();
         Zone  dest  = mv.getDestination();
 
-        // Stats
         if (dest != null) recordAgentPassedZone(dest.getId());
         modele.recordEvacuationArrival(agent, dest);
 
-        // État à l'arrivée
+        // État à l'arrivée — appel direct aux méthodes concrètes (pas de réflexion)
         if (agent instanceof Citizen c) {
-            trySet(c, "setState", String.class, "SAFE");
-            trySet(c, "setStatus", String.class, "SAFE");
+            c.setState(CitizenState.SAFE);
         } else if (agent instanceof RescueAgent ra) {
-            trySet(ra, "setState", String.class, "AVAILABLE");
-            trySet(ra, "setStatus", String.class, "AVAILABLE");
+            ra.setState(RescueState.DISPONIBLE);
         }
 
-        // Comportement post-arrivée
         if (agentEndBehavior == AgentEndBehavior.REMOVE_AGENT) {
             Platform.runLater(() -> removeAgent(agent.getId()));
         } else {
+            // Nouvelle destination aléatoire non inondée
             List<Zone> candidates = modele.getZones().stream()
                 .filter(z -> !z.isFlooded() && (dest == null || z.getId() != dest.getId()))
                 .collect(Collectors.toList());
-            if (!candidates.isEmpty() && mapController != null) {
+            if (!candidates.isEmpty() && mapController != null && dest != null) {
                 Zone newDest = candidates.get(new Random().nextInt(candidates.size()));
-                Platform.runLater(() -> {
-                    if (dest != null)
-                        mapController.getRouteGraph().planEvacuation(agent, dest, List.of(newDest));
-                });
+                Platform.runLater(() ->
+                    mapController.getRouteGraph().planEvacuation(agent, dest, List.of(newDest)));
             }
         }
 
@@ -922,18 +898,17 @@ public class SimulationController {
             notifySelectedAgentPath();
     }
 
-    private void persistAndPropagate(Agent agent) {
-        dataService.saveAgents(modele.getAgents());
+    /**
+     * Propage un agent nouvellement créé au MapController.
+     * Ne passe pas par dataService.
+     */
+    private void propagateAgentToMap(Agent agent) {
         if (mapController != null) {
             mapController.addAgent(agent);
             mapController.syncAgents(modele.getAgents());
             if (evacuationDeclenchee && agent instanceof Citizen c)
                 mapController.evacuateCitizen(c);
         }
-        Platform.runLater(() -> {
-            if (Main.getSharedMapView() != null)
-                Main.getSharedMapView().setAgents(modele.getAgents());
-        });
         notifyAgentsUpdated();
     }
 
@@ -945,25 +920,15 @@ public class SimulationController {
         rg.planEvacuation(agent, target, modele.getZones());
     }
 
-    /**
-     * Agents dont la currentZone est zoneId (agents statiques/en attente).
-     * FIX : cherche dans le modèle via getField, pas seulement dans les mouvements actifs.
-     */
     private List<Agent> findAgentsStaticInZone(int zoneId) {
         return modele.getAgents().stream()
             .filter(a -> {
-                try {
-                    var m = a.getClass().getMethod("getCurrentZone");
-                    Zone z = (Zone) m.invoke(a);
-                    return z != null && z.getId() == zoneId;
-                } catch (Exception ex) { return false; }
+                Zone z = a.getCurrentZone();
+                return z != null && z.getId() == zoneId;
             })
             .collect(Collectors.toList());
     }
 
-    /**
-     * Agents dont le trajet actif passe par zoneId.
-     */
     private List<Agent> findAgentsTransitThroughZone(int zoneId) {
         if (mapController == null || mapController.getRouteGraph() == null) return new ArrayList<>();
         return mapController.getRouteGraph().getActiveMovements().stream()
@@ -976,17 +941,13 @@ public class SimulationController {
         int transit = 0;
         if (mapController != null && mapController.getRouteGraph() != null) {
             transit = (int) mapController.getRouteGraph().getActiveMovements().stream()
-                .filter(mv -> mv.getCurrentZone() != null && mv.getCurrentZone().getId() == zoneId).count();
+                .filter(mv -> mv.getCurrentZone() != null
+                           && mv.getCurrentZone().getId() == zoneId).count();
         }
-        int staticCount = (int) modele.getAgents().stream()
-            .filter(a -> {
-                try {
-                    var m = a.getClass().getMethod("getCurrentZone");
-                    Zone z = (Zone) m.invoke(a);
-                    return z != null && z.getId() == zoneId;
-                } catch (Exception ex) { return false; }
-            }).count();
-        return Math.max(transit, staticCount);
+        int stat = (int) modele.getAgents().stream()
+            .filter(a -> { Zone z = a.getCurrentZone(); return z != null && z.getId() == zoneId; })
+            .count();
+        return Math.max(transit, stat);
     }
 
     private List<Zone> findAdjacentZones(int zoneId) {
@@ -1011,6 +972,29 @@ public class SimulationController {
             .forEach(mv -> rg.removeMovementsOfAgent(mv.getAgent().getId()));
     }
 
+    private Zone pickRandomNonFloodedZone(Random rng) {
+        List<Zone> candidates = modele.getZones().stream()
+            .filter(z -> !z.isFlooded()).collect(Collectors.toList());
+        return candidates.isEmpty() ? null : candidates.get(rng.nextInt(candidates.size()));
+    }
+
+    /**
+     * Crée un Node minimal à partir d'une Zone pour les constructeurs d'Agent.
+     * Adaptez selon votre implémentation de Node.
+     */
+    private model.graph.Node zoneToNode(Zone zone) {
+        return new model.graph.Node(zone.getLatitude(), zone.getLongitude());
+    }
+
+    private static final String[] FIRSTNAMES = {
+        "Alice","Bob","Clara","David","Emma","Félix","Gina","Hugo","Inès","Jules"
+    };
+    private static final String[] LASTNAMES = {
+        "Martin","Bernard","Dubois","Thomas","Robert","Petit","Durand","Leroy","Moreau","Simon"
+    };
+    private String randomFirstName(Random rng) { return FIRSTNAMES[rng.nextInt(FIRSTNAMES.length)]; }
+    private String randomLastName(Random rng)  { return LASTNAMES[rng.nextInt(LASTNAMES.length)]; }
+
     private void notifySelectedAgentPath() {
         if (onSelectedAgentPathChanged == null) return;
         List<Zone> path = getSelectedAgentRemainingPath();
@@ -1026,21 +1010,10 @@ public class SimulationController {
             Platform.runLater(() -> onAgentsUpdated.accept(modele.getAgents()));
     }
 
-    private int nextAgentId() {
-        return modele.getAgents().stream().mapToInt(Agent::getId).max().orElse(100) + 1;
-    }
-
     private void clearStats() {
         zonePassCount.clear();  zoneTimeSpent.clear();
         zoneWaitCycles.clear(); zoneOvercrowded.clear();
         edgePassCount.clear();  edgeAvgSpeed.clear();
         edgeFlowCumul.clear();  edgeCycleCumul.clear();
-    }
-
-    /** Appelle un setter par réflexion sans lever d'exception si absent. */
-    private static void trySet(Object obj, String method, Class<?> type, Object value) {
-        try {
-            obj.getClass().getMethod(method, type).invoke(obj, value);
-        } catch (Exception ignored) {}
     }
 }

@@ -435,6 +435,10 @@ public class FloodSimulation {
     public int nextZoneId() {
         return zones.stream().mapToInt(Zone::getId).max().orElse(0) + 1;
     }
+    
+    public int nextAgentId() {
+        return agents.stream().mapToInt(Agent::getId).max().orElse(0) + 1;
+    }
 
     public void replaceAllAgents(List<Agent> newAgents) {
         agents.clear();
