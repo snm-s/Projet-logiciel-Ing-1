@@ -213,6 +213,7 @@ public class SimulationDataService {
             "Secours" + id,
             new Node(coord[0], coord[1])
         );
+        ra.setState(model.enums.RescueState.DISPONIBLE);
         ra.setMaxSpeed(3.0 + RNG.nextDouble() * 2.0);
         ra.setCongestionTolerance(0.8 + RNG.nextDouble() * 0.2);
         return ra;

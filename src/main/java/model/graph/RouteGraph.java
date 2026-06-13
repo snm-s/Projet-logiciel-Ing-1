@@ -120,7 +120,7 @@ public class RouteGraph {
             .filter(z -> z instanceof Shelter)
             .collect(Collectors.toList());
 
-        int nextId = edges.stream().mapToInt(Edge::getId).max().orElse(0) + 1;
+        final int[] nextId = { edges.stream().mapToInt(Edge::getId).max().orElse(0) + 1 };
 
         for (Zone from : allZones) {
             // Connexions locales : seulement les 2 voisins les plus proches
@@ -143,7 +143,7 @@ public class RouteGraph {
                 .min(Comparator.comparingDouble(s -> geoDistanceSquared(from, s)))
                 .ifPresent(nearest -> {
                     if (!hasEdgeBetween(from, nearest)) {
-                        edges.add(new Edge(nextId, from.getName() + " → " + nearest.getName(),
+                        edges.add(new Edge(nextId[0]++, from.getName() + " → " + nearest.getName(),
                             from, nearest, fallbackLine(from, nearest), 5, 0, 0));
                     }
                 });
@@ -217,7 +217,16 @@ public class RouteGraph {
             return null;
         }
 
-        EvacuationPath path = router.findNearestSafe(from, safeZones);
+        // Consigne métier : viser d'abord le refuge géographiquement le plus proche,
+        // puis calculer l'itinéraire Dijkstra vers ce refuge.
+        List<Zone> sheltersByDistance = new ArrayList<>(safeZones);
+        sheltersByDistance.sort(Comparator.comparingDouble(z -> geoDistanceSquared(from, z)));
+
+        EvacuationPath path = null;
+        for (Zone shelter : sheltersByDistance) {
+            path = router.findPath(from, shelter);
+            if (path != null) break;
+        }
         if (path == null) {
             LOG.fine("Aucun chemin trouvé depuis " + from.getName()
                 + " pour l'agent " + agent.getId());

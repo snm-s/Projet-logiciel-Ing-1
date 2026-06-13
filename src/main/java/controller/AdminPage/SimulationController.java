@@ -1,7 +1,18 @@
 package controller.AdminPage;
 
-import java.io.*;
-import java.util.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -179,7 +190,10 @@ public class SimulationController {
         }
 
         if (mapController != null) {
-            if (evacuationDeclenchee) mapController.tick(DELTA_SECONDS);
+            boolean allowAgentTick = modeAleatoire
+                ? evacuationDeclenchee
+                : (evacuationDeclenchee && hasManualFloodStarted());
+            if (allowAgentTick) mapController.tick(DELTA_SECONDS);
             mapController.updateAllZones(modele.getZones());
         }
 
@@ -311,6 +325,7 @@ public class SimulationController {
         modele.resetSimulation();
         if (snap.zones  != null && !snap.zones.isEmpty())  modele.setZones(new ArrayList<>(snap.zones));
         if (snap.agents != null && !snap.agents.isEmpty()) modele.setAgents(new ArrayList<>(snap.agents));
+        realignAgentsToCurrentZones();
         modele.setNiveauEau(snap.niveauEau);
         modele.setGravite(snap.gravite);
         modeAleatoire        = snap.modeAleatoire;
@@ -326,6 +341,23 @@ public class SimulationController {
             if (onAgentsUpdated     != null) onAgentsUpdated.accept(modele.getAgents());
             if (onWaterLevelChanged != null) onWaterLevelChanged.accept(snap.niveauEau / FLOOD_SPEED_FACTOR);
         });
+    }
+
+    private void realignAgentsToCurrentZones() {
+        Map<Integer, Zone> zonesById = new HashMap<>();
+        for (Zone z : modele.getZones()) {
+            zonesById.put(z.getId(), z);
+        }
+
+        for (Agent a : modele.getAgents()) {
+            Zone current = a.getCurrentZone();
+            if (current == null) continue;
+            Zone resolved = zonesById.get(current.getId());
+            if (resolved == null) continue;
+
+            a.setCurrentZone(resolved);
+            a.setPosition(new model.graph.Node(resolved.getLatitude(), resolved.getLongitude()));
+        }
     }
 
     /**
@@ -940,7 +972,13 @@ public class SimulationController {
     public double  getVitesseSimulationMs()         { return vitesseSimulationMs; }
     public void    setGravite(double g)             { modele.setGravite(g); }
     public void    setNiveauEau(double nv)          { modele.setNiveauEau(nv); Platform.runLater(() -> { if (onWaterLevelChanged != null) onWaterLevelChanged.accept(nv / FLOOD_SPEED_FACTOR); }); }
-    public void    setModeAleatoire(boolean b)      { this.modeAleatoire = b; }
+    public void    setModeAleatoire(boolean b)      {
+        this.modeAleatoire = b;
+        if (!b) {
+            // In manual mode, evacuation must only start after a user-placed flood point.
+            this.evacuationDeclenchee = false;
+        }
+    }
     public boolean isModeAleatoire()                { return modeAleatoire; }
 
     // ─────────────────────────────────────────────────────────────────────

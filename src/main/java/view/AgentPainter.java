@@ -214,11 +214,10 @@ public class AgentPainter implements Painter<JXMapViewer> {
                 Agent agent = mv.getAgent();
                 if (!isDisplayedAgent(agent)) continue;
                 movingAgentIds.add(agent.getId());
+                Edge currentEdge = mv.getCurrentEdge();
+                boolean edgeRisk = isEdgeRiskForPanic(currentEdge);
+                setPanic(agent, edgeRisk || mv.isBlocked());
                 boolean panicking = isPanicking(agent) || mv.isBlocked();
-                if (isDangerAt(mv.getCurrentPosition().getLatitude(), mv.getCurrentPosition().getLongitude())) {
-                    setPanic(agent, true);
-                    panicking = true;
-                }
                 Point2D p = map.convertGeoPositionToPoint(mv.getCurrentPosition());
                 drawMiiAgent(g2, agent, p.getX(), p.getY(), colorFor(agent, panicking), panicking);
                 drawTooltipIfNeeded(g2, agent, p.getX(), p.getY());
@@ -236,9 +235,13 @@ public class AgentPainter implements Painter<JXMapViewer> {
             if (gp == null) continue;
 
             boolean panicking = isPanicking(agent) || agent == draggedAgent;
-            if (isDangerAt(gp.getLatitude(), gp.getLongitude()) && agent instanceof Citizen) {
-                setPanic(agent, true);
-                panicking = true;
+            if (agent instanceof Citizen) {
+                Edge snappedEdge = edgeByAgent.get(agent.getId());
+                boolean edgeRisk = isEdgeRiskForPanic(snappedEdge);
+                if (agent != draggedAgent) {
+                    setPanic(agent, edgeRisk);
+                }
+                panicking = panicking || edgeRisk;
             }
 
             Point2D p = map.convertGeoPositionToPoint(gp);
@@ -346,14 +349,22 @@ public class AgentPainter implements Painter<JXMapViewer> {
             if (c.getState() != CitizenState.INJURED && c.getState() != CitizenState.PMR && c.getState() != CitizenState.SAFE) {
                 c.setState(CitizenState.STRESSED);
             }
-        } else if (c.getState() == CitizenState.STRESSED || c.getState() == CitizenState.ESCAPING) {
+        } else if (c.getState() == CitizenState.STRESSED) {
             c.setState(CitizenState.CALM);
         }
     }
 
+    private boolean isEdgeRiskForPanic(Edge edge) {
+        if (edge == null) return false;
+        return switch (edge.getState()) {
+            case AT_RISK, FLOODING, OVERLOADED, FLOODED -> true;
+            default -> false;
+        };
+    }
+
     private boolean isPanicking(Agent agent) {
         if (!(agent instanceof Citizen c) || c.getState() == null) return false;
-        return c.getState() == CitizenState.STRESSED || c.getState() == CitizenState.ESCAPING;
+        return c.getState() == CitizenState.STRESSED;
     }
 
     private Color colorFor(Agent agent, boolean panicking) {
@@ -368,7 +379,8 @@ public class AgentPainter implements Painter<JXMapViewer> {
             return switch (c.getState()) {
                 case INJURED -> new Color(233, 30, 99);
                 case PMR -> new Color(142, 36, 170);
-                case STRESSED, ESCAPING -> new Color(229, 57, 53);
+                case STRESSED -> new Color(229, 57, 53);
+                case ESCAPING -> new Color(30, 136, 229);
                 case SAFE -> new Color(34, 197, 94);
                 case CALM -> new Color(30, 136, 229);
             };

@@ -13,10 +13,23 @@ import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Separator;
+import javafx.scene.control.Slider;
+import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleGroup;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
@@ -24,7 +37,6 @@ import javafx.stage.FileChooser;
 import javafx.util.Duration;
 import model.agent.Agent;
 import model.agent.Citizen;
-import model.agent.RescueAgent;
 import model.graph.Edge;
 import model.simulation.FloodSimulation;
 import model.zone.Zone;
@@ -215,12 +227,26 @@ public class SimulationView extends BorderPane {
 
         btnAlea.setOnAction(e -> {
             activateMode(btnAlea, btnManual, btnStep, btnReset);
-            if (mapView != null) { mapView.setManualFloodMode(false); mapView.startRandomFlood(); }
-            if (ctrl != null)   { ctrl.setModeAleatoire(true); ctrl.demarrerSimulation(); startSim(); }
+            if (mapView != null) {
+                mapView.resetManualFlood();
+                mapView.setManualFloodMode(false);
+                mapView.startRandomFlood();
+            }
+            if (ctrl != null) {
+                ctrl.setModeAleatoire(true);
+                ctrl.demarrerSimulation();
+                startSim();
+            }
+            if (mapView != null) {
+                mapView.resumeFloodPropagation();
+            }
         });
         btnManual.setOnAction(e -> {
             activateMode(btnManual, btnAlea, btnStep, btnReset);
-            if (mapView != null) mapView.setManualFloodMode(true);
+            if (mapView != null) {
+                mapView.resetManualFlood();
+                mapView.setManualFloodMode(true);
+            }
             if (ctrl != null)   { ctrl.setModeAleatoire(false); ctrl.demarrerSimulation(); startSim(); }
         });
         btnStep.setOnAction(e -> {
@@ -249,16 +275,20 @@ public class SimulationView extends BorderPane {
         chrono.setStyle("-fx-border-color:transparent " + BORDER + " transparent transparent;-fx-border-width:0 1 0 0;");
 
         // Vitesse + Play/Pause (même bouton)
-        Slider slVitesse = new Slider(200, 5000, 1500);
+        Slider slVitesse = new Slider(200, 5000, 2400);
         slVitesse.setPrefWidth(110);
         slVitesse.setStyle("-fx-control-inner-background:#1e293b;-fx-accent:" + BLUE + ";");
-        Label lblVitesse = lbl("1500ms", FontWeight.BOLD, 10, TEXT);
+        Label lblVitesse = lbl("2400ms", FontWeight.BOLD, 10, TEXT);
         slVitesse.valueProperty().addListener((o, ov, nv) -> {
             int v = (int) Math.round(nv.doubleValue());
             lblVitesse.setText(v + "ms");
             if (ctrl != null) ctrl.setVitesseSimulation(v);
+            if (mapView != null) mapView.setFloodSpeedFromSlider(v);
             if (simRunning) startSim();
         });
+
+        if (ctrl != null) ctrl.setVitesseSimulation(slVitesse.getValue());
+        if (mapView != null) mapView.setFloodSpeedFromSlider(slVitesse.getValue());
 
         Button btnPlayPause = iconBtn("▶");
         btnPlayPause.setOnAction(e -> {
@@ -266,10 +296,12 @@ public class SimulationView extends BorderPane {
             simRunning = !simRunning;
             if (simRunning) {
                 ctrl.reprendreSimulation();
+                if (mapView != null) mapView.resumeFloodPropagation();
                 startSim();
                 btnPlayPause.setText("⏸");
             } else {
                 ctrl.mettreEnPause();
+                if (mapView != null) mapView.pauseFloodPropagation();
                 stopSim();
                 btnPlayPause.setText("▶");
             }
@@ -1316,11 +1348,13 @@ public class SimulationView extends BorderPane {
         simLoop.setCycleCount(Timeline.INDEFINITE);
         simLoop.play();
         simRunning = true;
+        if (mapView != null) mapView.resumeFloodPropagation();
     }
 
     private void stopSim() {
         if (simLoop != null) simLoop.stop();
         simRunning = false;
+        if (mapView != null) mapView.pauseFloodPropagation();
     }
 
     public void stopAll() {
@@ -1344,6 +1378,11 @@ public class SimulationView extends BorderPane {
             boolean pause = modele.isEnPause();
             lblStatus.setText(pause ? "En pause" : "En cours");
             lblStatus.setTextFill(Color.web(pause ? ORANGE : GREEN));
+            if (pause && mapView != null) {
+                mapView.pauseFloodPropagation();
+            } else if (!pause && simRunning && mapView != null) {
+                mapView.resumeFloodPropagation();
+            }
 
             double nv = modele.getNiveauEau() / SimulationController.FLOOD_SPEED_FACTOR;
             lblNiveauActuel.setText(String.format("%.2f m", nv));

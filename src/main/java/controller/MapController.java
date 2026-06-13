@@ -204,6 +204,18 @@ public class MapController {
         if (citizen.getState() == CitizenState.SAFE ||
             citizen.getState() == CitizenState.ESCAPING) return null;
 
+        if (citizen.isMobilityReduced()) {
+            if (dispatchRescueForCitizen(citizen)) {
+                mapView.setGraphInfo("PMR : " + nameOf(citizen) + " pris en charge par un secouriste.");
+            } else {
+                mapView.setGraphInfo("PMR : " + nameOf(citizen) + " attend un secouriste disponible.");
+            }
+            return null;
+        }
+
+        // Keep the semantic location in sync before routing.
+        citizen.setCurrentZone(from);
+
         AgentMovement mv = routeGraph.planEvacuation(citizen, from, zones);
         if (mv != null) {
             citizen.setState(CitizenState.ESCAPING);
@@ -228,7 +240,15 @@ public class MapController {
     public void triggerMassEvacuation(List<Citizen> citizens) {
         if (citizens == null) return;
         int planned = 0;
-        for (Citizen c : citizens) {
+        List<Citizen> ordered = new ArrayList<>(citizens);
+        ordered.sort((a, b) -> {
+            boolean aPriority = a != null && a.isMobilityReduced();
+            boolean bPriority = b != null && b.isMobilityReduced();
+            if (aPriority != bPriority) return aPriority ? -1 : 1;
+            return 0;
+        });
+
+        for (Citizen c : ordered) {
             if (c == null) continue;
             if (evacuateCitizen(c) != null) planned++;
         }
@@ -259,6 +279,10 @@ public class MapController {
     private void handleAgentArrived(AgentMovement mv) {
         Agent agent = mv.getAgent();
         Zone destination = mv.getDestinationZone();
+
+        if (agent != null && destination != null) {
+            agent.setCurrentZone(destination);
+        }
 
         if (agent instanceof Citizen c && destination instanceof Shelter) {
             c.setState(CitizenState.SAFE);
@@ -308,38 +332,48 @@ public class MapController {
     // ─────────────────────────────────────────────────────────────────────
 
     private void dispatchRescueForBlockedCitizens() {
+        List<Citizen> priorityFirst = new ArrayList<>();
+        List<Citizen> others = new ArrayList<>();
+
         for (Agent a : new ArrayList<>(agents)) {
-            if (a instanceof Citizen c && c.getState() == CitizenState.STRESSED) {
-                dispatchRescueForCitizen(c);
-            }
+            if (!(a instanceof Citizen c)) continue;
+            if (c.isMobilityReduced()) priorityFirst.add(c);
+            else if (c.getState() == CitizenState.STRESSED) others.add(c);
         }
+
+        priorityFirst.forEach(this::dispatchRescueForCitizen);
+        others.forEach(this::dispatchRescueForCitizen);
     }
 
-    private void dispatchRescueForCitizen(Citizen citizen) {
-        if (citizen == null || citizen.getState() == CitizenState.SAFE) return;
+    private boolean dispatchRescueForCitizen(Citizen citizen) {
+        if (citizen == null || citizen.getState() == CitizenState.SAFE) return false;
 
         // déjà assigné à une mission ?
         for (List<Citizen> list : rescueAssignments.values()) {
-            if (list.stream().anyMatch(c -> c.getId() == citizen.getId())) return;
+            if (list.stream().anyMatch(c -> c.getId() == citizen.getId())) return true;
         }
 
         RescueAgent rescue = nearestAvailableRescue(citizen);
         if (rescue == null) {
             mapView.setGraphInfo("Aucun secouriste disponible pour " + nameOf(citizen));
-            return;
+            return false;
         }
 
         Zone from = findClosestZone(rescue);
         Zone target = findClosestZone(citizen);
-        if (from == null || target == null) return;
+        if (from == null || target == null) return false;
 
+        rescue.setState(model.enums.RescueState.EN_ROUTE);
         AgentMovement mission = sendRescueAgent(rescue, from, target);
         if (mission != null) {
             busyRescueAgents.add(rescue.getId());
             List<Citizen> group = rescueAssignments.computeIfAbsent(rescue.getId(), id -> new ArrayList<>());
             group.add(citizen);
             mapView.setGraphInfo("Secours envoyé : " + nameOf(rescue) + " vers " + target.getName());
+            return true;
         }
+        rescue.setState(model.enums.RescueState.DISPONIBLE);
+        return false;
     }
 
     private RescueAgent nearestAvailableRescue(Agent target) {
@@ -350,6 +384,7 @@ public class MapController {
 
         for (Agent a : agents) {
             if (!(a instanceof RescueAgent r)) continue;
+            if (r.getState() != model.enums.RescueState.DISPONIBLE) continue;
             if (busyRescueAgents.contains(r.getId())) continue;
             Zone z = findClosestZone(r);
             if (z == null) continue;
@@ -378,18 +413,37 @@ public class MapController {
     // ─────────────────────────────────────────────────────────────────────
 
     private Zone findClosestZone(Agent agent) {
-        if (agent == null || agent.getPosition() == null || zones.isEmpty()) {
-            return zones.isEmpty() ? null : zones.get(0);
+        if (agent == null || zones.isEmpty()) {
+            return null;
         }
-        double lat = agent.getPosition().getLat();
-        double lng = agent.getPosition().getLng();
-        Zone best = null;
-        double bestDist = Double.MAX_VALUE;
-        for (Zone z : zones) {
-            double d = Math.pow(z.getLatitude() - lat, 2) + Math.pow(z.getLongitude() - lng, 2);
-            if (d < bestDist) { bestDist = d; best = z; }
+
+        if (agent.getPosition() != null) {
+            double lat = agent.getPosition().getLat();
+            double lng = agent.getPosition().getLng();
+            Zone best = null;
+            double bestDist = Double.MAX_VALUE;
+            for (Zone z : zones) {
+                double d = Math.pow(z.getLatitude() - lat, 2) + Math.pow(z.getLongitude() - lng, 2);
+                if (d < bestDist) { bestDist = d; best = z; }
+            }
+            if (best != null) {
+                return best;
+            }
         }
-        return best;
+
+        Zone currentZone = agent.getCurrentZone();
+        if (currentZone != null) {
+            for (Zone z : zones) {
+                if (z.getId() == currentZone.getId()) {
+                    return z;
+                }
+            }
+        }
+
+        if (agent.getPosition() == null) {
+            return null;
+        }
+        return null;
     }
 
     private String nameOf(Agent a) {
