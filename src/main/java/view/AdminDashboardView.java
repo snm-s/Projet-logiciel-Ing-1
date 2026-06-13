@@ -297,6 +297,7 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
         );
 
         MapView mapView = new MapView(new ZoneManager().getZones());
+        mapView.setAgents(ctrl.getAllAgents());
         SwingNode sn = mapView.getSwingNode();
 
         sn.minWidth(1000);
@@ -331,11 +332,11 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
         tableBox.setPadding(new Insets(16));
         tableBox.setStyle("-fx-background-color: " + BG_PANEL + "; -fx-background-radius: 10;");
 
-        Label recentLbl = new Label("Derniers agents enregistrés");
+        Label recentLbl = new Label("Tous les agents enregistrés");
         recentLbl.setFont(Font.font("Segoe UI", FontWeight.BOLD, 15));
         recentLbl.setTextFill(Color.web(TEXT_PRIMARY));
 
-        tableBox.getChildren().addAll(recentLbl, buildTable(ctrl.getAllAgents(), true));
+        tableBox.getChildren().addAll(recentLbl, buildTable(ctrl.getAllAgents(), false));
 
         root.getChildren().addAll(titleRow, kpis, bottomRow, mapView.getSwingNode(), tableBox);
 
@@ -615,7 +616,10 @@ private static final String BORDER = "rgba(255,255,255,0.18)";
         });
 
         TableColumn<Agent, String> colPos = strCol("Position",
-                a -> a.getPosition() != null ? a.getPosition().toString() : "—", 220);
+        a -> a.getPosition() != null
+                ? String.format("%.5f, %.5f", a.getPosition().getLat(), a.getPosition().getLng())
+                : "—",
+        220);
 
         TableColumn<Agent, String> colSaved = strCol("Sauvé",
                 a -> a.isSaved() ? "Oui" : "—", 80);
