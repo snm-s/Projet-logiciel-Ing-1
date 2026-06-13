@@ -605,7 +605,7 @@ public class SimulationView extends BorderPane {
             });
 
             // Clic zone
-            mapCtrl.setOnZoneSelected(zone -> {
+            mapView.setOnZoneSelected(zone -> {
                 if (mapView != null && mapView.wasLastClickConsumedByEdge()) {
                     mapView.setLastClickConsumedByEdge(false);
                     return;
@@ -673,12 +673,30 @@ public class SimulationView extends BorderPane {
                 if (edgeZoneA == null) {
                     edgeZoneA = zone;
                     setGraphInfo("Zone A : " + zone.getName() + " — cliquez la zone B.");
-                } else if (ctrl != null) {
-                    ctrl.addEdgeBetween(edgeZoneA.getId(), zone.getId());
-                    edgeZoneA = null;
-                    refreshUI();
-                    setGraphInfo("Route créée.");
+                    return;
                 }
+            
+                if (edgeZoneA.getId() == zone.getId()) {
+                    setGraphInfo("⚠ Choisissez une autre zone.");
+                    return;
+                }
+            
+                boolean created = ctrl.addEdgeBetween(edgeZoneA.getId(), zone.getId());
+            
+                if (created) {
+                    setGraphInfo("Route créée : " + edgeZoneA.getName() + " ↔ " + zone.getName());
+                } else {
+                    setGraphInfo("⚠ Route déjà existante ou impossible.");
+                }
+            
+                edgeZoneA = null;
+            
+                if (mapView != null) {
+                    mapView.updateAllZones(modele.getZones());
+                    mapView.refreshMap();
+                }
+            
+                refreshUI();
             }
             case EDIT_ZONE -> {
                 editingZone = zone;
